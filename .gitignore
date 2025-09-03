@@ -1,2 +1,5 @@
 overlay-25GB-500K.ext3
 cuda11.8.86-cudnn8.7-devel-ubuntu22.04.2.sif
+*.out
+.ipynb_checkpoints/
+*.npz
