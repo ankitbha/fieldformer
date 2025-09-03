@@ -1,2 +1,2 @@
-# mprnn_forward
-Pytorch Finite Difference Solver of Scikit-Fdiff
+# FieldFormer
+Physics-informed transformers for spatio-temporal field reconstruction from sparse sensor data.
