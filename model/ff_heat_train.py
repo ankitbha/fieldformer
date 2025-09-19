@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 # ========= FieldFormer (starter) for periodic heat dataset =========
@@ -18,16 +18,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
+from dataclasses import dataclass
 torch.pi = torch.acos(torch.zeros(1)).item() * 2
 
 
-# In[2]:
+# In[ ]:
 
 
 # ----------------------
 # Data: load the periodic heat dataset you created
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/synthetic/heat_periodic_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)
@@ -38,7 +39,7 @@ params = pack["params"]
 names  = pack["param_names"]
 
 
-# In[3]:
+# In[ ]:
 
 
 # pull a few scalars for physics loss & periodic wrapping
@@ -49,14 +50,14 @@ dy = float(params[list(names).index("dy")])
 dt = float(params[list(names).index("dt")])
 
 
-# In[4]:
+# In[ ]:
 
 
 Nx, Ny, Nt = u_np.shape
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# In[5]:
+# In[ ]:
 
 
 # Flatten full coordinate list and values for mesh-free access
@@ -69,7 +70,7 @@ coords = torch.from_numpy(coords_np).float().to(device)
 vals   = torch.from_numpy(vals_np).float().to(device)
 
 
-# In[6]:
+# In[ ]:
 
 
 # ----------------------
@@ -110,7 +111,7 @@ class HeatPeriodicDataset(Dataset):
             return self.test_idx[idx]
 
 
-# In[7]:
+# In[ ]:
 
 
 # ----------------------
@@ -128,7 +129,7 @@ ds_val.set_split("val")
 dl_val = DataLoader(ds_val, batch_size=4096, shuffle=False)
 
 
-# In[8]:
+# In[ ]:
 
 
 # ---------------------- 
@@ -202,7 +203,7 @@ def gather_neighbors_periodic(q_lin_idx, k, offsets_ijk):
     return nb_lin, di, dj, dk
 
 
-# In[9]:
+# In[ ]:
 
 
 class FieldFormer(nn.Module):
@@ -236,6 +237,8 @@ class FieldFormer(nn.Module):
         rel = rel_ijk[None, :, :].expand(q_lin_idx.shape[0], -1, -1)       # (B,k,3)
         # scale to physical deltas
         rel = rel * torch.tensor([dx, dy, dt], device=device_, dtype=torch.float32)  # (B,k,3)
+        scale = torch.exp(self.log_gammas)[None, None, :]                  # (1,1,3)
+        rel = rel * scale
         # neighbor values
         nb_vals = vals[nb_idx].to(device_)[..., None].to(torch.float32)    # (B,k,1)
         tokens = torch.cat([rel, nb_vals], dim=-1)                         # (B,k,4)
@@ -246,7 +249,7 @@ class FieldFormer(nn.Module):
         return out, {"gammas": torch.exp(self.log_gammas).detach()}
 
 
-# In[10]:
+# In[ ]:
 
 
 # ----------------------
@@ -298,7 +301,27 @@ def physics_residual(model, q_lin_idx, k_neighbors, offsets_ijk):
     return R
 
 
-# In[11]:
+# In[ ]:
+
+
+@dataclass
+class EarlyStopping:
+    patience: int = 10
+    best: float = float("inf")
+    bad_epochs: int = 0
+    stopped: bool = False
+
+    def step(self, metric: float):
+        if metric < self.best - 1e-8:
+            self.best = metric
+            self.bad_epochs = 0
+        else:
+            self.bad_epochs += 1
+            if self.bad_epochs >= self.patience:
+                self.stopped = True
+
+
+# In[ ]:
 
 
 # ----------------------
@@ -306,7 +329,21 @@ def physics_residual(model, q_lin_idx, k_neighbors, offsets_ijk):
 # ----------------------
 torch.set_float32_matmul_precision("high")
 model = FieldFormer(d_in=4, d_model=64, nhead=4, num_layers=2, k_neighbors=128, d_ff=128).to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-4)
+base_params = [p for n, p in model.named_parameters() if n != "log_gammas"]
+optimizer = torch.optim.AdamW(
+    [
+        {"params": base_params,                 "lr": 3e-4, "weight_decay": 1e-4},
+        {"params": [model.log_gammas],          "lr": 3e-3, "weight_decay": 0.0},
+    ]
+)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode="min", factor=0.5, patience=3, min_lr=1e-6
+)
+
+scaler = torch.cuda.amp.GradScaler(enabled=torch.cuda.is_available())
+grad_clip = 1.0
+max_epochs = 100
+early = EarlyStopping(patience=10)
 mse = nn.MSELoss()
 
 lambda_phys = 0.1   # weight for physics loss (tune)
@@ -326,11 +363,10 @@ def batch_targets(q_lin_idx):
 best_rmse = float("inf")
 best_path = "ff_heat_best.pt"
 
-for epoch in range(3):
+for epoch in range(max_epochs):
     model.train()
     total_loss = total_data = total_phys = 0.0
 
-    # build offsets once before first batch (for current gammas)
     with torch.no_grad():
         gam = torch.exp(model.log_gammas).detach().cpu().numpy()
     offsets_ijk = build_offset_table(k=model.k, gammas=gam, dx=dx, dy=dy, dt=dt)
@@ -338,25 +374,27 @@ for epoch in range(3):
     for q_lin in tqdm(dl, desc=f"Epoch {epoch+1} [train]", leave=False):
         q_lin = q_lin.to(device)
 
-        # forward using current offsets
-        pred, _ = model(q_lin, offsets_ijk)
-        tgt = batch_targets(q_lin)
+        with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+            pred, _ = model(q_lin, offsets_ijk)
+            tgt = batch_targets(q_lin)
+            data_loss = mse(pred, tgt)
+            loss = data_loss
 
-        data_loss = mse(pred, tgt)
-        loss = data_loss
-
-        if use_physics:
-            subsample = q_lin[::8]
-            # pass the same offsets into physics_residual
-            R = physics_residual(model, subsample, model.k, offsets_ijk)
-            phys_loss = (R**2).mean()
-            loss = loss + lambda_phys * phys_loss
-        else:
-            phys_loss = torch.tensor(0.0, device=device)
+            if use_physics:
+                subsample = q_lin[::8]
+                R = physics_residual(model, subsample, model.k, offsets_ijk)
+                phys_loss = (R**2).mean()
+                loss = loss + lambda_phys * phys_loss
+            else:
+                phys_loss = torch.tensor(0.0, device=device)
 
         optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        optimizer.step()
+        scaler.scale(loss).backward()
+        # gradient clipping
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+        scaler.step(optimizer)
+        scaler.update()
 
         total_loss += loss.item()
         total_data += data_loss.item()
@@ -367,10 +405,9 @@ for epoch in range(3):
             gam = torch.exp(model.log_gammas).detach().cpu().numpy()
         offsets_ijk = build_offset_table(k=model.k, gammas=gam, dx=dx, dy=dy, dt=dt)
 
-    # quick val RMSE
+    # ---- validation ----
     model.eval()
     with torch.no_grad():
-        # use current gammas for eval offsets
         gam = torch.exp(model.log_gammas).detach().cpu().numpy()
         offsets_ijk_val = build_offset_table(k=model.k, gammas=gam, dx=dx, dy=dy, dt=dt)
 
@@ -378,16 +415,19 @@ for epoch in range(3):
         n_sum = 0
         for q_lin in tqdm(dl_val, desc=f"Epoch {epoch+1} [val]", leave=False):
             q_lin = q_lin.to(device)
-            pred, _ = model(q_lin, offsets_ijk_val)   # pass offsets here too
+            pred, _ = model(q_lin, offsets_ijk_val)
             tgt = batch_targets(q_lin)
             se_sum += F.mse_loss(pred, tgt, reduction="sum").item()
             n_sum  += q_lin.numel()
         rmse = np.sqrt(se_sum / n_sum)
 
+    # step LR scheduler on validation metric
+    scheduler.step(rmse)
+
     print(f"Epoch {epoch+1:02d} | train loss {total_loss/len(dl):.4f} "
           f"(data {total_data/len(dl):.4f}, phys {total_phys/len(dl):.4f}) | val RMSE {rmse:.4f}")
 
-    # ---- save if improved ----
+    # save best (unchanged)
     if rmse < best_rmse:
         best_rmse = rmse
         torch.save({
@@ -405,6 +445,12 @@ for epoch in range(3):
             }
         }, best_path)
         print(f"✓ Saved new best to {best_path} (val RMSE {best_rmse:.6f})")
+
+    # early stopping
+    early.step(rmse)
+    if early.stopped:
+        print(f"⏹ Early stopping at epoch {epoch+1} (best RMSE {early.best:.6f})")
+        break
 
 print("Gammas (learned space-time scales):", model.log_gammas.detach().exp().cpu().numpy())
 
