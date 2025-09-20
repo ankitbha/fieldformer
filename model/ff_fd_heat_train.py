@@ -361,7 +361,7 @@ def batch_targets(q_lin_idx):
 # ----------------------
 
 best_rmse = float("inf")
-best_path = "ff_heat_best.pt"
+best_path = "ff_fd_heat_best.pt"
 
 for epoch in range(max_epochs):
     model.train()

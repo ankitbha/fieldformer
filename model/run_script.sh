@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=siren-heat-train
+#SBATCH --job-name=ffag-heat-train
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
