@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ff-heat-train
+#SBATCH --job-name=fmlp-heat-train
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB

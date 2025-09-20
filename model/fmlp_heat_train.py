@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[9]:
+
+
+#!/usr/bin/env python
+# coding: utf-8
+
 # ===== Fourier-MLP neural field with physics loss (periodic BC) =====
 # Reuses the same dataset (.npz), tensors, and loaders pattern as ff_heat_train.py
 # ====================================================================
@@ -13,11 +19,16 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import math
 torch.pi = torch.acos(torch.zeros(1)).item() * 2
+from dataclasses import dataclass
+
+
+# In[2]:
+
 
 # ----------------------
 # Data: load the periodic heat dataset (same path as your FieldFormer script)
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/synthetic/heat_periodic_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)
@@ -54,6 +65,10 @@ Lx = float(x_np.max() - x_np.min())
 Ly = float(y_np.max() - y_np.min())
 Tt = float(t_np.max() - t_np.min()) if Nt > 1 else 1.0  # robust if Nt==1
 
+
+# In[3]:
+
+
 # ----------------------
 # Dataset that returns query indices (same as ff_heat_train)
 # ----------------------
@@ -85,6 +100,10 @@ class HeatPeriodicDataset(Dataset):
         if self.split == "val":   return self.val_idx[idx]
         return self.test_idx[idx]
 
+
+# In[4]:
+
+
 # ----------------------
 # Instantiate loaders (mirrors your script)
 # ----------------------
@@ -95,6 +114,10 @@ dl = DataLoader(ds, batch_size=2048, shuffle=True, drop_last=True)
 ds_val = HeatPeriodicDataset(Nx, Ny, Nt, train_frac=0.8, val_frac=0.1, seed=123)
 ds_val.set_split("val")
 dl_val = DataLoader(ds_val, batch_size=4096, shuffle=False)
+
+
+# In[5]:
+
 
 # ----------------------
 # Fourier features (integer harmonics; periodic-friendly but not hard constraints)
@@ -129,6 +152,10 @@ def fourier_encode_3d(xyt):
     ft = fourier_encode_1d(t, Kt_list, Tt)
     return torch.cat([fx, fy, ft], dim=-1)
 
+
+# In[6]:
+
+
 # ----------------------
 # Fourier-MLP model
 # ----------------------
@@ -157,11 +184,19 @@ model = FourierMLP(width=256, depth=6).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-4)
 mse = nn.MSELoss()
 
+
+# In[7]:
+
+
 # ----------------------
 # Forcing function (same as your FieldFormer script)
 # ----------------------
 def forcing_torch(xx, yy, tt):
     return 5.0 * torch.cos(torch.pi * xx) * torch.cos(torch.pi * yy) * torch.sin(4 * torch.pi * tt / 5.0)
+
+
+# In[8]:
+
 
 # ----------------------
 # Utilities
@@ -242,6 +277,33 @@ def periodic_bc_loss(n_bc=1024, match_grad=False):
 
     return (loss_x + loss_y) * 0.5
 
+
+# In[10]:
+
+
+# ----------------------
+# Early stopping
+# ----------------------
+@dataclass
+class EarlyStopping:
+    patience: int = 10
+    best: float = float("inf")
+    bad_epochs: int = 0
+    stopped: bool = False
+
+    def step(self, metric: float):
+        if metric < self.best - 1e-8:
+            self.best = metric
+            self.bad_epochs = 0
+        else:
+            self.bad_epochs += 1
+            if self.bad_epochs >= self.patience:
+                self.stopped = True
+
+
+# In[11]:
+
+
 # ----------------------
 # Train setup
 # ----------------------
@@ -251,13 +313,20 @@ lambda_pde = 0.1      # weight for PDE residual
 lambda_bc  = 0.01     # weight for periodic boundary soft constraint
 use_pde    = True
 use_bc     = True
-match_grad_bc = False # set True to also match normal derivatives across periodic boundaries
+match_grad_bc = False
 
 epochs = 100
 best_rmse = float("inf")
-best_path = "fourier_mlp_heat_best.pt"
+best_path = "fmlp_heat_best.pt"
 
-# Helper: evaluate RMSE on the validation split
+# optimizer already defined above; add scheduler like FieldFormer
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode="min", factor=0.5, patience=3, min_lr=1e-6
+)
+early = EarlyStopping(patience=10)
+grad_clip = 1.0  # same as FieldFormer
+
+# Helper: evaluate RMSE on the validation split (unchanged)
 @torch.no_grad()
 def eval_val_rmse():
     se_sum = 0.0
@@ -271,6 +340,10 @@ def eval_val_rmse():
         n_sum  += q_lin.numel()
     return math.sqrt(se_sum / max(n_sum, 1))
 
+
+# In[12]:
+
+
 # ----------------------
 # Training loop
 # ----------------------
@@ -278,7 +351,7 @@ for epoch in range(1, epochs+1):
     model.train()
     total_loss = total_data = total_phys = total_bc = 0.0
 
-    # Optional: ramp physics weight early
+    # Optional: ramp physics/bc weights early
     ramp = min(1.0, epoch / 20.0)
     lam_pde = lambda_pde * ramp
     lam_bc  = lambda_bc  * ramp
@@ -310,6 +383,7 @@ for epoch in range(1, epochs+1):
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
         optimizer.step()
 
         total_loss += loss.item()
@@ -320,6 +394,9 @@ for epoch in range(1, epochs+1):
     # Validation
     model.eval()
     rmse = eval_val_rmse()
+    # step LR scheduler on validation metric (same as FieldFormer)
+    scheduler.step(rmse)
+
     print(f"Epoch {epoch:03d} | train {total_loss/len(dl):.4f} "
           f"(data {total_data/len(dl):.4f}, pde {total_phys/len(dl):.4f}, bc {total_bc/len(dl):.4f}) | "
           f"val RMSE {rmse:.5f}")
@@ -342,4 +419,17 @@ for epoch in range(1, epochs+1):
         }, best_path)
         print(f"✓ Saved new best to {best_path} (val RMSE {best_rmse:.6f})")
 
+    # Early stopping (same logic as FieldFormer)
+    early.step(rmse)
+    if early.stopped:
+        print(f"⏹ Early stopping at epoch {epoch} (best RMSE {early.best:.6f})")
+        break
+
 print("Done.")
+
+
+# In[ ]:
+
+
+
+
