@@ -38,7 +38,7 @@ from gpytorch.means import ConstantMean
 from gpytorch.kernels import ScaleKernel, ProductKernel, PeriodicKernel
 
 
-# In[34]:
+# In[2]:
 
 
 # ----------------------
@@ -52,10 +52,10 @@ class Config:
     val_frac = 0.10
 
     # Checkpoints
-    ckpt_fieldformer = "ff_ag_heat_best.pt"      # path to FieldFormer-Autograd .pt
-    ckpt_svgp        = "svgp_heat_best.pt"         # path to SVGP .pt
-    ckpt_siren       = "siren_heat_best.pt"
-    ckpt_fmlp        = "fmlp_heat_best.pt"
+    ckpt_fieldformer = "/scratch/ab9738/fieldformer/model/ffag_heat_best.pt"      # path to FieldFormer-Autograd .pt
+    ckpt_svgp        = "/scratch/ab9738/fieldformer/model/svgp_heat_best.pt"         # path to SVGP .pt
+    ckpt_siren       = "/scratch/ab9738/fieldformer/model/siren_heat_best.pt"
+    ckpt_fmlp        = "/scratch/ab9738/fieldformer/model/fmlp_heat_best.pt"
 
     # Eval
     batch_eval_idx = 1024        # batch size for index-based eval (FieldFormer)
@@ -75,8 +75,14 @@ class Config:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    # Bootstrap settings
+    bootstrap_n = 5
+    bootstrap_frac = 0.8      # use 1.0 for textbook bootstrap
+    bootstrap_with_replacement = True
+    bootstrap_seed = 123
 
-# In[35]:
+
+# In[3]:
 
 
 # ----------------------
@@ -150,89 +156,148 @@ class HeatPeriodicDataset(Dataset):
         return getattr(self, f"{self.split}_idx")[i]
 
 
-# In[36]:
+# In[4]:
 
 
 # ----------------------
 # FieldFormer-Autograd (subset: inference utilities)
 # ----------------------
 class FieldFormerAutograd(nn.Module):
-    def __init__(self, d_in=4, d_model=64, nhead=4, num_layers=2, k_neighbors=128, d_ff=128, wrap=True,
-                 Lx=1.0, Ly=1.0, Tt=1.0, coords=None, vals=None):
+    def __init__(self, d_in=4, d_model=64, nhead=4, num_layers=2, k_neighbors=128, d_ff=128,
+                 wrap=True,
+                 # bind geometry & data so we don't rely on globals
+                 Nx=None, Ny=None, Nt=None, Lx=None, Ly=None, Tt=None,
+                 dx=None, dy=None, dt=None,
+                 coords=None, vals=None):
         super().__init__()
+        # arch
         self.k = k_neighbors
-        self.wrap = wrap
-        self.Lx, self.Ly, self.Tt = Lx, Ly, Tt
-        self.coords = coords  # global tensors (N,3)
-        self.vals = vals      # (N,)
         self.log_gammas = nn.Parameter(torch.zeros(3))
         self.input_proj = nn.Linear(d_in, d_model)
         enc_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=d_ff, batch_first=True)
         self.encoder = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
         self.head = nn.Sequential(nn.LayerNorm(d_model), nn.Linear(d_model, d_model), nn.GELU(), nn.Linear(d_model, 1))
 
-    # Helpers from training
-    @staticmethod
-    def lin_to_ijk(lin, Ny, Nt):
-        i = lin // (Ny * Nt)
-        r = lin %  (Ny * Nt)
-        j = r // Nt
-        k = r %  Nt
+        # wrap flags (no temporal wrap)
+        self.wrap_x = bool(wrap)
+        self.wrap_y = bool(wrap)
+        self.wrap_t = False
+
+        # bind problem geometry & tensors (buffers so .to(device)/ckpt-safe)
+        self.Nx, self.Ny, self.Nt = int(Nx), int(Ny), int(Nt)
+        self.register_buffer("coords", coords)   # (N,3)
+        self.register_buffer("vals",   vals)     # (N,)
+        self.register_buffer("Lx_buf", torch.tensor(float(Lx)))
+        self.register_buffer("Ly_buf", torch.tensor(float(Ly)))
+        self.register_buffer("Tt_buf", torch.tensor(float(Tt)))
+        self.register_buffer("dx_buf", torch.tensor(float(dx)))
+        self.register_buffer("dy_buf", torch.tensor(float(dy)))
+        self.register_buffer("dt_buf", torch.tensor(float(dt)))
+
+        # training uses this buffer; harmless in eval
+        self.register_buffer("_huber_delta_ema", torch.tensor(1.0, dtype=torch.float32))
+
+    # handy accessors
+    @property
+    def Lx(self): return float(self.Lx_buf.item())
+    @property
+    def Ly(self): return float(self.Ly_buf.item())
+    @property
+    def Tt(self): return float(self.Tt_buf.item())
+    @property
+    def dx(self): return float(self.dx_buf.item())
+    @property
+    def dy(self): return float(self.dy_buf.item())
+    @property
+    def dt(self): return float(self.dt_buf.item())
+
+    # index helpers use bound dims
+    def lin_to_ijk(self, lin):
+        i = lin // (self.Ny * self.Nt)
+        r = lin %  (self.Ny * self.Nt)
+        j = r // self.Nt
+        k = r %  self.Nt
         return i, j, k
-    @staticmethod
-    def ijk_to_lin(i, j, k, Nx, Ny, Nt):
-        return (i % Nx) * (Ny*Nt) + (j % Ny) * Nt + (k % Nt)
+
+    def ijk_to_lin(self, i, j, k):
+        return (i % self.Nx) * (self.Ny * self.Nt) + (j % self.Ny) * self.Nt + (k % self.Nt)
 
     @staticmethod
-    def build_offset_table(k, gammas, dx, dy, dt, max_rad=None):
-        gx, gy, gt = [float(x) for x in gammas]
-        c = 4.0
-        base = (c * k) ** (1/3)
-        Rx = max(1, int(base * (1.0/max(gx,1e-8))))
-        Ry = max(1, int(base * (1.0/max(gy,1e-8))))
-        Rt = max(1, int(base * (1.0/max(gt,1e-8))))
-        if max_rad is not None:
-            Rx = min(Rx, max_rad); Ry = min(Ry, max_rad); Rt = min(Rt, max_rad)
-        offs = []
-        for di in range(-Rx, Rx+1):
-            for dj in range(-Ry, Ry+1):
-                for dk in range(-Rt, Rt+1):
-                    d2 = (gx*(di*dx))**2 + (gy*(dj*dy))**2 + (gt*(dk*dt))**2
-                    offs.append((d2, di, dj, dk))
-        offs.sort(key=lambda z: z[0])
-        offs = [(di,dj,dk) for (d2,di,dj,dk) in offs if not (di==0 and dj==0 and dk==0)]
-        return offs
+    def build_offset_table(k, gammas, dx, dy, dt, frac_time=0.5, max_dt_radius=None):
+        gx, gy, gt = gammas
+        if max_dt_radius is None:
+            max_dt_radius = int(3 * (1.0 / max(1e-6, gt)))
+        rad = int(max(2, math.ceil((k**(1/3)) * 4)))
+        cand = []
+        for di in range(-rad, rad+1):
+            for dj in range(-rad, rad+1):
+                for dk in range(-max_dt_radius, max_dt_radius+1):
+                    if di == 0 and dj == 0 and dk == 0:
+                        continue
+                    dxp = di * dx; dyp = dj * dy; dtp = dk * dt
+                    dtp_eff = dtp / (1.0 + abs(dk) / 2.0)   # softens far time neighbors
+                    d2 = (gx*dxp)**2 + (gy*dyp)**2 + (gt*dtp_eff)**2
+                    cand.append((d2, di, dj, dk))
+        cand.sort(key=lambda t: t[0])
+        n_time = max(1, int(k * frac_time))
+        n_space = k - n_time
+        cand_time  = sorted(cand, key=lambda t: abs(t[3]))
+        cand_space = sorted(cand, key=lambda t: (t[0], abs(t[3])))
+        sel, seen = [], set()
+        for _, di, dj, dk in cand_time:
+            key = (di, dj, dk)
+            if key not in seen:
+                sel.append(key); seen.add(key)
+            if len(sel) >= n_time: break
+        for _, di, dj, dk in cand_space:
+            key = (di, dj, dk)
+            if key not in seen:
+                sel.append(key); seen.add(key)
+            if len(sel) >= k: break
+        return sel
 
-    def gather_neighbors_periodic(self, q_lin_idx, Nx, Ny, Nt, offsets_ijk):
-        i, j, k0 = self.lin_to_ijk(q_lin_idx, Ny, Nt)
+    # axis-aware gather (no temporal wrap)
+    def _gather_neighbors(self, q_lin_idx, offsets_ijk):
+        i, j, k0 = self.lin_to_ijk(q_lin_idx)   # (B,)
         sel = offsets_ijk[:self.k]
-        di = torch.tensor([o[0] for o in sel], device=q_lin_idx.device, dtype=i.dtype)
-        dj = torch.tensor([o[1] for o in sel], device=q_lin_idx.device, dtype=i.dtype)
-        dk = torch.tensor([o[2] for o in sel], device=q_lin_idx.device, dtype=i.dtype)
+        dev = q_lin_idx.device; dtype = i.dtype
+        di = torch.tensor([o[0] for o in sel], device=dev, dtype=dtype)
+        dj = torch.tensor([o[1] for o in sel], device=dev, dtype=dtype)
+        dk = torch.tensor([o[2] for o in sel], device=dev, dtype=dtype)
         I = i[:, None] + di[None, :]
         J = j[:, None] + dj[None, :]
         K = k0[:, None] + dk[None, :]
-        nb_lin = self.ijk_to_lin(I, J, K, Nx, Ny, Nt)
-        return nb_lin
+        I = I % self.Nx if self.wrap_x else I.clamp_(0, self.Nx-1)
+        J = J % self.Ny if self.wrap_y else J.clamp_(0, self.Ny-1)
+        K = K % self.Nt if self.wrap_t else K.clamp_(0, self.Nt-1)
+        return I * (self.Ny * self.Nt) + J * self.Nt + K
 
-    def forward(self, q_lin_idx, Nx, Ny, Nt, offsets_ijk):
-        # Neighbor indices (B,k)
-        nb_idx = self.gather_neighbors_periodic(q_lin_idx, Nx, Ny, Nt, offsets_ijk)
-        # Query & neighbor coordinates
-        q_xyz  = self.coords[q_lin_idx]               # (B,3)
-        nb_xyz = self.coords[nb_idx]                  # (B,k,3)
-        # Relative deltas (wrap-aware)
-        if self.wrap:
-            dxv = (nb_xyz[...,0] - q_xyz[:,None,0] + 0.5*self.Lx) % self.Lx - 0.5*self.Lx
-            dyv = (nb_xyz[...,1] - q_xyz[:,None,1] + 0.5*self.Ly) % self.Ly - 0.5*self.Ly
-            dtv = (nb_xyz[...,2] - q_xyz[:,None,2] + 0.5*self.Tt) % self.Tt - 0.5*self.Tt
+    # rel deltas (γ-scaled) with space wrap only
+    @staticmethod
+    def _delta_periodic(a, b, L):
+        return (a - b + 0.5*L) % L - 0.5*L
+
+    def _relative_deltas(self, q_xyz, nb_xyz):
+        if self.wrap_x:
+            dx_ = self._delta_periodic(nb_xyz[...,0], q_xyz[:,None,0], self.Lx)
         else:
-            dxv = nb_xyz[...,0] - q_xyz[:,None,0]
-            dyv = nb_xyz[...,1] - q_xyz[...,1]
-            dtv = nb_xyz[...,2] - q_xyz[...,2]
-        rel = torch.stack([dxv, dyv, dtv], dim=-1) * torch.exp(self.log_gammas)[None,None,:]
-        nb_vals_tok = self.vals[nb_idx][..., None].to(torch.float32)
-        tokens = torch.cat([rel, nb_vals_tok], dim=-1)
+            dx_ = nb_xyz[...,0] - q_xyz[:,None,0]
+        if self.wrap_y:
+            dy_ = self._delta_periodic(nb_xyz[...,1], q_xyz[:,None,1], self.Ly)
+        else:
+            dy_ = nb_xyz[...,1] - q_xyz[:,None,1]
+        dt_ = nb_xyz[...,2] - q_xyz[:,None,2]  # no wrap in time
+        rel = torch.stack([dx_, dy_, dt_], dim=-1)
+        scale = torch.exp(self.log_gammas)[None,None,:]
+        return rel * scale
+
+    def forward(self, q_lin_idx, offsets_ijk):
+        nb_idx = self._gather_neighbors(q_lin_idx, offsets_ijk)     # (B,k)
+        q_xyz  = self.coords[q_lin_idx]                              # (B,3)
+        nb_xyz = self.coords[nb_idx]                                 # (B,k,3)
+        rel    = self._relative_deltas(q_xyz, nb_xyz)                # (B,k,3)
+        nb_vals = self.vals[nb_idx][..., None].to(torch.float32)     # (B,k,1)
+        tokens  = torch.cat([rel, nb_vals], dim=-1)                  # (B,k,4)
         h = self.input_proj(tokens); h = self.encoder(h)
         return self.head(h.mean(dim=1)).squeeze(-1)
 
@@ -243,7 +308,7 @@ def forcing_torch(xx, yy, tt):
     return 5.0 * torch.cos(pi * xx) * torch.cos(pi * yy) * torch.sin(4 * pi * tt / 5.0)
 
 
-# In[37]:
+# In[5]:
 
 
 # ----------------------
@@ -264,7 +329,7 @@ class SVGPModel(ApproximateGP):
 
 
 
-# In[38]:
+# In[6]:
 
 
 # ----------------------
@@ -341,7 +406,7 @@ class FourierMLP(nn.Module):
         return self.net(feat).squeeze(-1)
 
 
-# In[39]:
+# In[7]:
 
 
 # ----------------------
@@ -354,7 +419,53 @@ def rmse_mae(pred: torch.Tensor, tgt: torch.Tensor) -> Tuple[float,float]:
     return math.sqrt(se), ae
 
 
-# In[43]:
+# In[8]:
+
+
+# ----------------------
+# Bootstrap Utilities
+# ----------------------
+
+def _make_bootstrap_indices(base_idx: torch.Tensor, n_boot: int, frac: float,
+                            with_replacement: bool = True, seed: int = 123):
+    """Return a list of index tensors into base_idx for bootstrap subsets."""
+    N = base_idx.numel()
+    m = max(1, int(round(frac * N)))
+    g = torch.Generator(device=base_idx.device)
+    g.manual_seed(seed)
+    boots = []
+    for b in range(n_boot):
+        if with_replacement:
+            sel = torch.randint(low=0, high=N, size=(m,), generator=g, device=base_idx.device)
+        else:
+            # sample without replacement if requested (not classic bootstrap)
+            sel = torch.randperm(N, generator=g, device=base_idx.device)[:m]
+        boots.append(sel)
+    return boots
+
+def _agg_mean_std(values: torch.Tensor):
+    """Return (mean, std) as Python floats for a 1D tensor."""
+    if values.numel() == 1:
+        return float(values.item()), 0.0
+    return float(values.mean().item()), float(values.std(unbiased=True).item())
+
+def _bootstrap_metrics(pred_all: torch.Tensor, tgt_all: torch.Tensor, boots: list):
+    """Compute RMSE/MAE for each bootstrap subset; return mean/std for each metric."""
+    rmses, maes = [], []
+    for sel in boots:
+        p = pred_all.index_select(0, sel)
+        t = tgt_all.index_select(0, sel)
+        se = torch.mean((p - t) ** 2)
+        ae = torch.mean((p - t).abs())
+        rmses.append(torch.sqrt(se))
+        maes.append(ae)
+    rmse_mean, rmse_std = _agg_mean_std(torch.stack(rmses))
+    mae_mean,  mae_std  = _agg_mean_std(torch.stack(maes))
+    return {"rmse_mean": rmse_mean, "rmse_std": rmse_std,
+            "mae_mean": mae_mean,   "mae_std": mae_std}
+
+
+# In[12]:
 
 
 # ----------------------
@@ -366,38 +477,51 @@ def eval_fieldformer(cfg: Config, data, ckpt_path: str):
     device = torch.device(cfg.device)
 
     # Build model and load weights
-    ff = FieldFormerAutograd(d_in=4, d_model=64, nhead=4, num_layers=2, k_neighbors=128, d_ff=128,
-                             wrap=True, Lx=extents['Lx'], Ly=extents['Ly'], Tt=extents['Tt'],
-                             coords=coords, vals=vals).to(device)
+    ff = FieldFormerAutograd(
+        d_in=4, d_model=64, nhead=4, num_layers=2, k_neighbors=128, d_ff=128, wrap=True,
+        Nx=Nx, Ny=Ny, Nt=Nt,
+        Lx=extents['Lx'], Ly=extents['Ly'], Tt=extents['Tt'],
+        dx=steps['dx'], dy=steps['dy'], dt=steps['dt'],
+        coords=coords.to(device), vals=vals.to(device)
+    ).to(device)
+
     state = torch.load(ckpt_path, map_location=device, weights_only=False)
     ff.load_state_dict(state["model_state_dict"], strict=False)
     ff.eval()
 
-    # Offsets table (depends on gammas)
     with torch.no_grad():
         gam = torch.exp(ff.log_gammas).detach().cpu().numpy()
-        offsets_ijk = ff.build_offset_table(k=ff.k, gammas=gam, dx=steps['dx'], dy=steps['dy'], dt=steps['dt'])
+        offsets_ijk = ff.build_offset_table(k=ff.k, gammas=gam, dx=ff.dx, dy=ff.dy, dt=ff.dt)
 
-    # Dataset split
-    ds = HeatPeriodicDataset(Nx, Ny, Nt, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed)
-    test_idx = ds.test_idx.to(device)
-
-    # Helper to predict in batches over linear indices
     def predict_over_indices(lin_idx: torch.Tensor, bs: int) -> torch.Tensor:
         outs = []
         use_amp = (cfg.device == "cuda")
         for i in range(0, lin_idx.numel(), bs):
             q = lin_idx[i:i+bs]
             with torch.inference_mode(), torch.amp.autocast("cuda", enabled=use_amp):
-
-                out = ff(q, Nx, Ny, Nt, offsets_ijk)
-            outs.append(out.float())  # keep metrics in fp32
+                out = ff(q, offsets_ijk)          # <-- only (q, offsets_ijk)
+            outs.append(out.float())
         return torch.cat(outs, dim=0)
+
+    # Dataset split
+    ds = HeatPeriodicDataset(Nx, Ny, Nt, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed)
+    test_idx = ds.test_idx.to(device)
 
     # (A) Sensors: test split
     pred_test = predict_over_indices(test_idx, cfg.batch_eval_idx)
     tgt_test  = vals[test_idx]
     rmse_s, mae_s = rmse_mae(pred_test, tgt_test)
+
+            # (A-b) Bootstrap over test split
+    boots = _make_bootstrap_indices(
+        base_idx=torch.arange(test_idx.numel(), device=test_idx.device, dtype=test_idx.dtype),
+        n_boot=getattr(cfg, "bootstrap_n", 5),
+        frac=getattr(cfg, "bootstrap_frac", 0.8),
+        with_replacement=getattr(cfg, "bootstrap_with_replacement", True),
+        seed=getattr(cfg, "bootstrap_seed", 123),
+    )
+    # We already have predictions for the whole test set (pred_test); index into that:
+    boot_stats = _bootstrap_metrics(pred_test, tgt_test, boots)
 
     # (B) Entire field
     all_idx = torch.arange(Nx*Ny*Nt, device=device, dtype=test_idx.dtype)
@@ -410,63 +534,106 @@ def eval_fieldformer(cfg: Config, data, ckpt_path: str):
     if cfg.compute_physics:
         alpha_x, alpha_y = alphas['alpha_x'], alphas['alpha_y']
 
-        def pde_residual_autograd_ff(q_lin_idx):
-            # autograd-heavy; require math SDPA + no AMP for stability
-            xyt = coords[q_lin_idx].clone().detach().requires_grad_(True)
-            nb_idx = ff.gather_neighbors_periodic(q_lin_idx, Nx, Ny, Nt, offsets_ijk)
-            nb_xyz = coords[nb_idx]
-            if ff.wrap:
-                dxv = (nb_xyz[...,0] - xyt[:,None,0] + 0.5*ff.Lx) % ff.Lx - 0.5*ff.Lx
-                dyv = (nb_xyz[...,1] - xyt[:,None,1] + 0.5*ff.Ly) % ff.Ly - 0.5*ff.Ly
-                dtv = (nb_xyz[...,2] - xyt[:,None,2] + 0.5*ff.Tt) % ff.Tt - 0.5*ff.Tt
+        def compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y, eps=1e-8):
+            """
+            Compute relative residual for the heat equation:
+                ut - (alpha_x u_xx + alpha_y u_yy) - f
+            normalized by magnitudes of governing terms.
+
+            Returns: tensor of relative residuals, same shape as R.
+            """
+            denom = (ut.abs() +
+                     (alpha_x * uxx).abs() +
+                     (alpha_y * uyy).abs() +
+                     f.abs() + eps)
+            return R.abs() / denom
+
+        def pde_residual_autograd_ff(q_lin_idx: torch.Tensor):
+            # query coords as variables
+            xyt = ff.coords[q_lin_idx].clone().detach().requires_grad_(True)  # (B,3)
+
+            # neighbors are fixed, gathered with same axis-wrap as training
+            with torch.no_grad():
+                gam = torch.exp(ff.log_gammas).detach().cpu().numpy()
+                offsets_ijk = ff.build_offset_table(k=ff.k, gammas=gam, dx=ff.dx, dy=ff.dy, dt=ff.dt)
+            nb_idx = ff._gather_neighbors(q_lin_idx, offsets_ijk)
+            nb_xyz = ff.coords[nb_idx]
+
+            # relative deltas (space wrap only), γ-scaled
+            if ff.wrap_x:
+                dxv = FieldFormerAutograd._delta_periodic(nb_xyz[...,0], xyt[:,None,0], ff.Lx)
             else:
                 dxv = nb_xyz[...,0] - xyt[:,None,0]
+            if ff.wrap_y:
+                dyv = FieldFormerAutograd._delta_periodic(nb_xyz[...,1], xyt[:,None,1], ff.Ly)
+            else:
                 dyv = nb_xyz[...,1] - xyt[:,None,1]
-                dtv = nb_xyz[...,2] - xyt[:,None,2]
+            dtv = nb_xyz[...,2] - xyt[:,None,2]  # no wrap in time
             rel = torch.stack([dxv, dyv, dtv], dim=-1) * torch.exp(ff.log_gammas)[None,None,:]
-            nb_vals_tok = vals[nb_idx][..., None].to(torch.float32)
+
+            nb_vals_tok = ff.vals[nb_idx][..., None].to(torch.float32)
             tokens = torch.cat([rel, nb_vals_tok], dim=-1)
-            with sdp_kernel(enable_flash=False, enable_mem_efficient=False, enable_math=True), torch.cuda.amp.autocast(enabled=False):
-                h = ff.input_proj(tokens); h = ff.encoder(h)
+
+            # fp32 + math SDPA for stable higher-order autograd
+            with sdp_kernel(enable_flash=False, enable_mem_efficient=False, enable_math=True), \
+                 torch.cuda.amp.autocast(enabled=False):
+                h = ff.input_proj(tokens)
+                h = ff.encoder(h)
                 u = ff.head(h.mean(dim=1)).squeeze(-1)
-            ones = torch.ones_like(u)
+
+            ones  = torch.ones_like(u)
             grads = torch.autograd.grad(u, xyt, grad_outputs=ones, create_graph=True)[0]
             ux, uy, ut = grads[:,0], grads[:,1], grads[:,2]
             uxx = torch.autograd.grad(ux, xyt, grad_outputs=torch.ones_like(ux), create_graph=True)[0][:,0]
             uyy = torch.autograd.grad(uy, xyt, grad_outputs=torch.ones_like(uy), create_graph=True)[0][:,1]
+
             f = forcing_torch(xyt[:,0], xyt[:,1], xyt[:,2])
-            return ut - (alpha_x * uxx + alpha_y * uyy) - f
+            R = ut - (alphas['alpha_x'] * uxx + alphas['alpha_y'] * uyy) - f
+            RelR = compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y)
+            return R, RelR
+
 
         def residual_stats_chunked(index_tensor: torch.Tensor, chunk: int):
-            # returns (rmse, mae) without storing huge residual vectors
-            ssq = 0.0
-            sa  = 0.0
-            n   = 0
+            ssq = 0.0; sa = 0.0; n = 0
+            ssq_rel = 0.0; sa_rel = 0.0
             for i in range(0, index_tensor.numel(), chunk):
                 ii = index_tensor[i:i+chunk]
-                R  = pde_residual_autograd_ff(ii)  # your existing function
+                R, RelR = pde_residual_autograd_ff(ii)
+
+                # raw residual accumulators
                 ssq += float((R**2).sum().item())
                 sa  += float(R.abs().sum().item())
                 n   += R.numel()
-                del R
+
+                # relative residual accumulators
+                ssq_rel += float((RelR**2).sum().item())
+                sa_rel  += float(RelR.abs().sum().item())
+
+                del R, RelR
                 if cfg.device == "cuda":
-                    torch.cuda.empty_cache()  # optional, if you’re right at the limit
+                    torch.cuda.empty_cache()
+
             rmse = math.sqrt(ssq / max(1, n))
             mae  = sa / max(1, n)
-            return rmse, mae
+            rel_rmse = math.sqrt(ssq_rel / max(1, n))
+            rel_mae  = sa_rel / max(1, n)
+
+            return rmse, mae, rel_rmse, rel_mae
+
+
 
         # Residual on sensors (test subset)
         ss = test_idx[::max(1, test_idx.numel() // min(test_idx.numel(), cfg.residual_points_cap))]
-        phys['test_residual_rmse'], phys['test_residual_mae'] = residual_stats_chunked(ss, cfg.residual_chunk)
+        phys['test_residual_rmse'], phys['test_residual_mae'], phys['test_relres_rmse'], phys['test_relres_mae'] = residual_stats_chunked(ss, cfg.residual_chunk)
 
         # Residual on full field (subsampled if huge)
         aa = all_idx[::max(1, all_idx.numel() // cfg.residual_points_cap)]
-        phys['full_residual_rmse'], phys['full_residual_mae'] = residual_stats_chunked(aa, cfg.residual_chunk)
+        phys['full_residual_rmse'], phys['full_residual_mae'], phys['full_relres_rmse'], phys['full_relres_mae'] = residual_stats_chunked(aa, cfg.residual_chunk)
 
     return {
         'rmse_test': rmse_s, 'mae_test': mae_s,
         'rmse_full': rmse_f, 'mae_full': mae_f,
-        'physics': phys,
+        'bootstrap': boot_stats, 'physics': phys,
     }
 
 from typing import Any
@@ -576,6 +743,16 @@ def eval_svgp(cfg: Config, data, ckpt_path: str):
     tgt_test  = vals[test_idx].to(dev)
     rmse_s, mae_s = rmse_mae(pred_test, tgt_test)
 
+    boots = _make_bootstrap_indices(
+        base_idx=torch.arange(test_idx.numel(), device=test_idx.device, dtype=test_idx.dtype),
+        n_boot=getattr(cfg, "bootstrap_n", 5),
+        frac=getattr(cfg, "bootstrap_frac", 0.8),
+        with_replacement=getattr(cfg, "bootstrap_with_replacement", True),
+        seed=getattr(cfg, "bootstrap_seed", 123),
+    )
+    # We already have predictions for the whole test set (pred_test); index into that:
+    boot_stats = _bootstrap_metrics(pred_test, tgt_test, boots)
+
     # (B) full field
     pred_all = predict_over_indices(all_idx, cfg.batch_eval_svgp)
     tgt_all  = vals[all_idx].to(dev)
@@ -593,11 +770,27 @@ def eval_svgp(cfg: Config, data, ckpt_path: str):
         sy = torch.as_tensor(y_max - y_min, device=dev, dtype=torch.float32)
         st = torch.as_tensor(max(1e-12, t_max - t_min), device=dev, dtype=torch.float32)
 
+        def compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y, eps=1e-8):
+            """
+            Compute relative residual for the heat equation:
+                ut - (alpha_x u_xx + alpha_y u_yy) - f
+            normalized by magnitudes of governing terms.
+
+            Returns: tensor of relative residuals, same shape as R.
+            """
+            denom = (ut.abs() +
+                     (alpha_x * uxx).abs() +
+                     (alpha_y * uyy).abs() +
+                     f.abs() + eps)
+            return R.abs() / denom
+
         def residual_stats_chunked(index_tensor: torch.Tensor, chunk: int):
             """Compute RMSE/MAE of PDE residual in chunks to cap memory."""
             ssq = 0.0   # sum of squared residuals
             sa  = 0.0   # sum of absolute residuals
             n   = 0     # total count
+            ssq_rel = 0.0
+            sa_rel = 0.0
 
             for i in range(0, index_tensor.numel(), chunk):
                 ii = index_tensor[i:i+chunk]
@@ -620,8 +813,8 @@ def eval_svgp(cfg: Config, data, ckpt_path: str):
                 ut = grads[:, 2] / st
 
                 # Second derivatives (chain rule for normalized inputs)
-                uxx = torch.autograd.grad(ux, x, grad_outputs=torch.ones_like(ux), create_graph=True)[0][:, 0] / (sx * sx)
-                uyy = torch.autograd.grad(uy, x, grad_outputs=torch.ones_like(uy), create_graph=True)[0][:, 1] / (sy * sy)
+                uxx = torch.autograd.grad(ux, x, grad_outputs=torch.ones_like(ux), create_graph=True)[0][:, 0] / sx
+                uyy = torch.autograd.grad(uy, x, grad_outputs=torch.ones_like(uy), create_graph=True)[0][:, 1] / sy
 
                 # Forcing at physical coords
                 x_phys = x[:, 0] * sx + x_min
@@ -631,38 +824,44 @@ def eval_svgp(cfg: Config, data, ckpt_path: str):
 
                 # Residual
                 R = ut - (alpha_x * uxx + alpha_y * uyy) - f
+                RelR = compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y)
 
                 # Accumulate stats (avoid storing all R)
                 ssq += float((R ** 2).sum().item())
                 sa  += float(R.abs().sum().item())
                 n   += R.numel()
 
+                ssq_rel += float((RelR**2).sum().item())
+                sa_rel  += float(RelR.abs().sum().item())
+
                 # Cleanup per-chunk to keep memory flat
-                del x, m_std, u, ones, grads, ux, uy, ut, uxx, uyy, x_phys, y_phys, t_phys, f, R
+                del x, m_std, u, ones, grads, ux, uy, ut, uxx, uyy, x_phys, y_phys, t_phys, f, R, RelR
                 if dev.type == "cuda":
                     torch.cuda.empty_cache()
 
             rmse = math.sqrt(ssq / max(1, n))
             mae  = sa / max(1, n)
-            return rmse, mae
+            rel_rmse = math.sqrt(ssq_rel / max(1, n))
+            rel_mae  = sa_rel / max(1, n)
+            return rmse, mae, rel_rmse, rel_mae
 
         # Sensors (subsampled)
         ss = test_idx[::max(1, test_idx.numel() // min(test_idx.numel(), cfg.residual_points_cap))]
-        phys['test_residual_rmse'], phys['test_residual_mae'] = residual_stats_chunked(
+        phys['test_residual_rmse'], phys['test_residual_mae'], phys['test_relres_rmse'], phys['test_relres_mae'] = residual_stats_chunked(
             ss, getattr(cfg, 'residual_chunk', 1024)
         )
 
         # Full field (subsampled)
         aa = all_idx[::max(1, all_idx.numel() // cfg.residual_points_cap)]
-        phys['full_residual_rmse'], phys['full_residual_mae'] = residual_stats_chunked(
+        phys['full_residual_rmse'], phys['full_residual_mae'], phys['full_relres_rmse'], phys['full_relres_mae'] = residual_stats_chunked(
             aa, getattr(cfg, 'residual_chunk', 1024)
         )
 
 
     return {
-        "rmse_test": rmse_s, "mae_test": mae_s,
-        "rmse_full": rmse_f, "mae_full": mae_f,
-        "physics": phys,
+        'rmse_test': rmse_s, 'mae_test': mae_s,
+        'rmse_full': rmse_f, 'mae_full': mae_f,
+        'bootstrap': boot_stats, 'physics': phys,
     }
 
 
@@ -702,6 +901,16 @@ def eval_fmlp(cfg: Config, data, ckpt_path: str):
     tgt_test  = vals[test_idx]
     rmse_s, mae_s = rmse_mae(pred_test, tgt_test)
 
+    boots = _make_bootstrap_indices(
+        base_idx=torch.arange(test_idx.numel(), device=test_idx.device, dtype=test_idx.dtype),
+        n_boot=getattr(cfg, "bootstrap_n", 5),
+        frac=getattr(cfg, "bootstrap_frac", 0.8),
+        with_replacement=getattr(cfg, "bootstrap_with_replacement", True),
+        seed=getattr(cfg, "bootstrap_seed", 123),
+    )
+    # We already have predictions for the whole test set (pred_test); index into that:
+    boot_stats = _bootstrap_metrics(pred_test, tgt_test, boots)
+
     pred_all = predict_over_indices(all_idx, getattr(cfg, 'batch_eval_nf', 8192))
     tgt_all  = vals[all_idx]
     rmse_f, mae_f = rmse_mae(pred_all, tgt_all)
@@ -709,6 +918,20 @@ def eval_fmlp(cfg: Config, data, ckpt_path: str):
     phys = {}
     if getattr(cfg, 'compute_physics', True):
         alpha_x, alpha_y = alphas['alpha_x'], alphas['alpha_y']
+        def compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y, eps=1e-8):
+            """
+            Compute relative residual for the heat equation:
+                ut - (alpha_x u_xx + alpha_y u_yy) - f
+            normalized by magnitudes of governing terms.
+
+            Returns: tensor of relative residuals, same shape as R.
+            """
+            denom = (ut.abs() +
+                     (alpha_x * uxx).abs() +
+                     (alpha_y * uyy).abs() +
+                     f.abs() + eps)
+            return R.abs() / denom
+
         def pde_residual(ii: torch.Tensor):
             xyt = coords[ii].clone().detach().requires_grad_(True)
             feat = fourier_encode_3d(xyt, Kx_list, Ky_list, Kt_list, Lx, Ly, Tt)
@@ -719,16 +942,26 @@ def eval_fmlp(cfg: Config, data, ckpt_path: str):
             uxx = torch.autograd.grad(ux, xyt, grad_outputs=torch.ones_like(ux), create_graph=True)[0][:,0]
             uyy = torch.autograd.grad(uy, xyt, grad_outputs=torch.ones_like(uy), create_graph=True)[0][:,1]
             f = forcing_torch(xyt[:,0], xyt[:,1], xyt[:,2])
-            return ut - (alpha_x * uxx + alpha_y * uyy) - f
+            R = ut - (alpha_x * uxx + alpha_y * uyy) - f
+            RelR = compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y)
+            return R, RelR
         ss = test_idx[::max(1, test_idx.numel() // min(test_idx.numel(), getattr(cfg,'residual_points_cap',50000)))]
         aa = all_idx[::max(1, all_idx.numel() // getattr(cfg,'residual_points_cap',50000))]
-        R_s = pde_residual(ss); R_f = pde_residual(aa)
+        R_s, RelR_s = pde_residual(ss); R_f, RelR_f = pde_residual(aa)
         phys['test_residual_rmse'] = float(torch.sqrt(torch.mean(R_s**2)).item())
         phys['test_residual_mae']  = float(torch.mean(torch.abs(R_s)).item())
         phys['full_residual_rmse'] = float(torch.sqrt(torch.mean(R_f**2)).item())
         phys['full_residual_mae']  = float(torch.mean(torch.abs(R_f)).item())
+        phys['test_relres_rmse'] = float(torch.sqrt(torch.mean(RelR_s**2)).item())
+        phys['test_relres_mae']  = float(torch.mean(torch.abs(RelR_s)).item())
+        phys['full_relres_rmse'] = float(torch.sqrt(torch.mean(RelR_f**2)).item())
+        phys['full_relres_mae']  = float(torch.mean(torch.abs(RelR_f)).item())
 
-    return {'rmse_test': rmse_s, 'mae_test': mae_s, 'rmse_full': rmse_f, 'mae_full': mae_f, 'physics': phys}
+    return {
+        'rmse_test': rmse_s, 'mae_test': mae_s,
+        'rmse_full': rmse_f, 'mae_full': mae_f,
+        'bootstrap': boot_stats, 'physics': phys,
+    }
 
 
 def eval_siren(cfg: Config, data, ckpt_path: str):
@@ -766,6 +999,16 @@ def eval_siren(cfg: Config, data, ckpt_path: str):
     tgt_test  = vals[test_idx]
     rmse_s, mae_s = rmse_mae(pred_test, tgt_test)
 
+    boots = _make_bootstrap_indices(
+        base_idx=torch.arange(test_idx.numel(), device=test_idx.device, dtype=test_idx.dtype),
+        n_boot=getattr(cfg, "bootstrap_n", 5),
+        frac=getattr(cfg, "bootstrap_frac", 0.8),
+        with_replacement=getattr(cfg, "bootstrap_with_replacement", True),
+        seed=getattr(cfg, "bootstrap_seed", 123),
+    )
+    # We already have predictions for the whole test set (pred_test); index into that:
+    boot_stats = _bootstrap_metrics(pred_test, tgt_test, boots)
+
     # (B) full field
     pred_all = predict_over_indices(all_idx, getattr(cfg, 'batch_eval_nf', 8192))
     tgt_all  = vals[all_idx]
@@ -774,6 +1017,20 @@ def eval_siren(cfg: Config, data, ckpt_path: str):
     phys = {}
     if getattr(cfg, 'compute_physics', True):
         alpha_x, alpha_y = alphas['alpha_x'], alphas['alpha_y']
+        def compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y, eps=1e-8):
+            """
+            Compute relative residual for the heat equation:
+                ut - (alpha_x u_xx + alpha_y u_yy) - f
+            normalized by magnitudes of governing terms.
+
+            Returns: tensor of relative residuals, same shape as R.
+            """
+            denom = (ut.abs() +
+                     (alpha_x * uxx).abs() +
+                     (alpha_y * uyy).abs() +
+                     f.abs() + eps)
+            return R.abs() / denom
+
         def pde_residual(ii: torch.Tensor):
             xyt = coords[ii].clone().detach().requires_grad_(True)
             u = model(xyt)
@@ -783,22 +1040,29 @@ def eval_siren(cfg: Config, data, ckpt_path: str):
             uxx = torch.autograd.grad(ux, xyt, grad_outputs=torch.ones_like(ux), create_graph=True)[0][:,0]
             uyy = torch.autograd.grad(uy, xyt, grad_outputs=torch.ones_like(uy), create_graph=True)[0][:,1]
             f = forcing_torch(xyt[:,0], xyt[:,1], xyt[:,2])
-            return ut - (alpha_x * uxx + alpha_y * uyy) - f
+            R = ut - (alpha_x * uxx + alpha_y * uyy) - f
+            RelR = compute_relative_residual(R, ut, uxx, uyy, f, alpha_x, alpha_y)
+            return R, RelR
         ss = test_idx[::max(1, test_idx.numel() // min(test_idx.numel(), getattr(cfg,'residual_points_cap',50000)))]
         aa = all_idx[::max(1, all_idx.numel() // getattr(cfg,'residual_points_cap',50000))]
-        R_s = pde_residual(ss); R_f = pde_residual(aa)
+        R_s, RelR_s = pde_residual(ss); R_f, RelR_f = pde_residual(aa)
         phys['test_residual_rmse'] = float(torch.sqrt(torch.mean(R_s**2)).item())
         phys['test_residual_mae']  = float(torch.mean(torch.abs(R_s)).item())
         phys['full_residual_rmse'] = float(torch.sqrt(torch.mean(R_f**2)).item())
         phys['full_residual_mae']  = float(torch.mean(torch.abs(R_f)).item())
+        phys['test_relres_rmse'] = float(torch.sqrt(torch.mean(RelR_s**2)).item())
+        phys['test_relres_mae']  = float(torch.mean(torch.abs(RelR_s)).item())
+        phys['full_relres_rmse'] = float(torch.sqrt(torch.mean(RelR_f**2)).item())
+        phys['full_relres_mae']  = float(torch.mean(torch.abs(RelR_f)).item())
 
-    return {'rmse_test': rmse_s, 'mae_test': mae_s, 'rmse_full': rmse_f, 'mae_full': mae_f, 'physics': phys}
+    return {
+        'rmse_test': rmse_s, 'mae_test': mae_s,
+        'rmse_full': rmse_f, 'mae_full': mae_f,
+        'bootstrap': boot_stats, 'physics': phys,
+    }
 
 
-
-
-
-# In[44]:
+# In[13]:
 
 
 # ----------------------
@@ -847,7 +1111,7 @@ def main():
         print(f"(error) SVGP eval failed: {e}")
 
 
-# In[45]:
+# In[ ]:
 
 
 if __name__ == "__main__":

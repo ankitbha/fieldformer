@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 #!/usr/bin/env python3
@@ -33,7 +33,7 @@ from gpytorch.kernels import ScaleKernel, ProductKernel, PeriodicKernel
 from tqdm.auto import tqdm  # notebook-friendly
 
 
-# In[2]:
+# In[ ]:
 
 
 # ----------------------
@@ -57,7 +57,7 @@ class Config:
     num_workers = 4
 
 
-# In[3]:
+# In[ ]:
 
 
 # ----------------------
@@ -92,7 +92,7 @@ class HeatPeriodicDataset(Dataset):
         return self.test_idx[idx]
 
 
-# In[4]:
+# In[ ]:
 
 
 # ----------------------
@@ -113,7 +113,7 @@ class EarlyStopping:
                 self.stopped = True
 
 
-# In[5]:
+# In[ ]:
 
 
 # ----------------------
@@ -136,7 +136,7 @@ class SVGPModel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(self.mean_module(X), self.covar_module(X))
 
 
-# In[6]:
+# In[ ]:
 
 
 # ----------------------
@@ -181,17 +181,79 @@ def main():
     dl_train = make_loader(train_idx, args.batch_size, True)
     dl_val = make_loader(val_idx, max(4096, args.batch_size), False)
 
+    # ---- DROP-IN: resume from checkpoint (model-only) ----
+    RESUME_FROM = "/scratch/ab9738/fieldformer/model/svgp_heat_best.pt"  # or None
+    start_epoch = 1
+    best_rmse = float("inf")
+    Z_init = None
+
+    if RESUME_FROM:
+        print(f"[resume-svgp] Loading from {RESUME_FROM}")
+        ckpt = torch.load(RESUME_FROM, map_location="cpu", weights_only=False)
+
+        # 1) Make sure we use the SAME normalization as the checkpoint
+        if isinstance(ckpt, dict) and "config" in ckpt:
+            y_mean = float(ckpt["config"].get("y_mean", y_mean))
+            y_std  = float(ckpt["config"].get("y_std",  y_std))
+            # Recompute normalized targets with the checkpoint stats
+            vals_z = (vals_np - y_mean) / y_std
+            y = torch.from_numpy(vals_z).float()
+
+        # 2) Inducing points: build model with the SAME M and Z as the checkpoint
+        if "Z" in ckpt and ckpt["Z"] is not None:
+            Z_init = ckpt["Z"].to(torch.float32)  # (M, 3) in [0,1]
+        else:
+            # Fallback: infer M from state_dict (variational_strategy.inducing_points)
+            state_dict = ckpt.get("model_state_dict", ckpt)
+            for k, v in state_dict.items():
+                if k.endswith("variational_strategy.inducing_points"):
+                    Z_init = v.detach().cpu().to(torch.float32)
+                    break
+        assert Z_init is not None, "Checkpoint missing inducing points; cannot resume SVGP safely."
+        M = Z_init.size(0)
+    else:
+        M = min(Config.M, train_idx.numel())
+
+
+    # Inducing points (either from ckpt or random subset)
     with torch.no_grad():
-        perm = torch.randperm(train_idx.numel())
-        M = min(args.M, train_idx.numel())
-        Z = X[train_idx[perm[:M]]].clone()
+        if Z_init is None:
+            perm = torch.randperm(train_idx.numel())
+            Z_init = X[train_idx[perm[:M]]].clone()
+        else:
+            # Ensure Z_init is on the right device later
+            pass
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = SVGPModel(Z)
-    with torch.no_grad():
-        likelihood.noise = torch.as_tensor(args.noise).clamp(args.min_noise, args.max_noise)
+    model = SVGPModel(Z_init)  # SVGPModel takes Z at construction
 
+    # Move to device
     model, likelihood = model.to(device), likelihood.to(device)
+
+    # If resuming, load model/likelihood weights now
+    if RESUME_FROM:
+        state = ckpt.get("model_state_dict", ckpt)
+        msg_m = model.load_state_dict(state, strict=True)
+        try:
+            if getattr(msg_m, "missing_keys", []) or getattr(msg_m, "unexpected_keys", []):
+                print(f"[resume-svgp] model.load_state_dict: missing={msg_m.missing_keys}, unexpected={msg_m.unexpected_keys}")
+        except Exception:
+            pass
+
+        if "likelihood_state_dict" in ckpt and ckpt["likelihood_state_dict"] is not None:
+            try:
+                likelihood.load_state_dict(ckpt["likelihood_state_dict"], strict=False)
+            except Exception as e:
+                print(f"[resume-svgp] likelihood load failed ({e}); continuing with freshly init likelihood.")
+
+        start_epoch = int(ckpt.get("epoch", 0)) + 1
+        best_rmse   = float(ckpt.get("best_val_rmse", float("inf")))
+        print(f"[resume-svgp] start_epoch={start_epoch}, best_val_rmse={best_rmse:.6f}")
+    else:
+        # Fresh run: set initial noise as before
+        with torch.no_grad():
+            likelihood.noise = torch.as_tensor(Config.noise).clamp(Config.min_noise, Config.max_noise).to(device)
+
 
     opt = torch.optim.Adam([
         {"params": model.parameters(), "lr": args.lr},
@@ -202,7 +264,7 @@ def main():
     early = EarlyStopping(patience=args.patience)
     best_rmse = float("inf")
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train(); likelihood.train()
         total_loss = 0.0
         pbar = tqdm(dl_train, desc=f"Epoch {epoch:03d} [train]", total=len(dl_train), leave=False)
@@ -237,10 +299,16 @@ def main():
                 "best_val_rmse": best_rmse,
                 "model_state_dict": model.state_dict(),
                 "likelihood_state_dict": likelihood.state_dict(),
-                "Z": model.variational_strategy.inducing_points.detach().cpu(),
-                "config": {"Nx": Nx, "Ny": Ny, "Nt": Nt, "M": Z.size(0), "batch_size": args.batch_size,
-                           "lr": args.lr, "lr_noise": args.lr_noise, "y_mean": y_mean, "y_std": y_std,
-                           "train_frac": args.train_frac, "val_frac": args.val_frac, "data": args.data}
+                "Z": model.variational_strategy.inducing_points.detach().cpu(),  # (M, 3)
+                "config": {
+                    "Nx": Nx, "Ny": Ny, "Nt": Nt,
+                    "M": int(model.variational_strategy.inducing_points.shape[0]),  # <-- fix
+                    "batch_size": args.batch_size,
+                    "lr": args.lr, "lr_noise": args.lr_noise,
+                    "y_mean": y_mean, "y_std": y_std,
+                    "train_frac": args.train_frac, "val_frac": args.val_frac,
+                    "data": args.data,
+                }
             }, args.save)
             print(f"✓ Saved new best to {args.save} (val RMSE {best_rmse:.6f})")
 
@@ -252,7 +320,7 @@ def main():
     print("Done.")
 
 
-# In[7]:
+# In[ ]:
 
 
 if __name__ == "__main__":

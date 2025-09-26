@@ -1,38 +1,35 @@
 #!/usr/bin/env python
 # coding: utf-8
-"""
-2-D Linearized Shallow Water (periodic BC) synthetic dataset generator
-System (no Coriolis, flat bottom, no external forcing):
-  eta_t + H (u_x + v_y) = 0
-  u_t + g * eta_x = 0
-  v_t + g * eta_y = 0
 
-Time stepping: forward-backward (FB) scheme
-  1) update u, v using eta^n
-  2) update eta using u^{n+1}, v^{n+1}
-Spatial derivatives: centered differences with periodic wrap via np.roll.
+# In[1]:
 
-Saves: full fields (eta, u, v), coords (x, y, t), params, selected sensor series (clean+noisy).
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+# In[2]:
+
 
 # ----------------------
 # Config
 # ----------------------
 g = 9.81            # gravity (m/s^2)
 H = 1.0             # mean fluid depth (m)
-T = 5.0             # total simulation time
+T = 20.0             # total simulation time
 Nx, Ny = 64, 64
-Nt = 2500
+Nt = 10000
 Lx, Ly = 1.0, 1.0   # domain size
-SENSORS = 100
+SENSORS = 20
 NOISE_MODE = "max"  # "std" or "max"
 NOISE_DIV = 10.0
 RNG_SEED = 42
-SAVE_PATH = "swe2d_periodic_dataset.npz"
+SAVE_PATH = "swe_periodic_dataset.npz"
 DTYPE = np.float32
+
+
+# In[3]:
+
 
 # ----------------------
 # Discretization
@@ -44,6 +41,10 @@ dx = x[1] - x[0]
 dy = y[1] - y[0]
 dt = t[1] - t[0]
 X, Y = np.meshgrid(x, y, indexing='ij')
+
+
+# In[4]:
+
 
 # ----------------------
 # CFL stability check (conservative for FB scheme)
@@ -58,6 +59,10 @@ if courant > 1.0 + 1e-12:
         f"Try smaller dt or coarser grid."
     )
 print(f"[CFL] c={c:.5f}, dt={float(dt):.5e}, dx={float(dx):.5e}, dy={float(dy):.5e}, Courant={courant:.6f} --> OK")
+
+
+# In[5]:
+
 
 # ----------------------
 # Allocate & initial condition (IC-driven waves)
@@ -76,6 +81,10 @@ eta0 = np.exp(-(((X - x0)**2 + (Y - y0)**2) / (2.0 * sigma**2))).astype(DTYPE)
 eta[:, :, 0] = eta0
 # u[:,:,0] and v[:,:,0] are already zero
 
+
+# In[6]:
+
+
 # ----------------------
 # Helpers: centered derivatives with periodic wrap
 # ----------------------
@@ -85,6 +94,10 @@ def ddx(F, dx):
 
 def ddy(F, dy):
     return (np.roll(F, -1, axis=1) - np.roll(F, 1, axis=1)) / (2.0 * dy)
+
+
+# In[7]:
+
 
 # ----------------------
 # Time stepping (Forward-Backward)
@@ -110,10 +123,14 @@ for n in range(Nt - 1):
     v[:, :, n+1]   = v_np1
     eta[:, :, n+1] = eta_np1
 
+
+# In[8]:
+
+
 # ----------------------
 # Quick visualization (middle frame of eta)
 # ----------------------
-frame = Nt // 2
+frame = 2499
 plt.figure(figsize=(6,5))
 cs = plt.contourf(X, Y, eta[:, :, frame], levels=50, cmap='viridis')
 plt.colorbar(cs, label=f"eta(x,y,t≈{t[frame]:.3f})")
@@ -124,6 +141,10 @@ mins = [eta[:, :, k].min() for k in range(Nt)]
 maxs = [eta[:, :, k].max() for k in range(Nt)]
 print("η min[0], max[0] =", mins[0], maxs[0],
       "   η min[mid], max[mid] =", mins[frame], maxs[frame])
+
+
+# In[9]:
+
 
 # ----------------------
 # Sensor sampling & noise (on η; extend to u,v if desired)
@@ -146,6 +167,10 @@ else:
 noise_std = (sigma / NOISE_DIV).astype(DTYPE) if isinstance(sigma, np.ndarray) else DTYPE(sigma / NOISE_DIV)
 eta_sensor_noisy = eta_sensor_clean + rng.normal(scale=float(noise_std),
                                                  size=eta_sensor_clean.shape).astype(DTYPE)
+
+
+# In[10]:
+
 
 # ----------------------
 # Save everything (compressed)
@@ -180,3 +205,10 @@ np.savez_compressed(
 
 print(f"[SAVE] Wrote dataset to: {SAVE_PATH}")
 print(f"      eta shape: {eta.shape}, u/v shape: {u.shape}, sensors: {SENSORS}, noise σ ≈ {float(noise_std):.4g}")
+
+
+# In[ ]:
+
+
+
+

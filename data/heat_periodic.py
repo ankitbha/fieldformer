@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[57]:
+# In[1]:
 
 
 # --- Heat equation (periodic BC) synthetic dataset generator ---
@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-# In[82]:
+# In[3]:
 
 
 # ----------------------
@@ -21,11 +21,11 @@ import matplotlib.pyplot as plt
 alpha_x = 0.01
 alpha_y = 0.001
 A = 5.0               # forcing amplitude
-T = 5.0               # total time
+T = 20.0               # total time
 Nx, Ny = 64, 64
-Nt = 2500
+Nt = 10000
 Lx, Ly = 1.0, 1.0
-SENSORS = 100         # number of sensor locations to sample
+SENSORS = 20         # number of sensor locations to sample
 NOISE_MODE = "max"    # "std" or "max"; noise σ = (signal_std or signal_max)/NOISE_DIV
 NOISE_DIV = 10.0
 RNG_SEED = 42
@@ -33,7 +33,7 @@ SAVE_PATH = "heat_periodic_dataset.npz"
 DTYPE = np.float32
 
 
-# In[72]:
+# In[4]:
 
 
 # ----------------------
@@ -48,7 +48,7 @@ dt = t[1] - t[0]
 X, Y = np.meshgrid(x, y, indexing='ij')
 
 
-# In[73]:
+# In[5]:
 
 
 # ----------------------
@@ -65,7 +65,7 @@ if cfl_sum > 0.5 + 1e-12:
 print(f"[CFL] r_x={r_x:.6f}, r_y={r_y:.6f}, r_x+r_y={cfl_sum:.6f}  --> OK")
 
 
-# In[74]:
+# In[6]:
 
 
 # ----------------------
@@ -75,7 +75,7 @@ def forcing(xx, yy, tt):
     return A * np.cos(np.pi * xx) * np.cos(np.pi * yy) * np.sin(4 * np.pi * tt / T)
 
 
-# In[75]:
+# In[7]:
 
 
 # ----------------------
@@ -86,7 +86,7 @@ u = np.zeros((Nx, Ny, Nt), dtype=DTYPE)
 u[:, :, 0] = (np.sin(2*np.pi*X) * np.sin(2*np.pi*Y)).astype(DTYPE)
 
 
-# In[76]:
+# In[8]:
 
 
 # ----------------------
@@ -100,7 +100,7 @@ for n in range(Nt - 1):
     u[:, :, n+1] = un + dt * rhs
 
 
-# In[79]:
+# In[9]:
 
 
 # ----------------------
@@ -114,7 +114,7 @@ plt.title("Periodic Heat: sample frame")
 plt.xlabel("x"); plt.ylabel("y"); plt.tight_layout(); plt.show()
 
 
-# In[80]:
+# In[10]:
 
 
 mins = [u[:, :, k].min() for k in range(Nt)]
@@ -122,7 +122,7 @@ maxs = [u[:, :, k].max() for k in range(Nt)]
 print("min[0], max[0] =", mins[0], maxs[0], "   min[mid], max[mid] =", mins[Nt//2], maxs[Nt//2])
 
 
-# In[83]:
+# In[11]:
 
 
 # ----------------------
@@ -147,7 +147,7 @@ noise_std = (sigma / NOISE_DIV).astype(DTYPE) if isinstance(sigma, np.ndarray) e
 sensor_noisy = sensor_clean + rng.normal(scale=float(noise_std), size=sensor_clean.shape).astype(DTYPE)
 
 
-# In[84]:
+# In[12]:
 
 
 # ----------------------

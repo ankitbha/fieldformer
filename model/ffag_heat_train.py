@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[ ]:
 
 
 #!/usr/bin/env python
@@ -28,7 +28,7 @@ torch.pi = torch.acos(torch.zeros(1)).item() * 2
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# In[2]:
+# In[ ]:
 
 
 # ----------------------
@@ -70,7 +70,7 @@ Ly = float(y_np.max() - y_np.min())
 Tt = float(t_np.max() - t_np.min()) if Nt > 1 else 1.0
 
 
-# In[3]:
+# In[ ]:
 
 
 # ----------------------
@@ -105,7 +105,7 @@ class HeatPeriodicDataset(Dataset):
         return self.test_idx[idx]
 
 
-# In[4]:
+# In[ ]:
 
 
 # ----------------------
@@ -113,14 +113,14 @@ class HeatPeriodicDataset(Dataset):
 # ----------------------
 ds = HeatPeriodicDataset(Nx, Ny, Nt, train_frac=0.8, val_frac=0.1, seed=123)
 ds.set_split("train")
-dl = DataLoader(ds, batch_size=2048, shuffle=True, drop_last=True)
+dl = DataLoader(ds, batch_size=8192, shuffle=True, drop_last=True)
 
 ds_val = HeatPeriodicDataset(Nx, Ny, Nt, train_frac=0.8, val_frac=0.1, seed=123)
 ds_val.set_split("val")
-dl_val = DataLoader(ds_val, batch_size=4096, shuffle=False)
+dl_val = DataLoader(ds_val, batch_size=8192, shuffle=False)
 
 
-# In[5]:
+# In[ ]:
 
 
 # ----------------------
@@ -137,41 +137,92 @@ def lin_to_ijk(lin):
 def ijk_to_lin(i, j, k):
     return (i % Nx) * (Ny*Nt) + (j % Ny) * Nt + (k % Nt)
 
-# Pre-sorted offsets table (same as original)
-def build_offset_table(k, gammas, dx, dy, dt, max_rad=None):
-    gx, gy, gt = [float(x) for x in gammas]
-    c = 4.0
-    base = (c * k) ** (1/3)
-    Rx = max(1, int(base * (1.0/max(gx,1e-8))))
-    Ry = max(1, int(base * (1.0/max(gy,1e-8))))
-    Rt = max(1, int(base * (1.0/max(gt,1e-8))))
-    if max_rad is not None:
-        Rx = min(Rx, max_rad); Ry = min(Ry, max_rad); Rt = min(Rt, max_rad)
-    offs = []
-    for di in range(-Rx, Rx+1):
-        for dj in range(-Ry, Ry+1):
-            for dk in range(-Rt, Rt+1):
-                dxp = di * dx; dyp = dj * dy; dtp = dk * dt
-                d2 = (gx*dxp)**2 + (gy*dyp)**2 + (gt*dtp)**2
-                offs.append((d2, di, dj, dk))
-    offs.sort(key=lambda z: z[0])
-    offs = [(di,dj,dk) for (d2,di,dj,dk) in offs if not (di==0 and dj==0 and dk==0)]
-    return offs
+def build_offset_table(k, gammas, dx, dy, dt, frac_time=0.5, max_dt_radius=None):
+    """Return list of (di,dj,dk) with a quota on temporal neighbors.
+       frac_time in [0,1]: fraction of k reserved for smallest |dk|."""
+    gx, gy, gt = gammas
+    # radius caps (optional)
+    if max_dt_radius is None:
+        max_dt_radius = int(3 * (1.0 / max(1e-6, gt)))  # heuristic
 
-def gather_neighbors_periodic(q_lin_idx, k, offsets_ijk):
-    i, j, k0 = lin_to_ijk(q_lin_idx)
+    # candidate pool
+    rad = int(max(2, math.ceil((k**(1/3)) * 4)))
+    cand = []
+    for di in range(-rad, rad+1):
+        for dj in range(-rad, rad+1):
+            for dk in range(-max_dt_radius, max_dt_radius+1):
+                if di == 0 and dj == 0 and dk == 0:
+                    continue
+                dxp = di * dx; dyp = dj * dy; dtp = dk * dt
+                # soften time distance so edges don’t get starved
+                dtp_eff = dtp / (1.0 + abs(dk) / 2.0)
+                d2 = (gx*dxp)**2 + (gy*dyp)**2 + (gt*dtp_eff)**2
+                cand.append((d2, di, dj, dk))
+    cand.sort(key=lambda t: t[0])
+
+    # split by |dk|
+    n_time = max(1, int(k * frac_time))
+    n_space = k - n_time
+    cand_time  = sorted(cand, key=lambda t: abs(t[3]))  # prioritize small |dk|
+    cand_space = sorted(cand, key=lambda t: (t[0], abs(t[3])), reverse=False)
+
+    sel = []
+    seen = set()
+    # take time-quota
+    for _, di, dj, dk in cand_time:
+        key = (di, dj, dk)
+        if key not in seen:
+            sel.append(key); seen.add(key)
+        if len(sel) >= n_time:
+            break
+    # fill with best remaining (mostly spatial)
+    for _, di, dj, dk in cand_space:
+        key = (di, dj, dk)
+        if key not in seen:
+            sel.append(key); seen.add(key)
+        if len(sel) >= k:
+            break
+    return sel
+
+
+# --- DROP-IN: axis-aware neighbor gather (no wrap in time) ---
+def gather_neighbors_periodic(q_lin_idx, k, offsets_ijk, wrap_x=True, wrap_y=True, wrap_t=False):
+    """Gather k neighbor indices using per-axis wrapping (x,y optional; t default False).
+    Avoids the (i%Nx, j%Ny, k%Nt) periodicity for time by clamping instead."""
+    i, j, k0 = lin_to_ijk(q_lin_idx)  # each is (B,)
     sel = offsets_ijk[:k]
-    di = torch.tensor([o[0] for o in sel], device=q_lin_idx.device, dtype=i.dtype)
-    dj = torch.tensor([o[1] for o in sel], device=q_lin_idx.device, dtype=i.dtype)
-    dk = torch.tensor([o[2] for o in sel], device=q_lin_idx.device, dtype=i.dtype)
+
+    dev = q_lin_idx.device
+    dtype = i.dtype
+    di = torch.tensor([o[0] for o in sel], device=dev, dtype=dtype)
+    dj = torch.tensor([o[1] for o in sel], device=dev, dtype=dtype)
+    dk = torch.tensor([o[2] for o in sel], device=dev, dtype=dtype)
+
     I = i[:, None] + di[None, :]
     J = j[:, None] + dj[None, :]
     K = k0[:, None] + dk[None, :]
-    nb_lin = ijk_to_lin(I, J, K)
+
+    if wrap_x:
+        I = I % Nx
+    else:
+        I = I.clamp_(0, Nx - 1)
+
+    if wrap_y:
+        J = J % Ny
+    else:
+        J = J.clamp_(0, Ny - 1)
+
+    if wrap_t:
+        K = K % Nt
+    else:
+        K = K.clamp_(0, Nt - 1)
+
+    # Inline ijk_to_lin to honor axis-specific wrapping/clamping we just applied
+    nb_lin = I * (Ny * Nt) + J * Nt + K
     return nb_lin
 
 
-# In[6]:
+# In[ ]:
 
 
 # ----------------------
@@ -182,6 +233,17 @@ class FieldFormerAutograd(nn.Module):
         super().__init__()
         self.k = k_neighbors
         self.wrap = wrap
+        # in __init__ (or set once on the model)
+        if wrap:
+            self.wrap_x = True
+            self.wrap_y = True
+        else:
+            self.wrap_x = False
+            self.wrap_y = False
+        self.wrap_t = False        # <-- time is NOT periodic
+
+        self.register_buffer("_huber_delta_ema", torch.tensor(1.0, dtype=torch.float32))
+
         self.log_gammas = nn.Parameter(torch.zeros(3))  # learnable space-time scales
         self.input_proj = nn.Linear(d_in, d_model)
         enc_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=d_ff, batch_first=True)
@@ -195,22 +257,31 @@ class FieldFormerAutograd(nn.Module):
 
     @staticmethod
     def _delta_periodic(a, b, L):
-        # smallest signed difference on a ring of length L
-        return (a - b + 0.5*L) % L - 0.5*L
+        # Smallest signed difference on a ring of length L (used only for wrapped axes)
+        return (a - b + 0.5 * L) % L - 0.5 * L
 
     def _relative_deltas(self, q_xyz, nb_xyz):
         # q_xyz: (B,3), nb_xyz: (B,k,3)
-        if self.wrap:
-            dx_ = self._delta_periodic(nb_xyz[...,0], q_xyz[:,None,0], Lx)
-            dy_ = self._delta_periodic(nb_xyz[...,1], q_xyz[:,None,1], Ly)
-            dt_ = self._delta_periodic(nb_xyz[...,2], q_xyz[:,None,2], Tt)
+        # x
+        if self.wrap_x:
+            dx_ = self._delta_periodic(nb_xyz[..., 0], q_xyz[:, None, 0], Lx)
         else:
-            dx_ = nb_xyz[...,0] - q_xyz[:,None,0]
-            dy_ = nb_xyz[...,1] - q_xyz[:,None,1]
-            dt_ = nb_xyz[...,2] - q_xyz[:,None,2]
+            dx_ = nb_xyz[..., 0] - q_xyz[:, None, 0]
+        # y
+        if self.wrap_y:
+            dy_ = self._delta_periodic(nb_xyz[..., 1], q_xyz[:, None, 1], Ly)
+        else:
+            dy_ = nb_xyz[..., 1] - q_xyz[:, None, 1]
+        # t  (NO wrap)
+        if self.wrap_t:
+            dt_ = self._delta_periodic(nb_xyz[..., 2], q_xyz[:, None, 2], Tt)
+        else:
+            dt_ = nb_xyz[..., 2] - q_xyz[:, None, 2]
+
         rel = torch.stack([dx_, dy_, dt_], dim=-1)  # (B,k,3)
         scale = torch.exp(self.log_gammas)[None, None, :]  # (1,1,3)
         return rel * scale
+
 
     def forward(self, q_lin_idx, offsets_ijk):
         """Predict u at queries indexed by q_lin_idx (B,), using local neighbors.
@@ -236,7 +307,7 @@ class FieldFormerAutograd(nn.Module):
         return out
 
 
-# In[13]:
+# In[ ]:
 
 
 # ----------------------
@@ -251,7 +322,10 @@ def batch_targets(q_lin_idx):
     return vals[q_lin_idx].to(device)
 
 # Autograd PINN-style physics residual evaluated at grid queries
-# (uses differentiable dependence on query coords via tokens)
+# (uses differentiable dependence on query coords via tokens
+
+def huber(x, delta=1.0):
+    return torch.where(x.abs() <= delta, 0.5*x*x, delta*(x.abs() - 0.5*delta))
 
 def pde_residual_autograd(model, q_lin_idx):
     # Build a coordinate tensor tied to q_lin idx and enable grad on it
@@ -268,25 +342,24 @@ def pde_residual_autograd(model, q_lin_idx):
     nb_xyz = coords[nb_idx]  # (B,k,3) constants
 
     # Relative deltas built from the *variable* xyt
-    if model.wrap:
+    wrap_space = model.wrap
+    wrap_time = False  # <-- key change unless you truly have temporal periodicity
+
+    if wrap_space:
         dxv = (nb_xyz[...,0] - xyt[:,None,0] + 0.5*Lx) % Lx - 0.5*Lx
         dyv = (nb_xyz[...,1] - xyt[:,None,1] + 0.5*Ly) % Ly - 0.5*Ly
-        dtv = (nb_xyz[...,2] - xyt[:,None,2] + 0.5*Tt) % Tt - 0.5*Tt
     else:
         dxv = nb_xyz[...,0] - xyt[:,None,0]
         dyv = nb_xyz[...,1] - xyt[:,None,1]
-        dtv = nb_xyz[...,2] - xyt[:,None,2]
+
+    dtv = nb_xyz[...,2] - xyt[:,None,2]  # no wrap in time
+
     rel = torch.stack([dxv, dyv, dtv], dim=-1)
     scale = torch.exp(model.log_gammas)[None, None, :]
     rel = rel * scale  # (B,k,3)
 
     nb_vals_tok = vals[nb_idx][..., None].to(torch.float32)
     tokens = torch.cat([rel, nb_vals_tok], dim=-1)  # (B,k,4)
-
-    h = model.input_proj(tokens)
-    h = model.encoder(h)
-    h_mean = h.mean(dim=1)
-    u = model.head(h_mean).squeeze(-1)             # (B,)
 
     # >>> Force math SDPA + disable AMP only for PDE path <<<
     with sdp_kernel(enable_flash=False, enable_mem_efficient=False, enable_math=True), \
@@ -307,7 +380,7 @@ def pde_residual_autograd(model, q_lin_idx):
     return R
 
 
-# In[8]:
+# In[ ]:
 
 
 # ----------------------
@@ -328,7 +401,7 @@ class EarlyStopping:
                 self.stopped = True
 
 
-# In[14]:
+# In[ ]:
 
 
 # ----------------------
@@ -350,14 +423,37 @@ max_epochs = 100
 early = EarlyStopping(patience=10)
 mse = nn.MSELoss()
 
-lambda_pde = 0.1   # PINN residual weight
-lambda_bc  = 0.01  # optional periodic BC soft loss on function values
+USE_GRAD_NORM_BALANCE = True
+BAL_CLAMP = (0.5, 2.0)  # narrower than before
+
+
+# ---- Schedules ----
+LAMBDA_PDE_MAX = 1.0          # tune (0.2–2.0 usually fine)
+LAMBDA_BC_MAX  = 0.05         # keep BC small vs PDE
+PDE_WARMUP_EPOCHS = 5
+PDE_RAMP_EPOCHS   = 20        # length of cosine ramp after warmup
+
+def cosine_ramp(t: float) -> float:
+    # t in [0,1]
+    return 0.5 * (1.0 - math.cos(math.pi * max(0.0, min(1.0, t))))
+
+def lambdas_for_epoch(epoch: int):
+    if epoch <= PDE_WARMUP_EPOCHS:
+        lam_pde = 0.0
+    else:
+        prog = (epoch - PDE_WARMUP_EPOCHS) / max(1, PDE_RAMP_EPOCHS)
+        lam_pde = LAMBDA_PDE_MAX * cosine_ramp(prog)
+    lam_bc = min(LAMBDA_BC_MAX, 0.05 * max(lam_pde, 1e-6))
+    return lam_pde, lam_bc
+
+# lambda_pde = 0.1   # PINN residual weight
+# lambda_bc  = 0.01  # optional periodic BC soft loss on function values
 use_pde    = True
 use_bc     = True
 match_grad_bc = False
 
 best_rmse = float("inf")
-best_path = "ff_ag_heat_best.pt"
+best_path = "ffag_heat_best.pt"
 
 @torch.no_grad()
 def eval_val_rmse(offsets_ijk):
@@ -399,14 +495,18 @@ def periodic_bc_loss(n_bc=1024, match_grad=False):
     def predict_at_xyt(xyt, lin_idx):
         nb_idx = gather_neighbors_periodic(lin_idx, model.k, offsets_ijk)
         nb_xyz = coords[nb_idx]
-        if model.wrap:
+        wrap_space = model.wrap
+        wrap_time = False  # <-- key change unless you truly have temporal periodicity
+
+        if wrap_space:
             dxv = (nb_xyz[...,0] - xyt[:,None,0] + 0.5*Lx) % Lx - 0.5*Lx
             dyv = (nb_xyz[...,1] - xyt[:,None,1] + 0.5*Ly) % Ly - 0.5*Ly
-            dtv = (nb_xyz[...,2] - xyt[:,None,2] + 0.5*Tt) % Tt - 0.5*Tt
         else:
             dxv = nb_xyz[...,0] - xyt[:,None,0]
             dyv = nb_xyz[...,1] - xyt[:,None,1]
-            dtv = nb_xyz[...,2] - xyt[:,None,2]
+
+        dtv = nb_xyz[...,2] - xyt[:,None,2]  # no wrap in time
+
         rel = torch.stack([dxv, dyv, dtv], dim=-1) * torch.exp(model.log_gammas)[None,None,:]
         nb_vals_tok = vals[nb_idx][..., None].to(torch.float32)
         tokens = torch.cat([rel, nb_vals_tok], dim=-1)
@@ -430,7 +530,94 @@ def periodic_bc_loss(n_bc=1024, match_grad=False):
     return loss
 
 
-# In[15]:
+# In[ ]:
+
+
+# --------------------------
+# Loading from a checkpoint
+# --------------------------
+
+def _move_optimizer_state_to_device(optimizer, device):
+    """
+    Ensure all tensors inside optimizer.state are moved to `device`.
+    Call this right after `optimizer.load_state_dict(...)`.
+
+    Args:
+        optimizer (torch.optim.Optimizer): your optimizer
+        device (torch.device or str): target device (e.g., torch.device("cuda"))
+    """
+    def _to_device(x):
+        if isinstance(x, torch.Tensor):
+            return x.to(device, non_blocking=True)
+        elif isinstance(x, list):
+            return [ _to_device(y) for y in x ]
+        elif isinstance(x, tuple):
+            return tuple( _to_device(y) for y in x )
+        elif isinstance(x, dict):
+            return { k: _to_device(v) for k, v in x.items() }
+        else:
+            return x
+
+    for state in optimizer.state.values():
+        if isinstance(state, dict):
+            for k, v in state.items():
+                state[k] = _to_device(v)
+
+
+
+def load_for_resume(path, model, optimizer=None, scaler=None, scheduler=None, device="cpu", strict=False):
+    # PyTorch 2.6 changed default to weights_only=True; we want the old behavior here.
+    ckpt = torch.load(path, map_location=device, weights_only=False)
+
+    # Accept both formats: {"model_state_dict": ...} or a bare state_dict
+    if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
+        state_dict = ckpt["model_state_dict"]
+    else:
+        state_dict = ckpt  # assume it's a raw state_dict
+
+    # 1) Model
+    msg = model.load_state_dict(state_dict, strict=strict)
+    try:
+        missing = getattr(msg, "missing_keys", [])
+        unexpected = getattr(msg, "unexpected_keys", [])
+        if missing or unexpected:
+            print(f"[resume] model.load_state_dict: missing={missing}, unexpected={unexpected}")
+    except Exception:
+        pass
+
+    # 2) Optimizer / Scaler / Scheduler (best ckpt likely doesn't have these; skip if absent)
+    if optimizer is not None and isinstance(ckpt, dict) and ckpt.get("optimizer_state_dict") is not None:
+        optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+        _move_optimizer_state_to_device(optimizer, torch.device(device))
+    if scaler is not None and isinstance(ckpt, dict) and ckpt.get("scaler_state_dict") is not None:
+        try:
+            scaler.load_state_dict(ckpt["scaler_state_dict"])
+        except Exception as e:
+            print(f"[resume] scaler load failed ({e}), reinitializing GradScaler.")
+    if scheduler is not None and isinstance(ckpt, dict) and ckpt.get("scheduler_state_dict") is not None:
+        try:
+            scheduler.load_state_dict(ckpt["scheduler_state_dict"])
+        except Exception as e:
+            print(f"[resume] scheduler load failed ({e}), continuing without resume.")
+
+    # 3) Book-keeping (only available if full ckpt dict was saved)
+    start_epoch = int(ckpt.get("epoch", -1)) + 1 if isinstance(ckpt, dict) else 1
+    best_val_rmse = float(ckpt.get("best_val_rmse", float("inf"))) if isinstance(ckpt, dict) else float("inf")
+
+    return start_epoch, best_val_rmse
+
+
+
+LOAD_BEFORE_TRAIN = True
+RESUME_PATH = '/scratch/ab9738/fieldformer/model/ffag_heat_best.pt'
+if LOAD_BEFORE_TRAIN:
+    print(f"[resume] loading from {RESUME_PATH}")
+    start_epoch, best_rmse = load_for_resume(
+        RESUME_PATH, model, optimizer, scaler, scheduler, device=device, strict=False
+    )
+
+
+# In[ ]:
 
 
 # ----------------------
@@ -440,15 +627,17 @@ def periodic_bc_loss(n_bc=1024, match_grad=False):
 for epoch in range(1, max_epochs+1):
     model.train()
     total_loss = total_data = total_pde = total_bc = 0.0
+    lam_pde, lam_bc = lambdas_for_epoch(epoch)
 
     with torch.no_grad():
         gam = torch.exp(model.log_gammas).detach().cpu().numpy()
     offsets_ijk = build_offset_table(k=model.k, gammas=gam, dx=dx, dy=dy, dt=dt)
 
-    # ramp physics/bc weights for stability
-    ramp = min(1.0, epoch / 20.0)
-    lam_pde = lambda_pde * ramp
-    lam_bc  = lambda_bc  * ramp
+    GAM_FZ_EPOCHS = 1  # try 5–10
+    if epoch == 1:
+        model.log_gammas.requires_grad_(False)
+    elif epoch == GAM_FZ_EPOCHS + 1:
+        model.log_gammas.requires_grad_(True)
 
     for q_lin in tqdm(dl, desc=f"Epoch {epoch:03d} [train]", leave=False):
         q_lin = q_lin.to(device)
@@ -465,17 +654,55 @@ for epoch in range(1, max_epochs+1):
             if use_pde:
                 subsample = q_lin[::8]
                 R = pde_residual_autograd(model, subsample)
-                pde_loss = (R**2).mean()
-                loss = loss + lam_pde * pde_loss
+                # pde_loss = (R**2).mean()
+                pde_loss = huber(R).mean()
+                if not hasattr(model, "_huber_delta_ema"):
+                    model._huber_delta_ema = torch.as_tensor(1.0, device=device)
+                with torch.no_grad():
+                    batch_med = R.detach().abs().median()
+                    model._huber_delta_ema.mul_(0.98).add_(0.02 * batch_med)
+                delta = model._huber_delta_ema.clamp(1e-3, 10.0)
+
+                # loss = loss + lam_pde * pde_loss
 
             if use_bc and model.wrap:
                 bc_loss = periodic_bc_loss(n_bc=512, match_grad=match_grad_bc)
-                loss = loss + lam_bc * bc_loss
+                # loss = loss + lam_bc * bc_loss
+
+            if USE_GRAD_NORM_BALANCE and use_pde and pde_loss.requires_grad:
+                # compute grad norms w.r.t. base (non-geometry) params
+                g_data = torch.autograd.grad(data_loss, base_params, retain_graph=True, allow_unused=True)
+                gn_data = torch.sqrt(sum([(g.detach()**2).sum() for g in g_data if g is not None]) + 1e-12)
+
+                g_phys = torch.autograd.grad(pde_loss,  base_params, retain_graph=True, allow_unused=True)
+                gn_phys = torch.sqrt(sum([(g.detach()**2).sum() for g in g_phys if g is not None]) + 1e-12)
+
+                bal = (gn_data / (gn_phys + 1e-12)).clamp(*BAL_CLAMP)
+                lam_pde_eff = lam_pde * bal
+            else:
+                lam_pde_eff = lam_pde
+
+            loss = data_loss + lam_pde_eff * pde_loss + lam_bc * bc_loss
 
         optimizer.zero_grad(set_to_none=True)
+        if not torch.isfinite(loss):
+            continue
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+
+        # Optional extra guard: ensure all grads are finite before stepping
+        grads_finite = True
+        for p in model.parameters():
+            if p.grad is not None and not torch.isfinite(p.grad).all():
+                grads_finite = False
+                break
+
+        if not grads_finite:
+            optimizer.zero_grad(set_to_none=True)
+            scaler.update()  # back off scale even though we skipped the step
+            continue
+
         scaler.step(optimizer)
         scaler.update()
 
@@ -506,7 +733,7 @@ for epoch in range(1, max_epochs+1):
                 "Nx": Nx, "Ny": Ny, "Nt": Nt,
                 "k_neighbors": model.k,
                 "d_model": 64, "nhead": 4, "num_layers": 2,
-                "lambda_pde": lambda_pde, "lambda_bc": lambda_bc,
+                "lambda_pde": lam_pde, "lambda_bc": lam_bc,
                 "dx": dx, "dy": dy, "dt": dt, "alpha_x": alpha_x, "alpha_y": alpha_y,
                 "wrap": model.wrap,
             }

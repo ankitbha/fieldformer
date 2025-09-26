@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=svgp-heat-train
+#SBATCH --job-name=pol-eval
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
-#SBATCH --time=10:00:00
+#SBATCH --time=3:00:00
 #SBATCH --gres=gpu:1
 #SBATCH -o /scratch/ab9738/fieldformer/logs/%x_%j.out
 #SBATCH -e /scratch/ab9738/fieldformer/logs/%x_%j.err

@@ -1,17 +1,17 @@
-#!/usr/bin/env python3
-"""
-Air-pollution dispersion over Delhi on a unit square [0,1]^2 using
-advection–diffusion with open (Orlanski) boundaries.
-- IC from kriged sensor data
-- Monsoon-mode wind: NE-directed base + diurnal + AR(1) gusts
-- Heun (RK2) time stepping, upwind advection, 5s == 1 day
-Outputs an NPZ mirroring SWE-style layout: U (Nx,Ny,Nt), X,Y,x,y,t and meta.
-"""
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
 
 import numpy as np
 import pandas as pd
 import pytz
 from pykrige.uk import UniversalKriging
+
+
+# In[2]:
+
 
 # -------------------------------
 # Configuration
@@ -22,8 +22,8 @@ LAT_MIN, LAT_MAX = 28.39, 28.78
 
 # Grid and time (normalized domain [0,1] x [0,1])
 Nx, Ny = 40, 40
-T = 5.0                     # 5 sim-seconds = 1 real day
-Nt = 2500                   # frames
+T = 20.0                     # 5 sim-seconds = 1 real day
+Nt = 10000                   # frames
 DTYPE = np.float32
 
 # Wind base (s^-1 on unit box) for 5s=1day scaling
@@ -39,6 +39,10 @@ res_time = "1H"
 root = "./"
 filepath_data_gov = f"{root}govdata_{res_time}_current.csv"
 filepath_locs_gov = f"{root}govdata_locations.csv"
+
+
+# In[3]:
+
 
 # -------------------------------
 # Utilities: wind variations and AR(1)
@@ -109,6 +113,10 @@ def monsoon_variations_on_base(
     Vy = (speed * np.sin(theta)).astype(DTYPE)
     return Vx, Vy
 
+
+# In[4]:
+
+
 # -------------------------------
 # Initial condition (IC) from sensors via Universal Kriging
 # -------------------------------
@@ -151,11 +159,25 @@ df = data.unstack(level=0)
 # Drop a problematic station (optional)
 df = df.drop(["Pusa_IMD"], axis=1, errors="ignore")
 
+
+# In[7]:
+
+
+df.iloc[745]
+
+
+# In[8]:
+
+
 # First timestamp → IC
-first_ts = df.iloc[0]
+first_ts = df.iloc[745]
 initial_conditions = process_row_to_grid(first_ts, Nx, Ny)
 IC_scale = np.percentile(initial_conditions, 99)
 initial_conditions_norm = (initial_conditions / (IC_scale + 1e-12)).astype(DTYPE, copy=False)
+
+
+# In[9]:
+
 
 # -------------------------------
 # Sources (static, normalized)
@@ -172,6 +194,10 @@ traffic = (traffic_06 + traffic_12 + traffic_18 + traffic_00) / 4
 known_source = (brick_kilns + industries + population_density + traffic)[21:61, 16:56]
 S_scale = np.percentile(known_source, 99)
 S_norm = (known_source / (S_scale + 1e-12)).astype(DTYPE, copy=False)
+
+
+# In[10]:
+
 
 # -------------------------------
 # Grid, sensors, wind, and time
@@ -196,6 +222,10 @@ for xc, yc in zip(locs["Longitude"].to_numpy(), locs["Latitude"].to_numpy()):
     sensor_indices.append((iy, ix))
 # de-duplicate
 sensor_locs = list(set(sensor_indices))
+
+
+# In[11]:
+
 
 # -------------------------------
 # Numerical operators
@@ -236,6 +266,10 @@ def _advection_upwind(U: np.ndarray, Vx, Vy, dx: float, dy: float) -> np.ndarray
 
 def _rhs(U: np.ndarray, Vx, Vy, k: float, S: np.ndarray, dx: float, dy: float) -> np.ndarray:
     return _advection_upwind(U, Vx, Vy, dx, dy) + k * _laplacian(U, dx, dy) + S
+
+
+
+# In[12]:
 
 
 # -------------------------------
@@ -281,6 +315,10 @@ def apply_open_bc_orlanski(U: np.ndarray, U_prev: np.ndarray, Vx, Vy,
         U_bc[-w:, :] -= sponge_sigma * ry[::-1][:, np.newaxis] * (U_bc[-w:, :] - U_bg)
 
     return U_bc
+
+
+# In[13]:
+
 
 # -------------------------------
 # Time integration (Heun / RK2)
@@ -331,6 +369,10 @@ def numpy_solve_pde_and_collect_data(sponge_width: int = 4, sponge_sigma: float 
 
     return U_time_major, sensors_clean
 
+
+# In[14]:
+
+
 # -------------------------------
 # Save (SWE-like NPZ)
 # -------------------------------
@@ -378,5 +420,14 @@ def generate_dataset(save_path: str = "pollution_dataset.npz") -> None:
     print(f"      U shape: {U_xyz.shape}, sensors: {sensors_clean.shape[0]}, noise σ ≈ {float(noise_std):.4g}")
 
 
-if __name__ == "__main__":
-    generate_dataset()
+# In[15]:
+
+
+generate_dataset()
+
+
+# In[ ]:
+
+
+
+
