@@ -44,4 +44,3 @@ echo "[info] using port: ${PORT}"
       --notebook-dir ${NOTEBOOK_DIR} \
       --NotebookApp.token='' --NotebookApp.password=''
   "
-
