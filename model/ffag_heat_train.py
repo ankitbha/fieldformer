@@ -34,7 +34,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ----------------------
 # Data: load the periodic heat dataset (same path as original)
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)
@@ -315,7 +315,7 @@ class FieldFormerAutograd(nn.Module):
 # ----------------------
 
 def forcing_torch(xx, yy, tt):
-    return 5.0 * torch.cos(torch.pi * xx) * torch.cos(torch.pi * yy) * torch.sin(4 * torch.pi * tt / 5.0)
+    return 5.0 * torch.cos(12*torch.pi * xx) * torch.cos(12*torch.pi * yy) * torch.sin(4 * torch.pi * tt / 5.0)
 
 @torch.no_grad()
 def batch_targets(q_lin_idx):
@@ -453,7 +453,7 @@ use_bc     = True
 match_grad_bc = False
 
 best_rmse = float("inf")
-best_path = "ffag_heat_best.pt"
+best_path = "ffag_heatsharp_best.pt"
 
 @torch.no_grad()
 def eval_val_rmse(offsets_ijk):
@@ -608,8 +608,8 @@ def load_for_resume(path, model, optimizer=None, scaler=None, scheduler=None, de
 
 
 
-LOAD_BEFORE_TRAIN = True
-RESUME_PATH = '/scratch/ab9738/fieldformer/model/ffag_heat_best.pt'
+LOAD_BEFORE_TRAIN = False
+RESUME_PATH = '/scratch/ab9738/fieldformer/model/ffag_heatsharp_best.pt'
 if LOAD_BEFORE_TRAIN:
     print(f"[resume] loading from {RESUME_PATH}")
     start_epoch, best_rmse = load_for_resume(

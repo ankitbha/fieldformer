@@ -19,7 +19,7 @@ torch.pi = torch.acos(torch.zeros(1)).item() * 2
 # ----------------------
 # Data: load the periodic heat dataset (same path/pattern as original)
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)
@@ -157,7 +157,7 @@ mse = nn.MSELoss()
 # Forcing function (same as original)
 # ----------------------
 def forcing_torch(xx, yy, tt):
-    return 5.0 * torch.cos(torch.pi * xx) * torch.cos(torch.pi * yy) * torch.sin(4 * torch.pi * tt / 5.0)
+    return 5.0 * torch.cos(12*torch.pi * xx) * torch.cos(12*torch.pi * yy) * torch.sin(4 * torch.pi * tt / 5.0)
 
 # ----------------------
 # Utilities (unchanged)
@@ -268,7 +268,7 @@ match_grad_bc = False
 
 epochs = 100
 best_rmse = float("inf")
-best_path = "siren_heat_best.pt"
+best_path = "siren_heatsharp_best.pt"
 
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode="min", factor=0.5, patience=3, min_lr=1e-6

@@ -28,7 +28,7 @@ from dataclasses import dataclass
 # ----------------------
 # Data: load the periodic heat dataset (same path as your FieldFormer script)
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)
@@ -192,7 +192,7 @@ mse = nn.MSELoss()
 # Forcing function (same as your FieldFormer script)
 # ----------------------
 def forcing_torch(xx, yy, tt):
-    return 5.0 * torch.cos(torch.pi * xx) * torch.cos(torch.pi * yy) * torch.sin(4 * torch.pi * tt / 5.0)
+    return 5.0 * torch.cos(12*torch.pi * xx) * torch.cos(12*torch.pi * yy) * torch.sin(4 * torch.pi * tt / 5.0)
 
 
 # In[8]:
@@ -317,7 +317,7 @@ match_grad_bc = False
 
 epochs = 100
 best_rmse = float("inf")
-best_path = "fmlp_heat_best.pt"
+best_path = "fmlp_heatsharp_best.pt"
 
 # optimizer already defined above; add scheduler like FieldFormer
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(

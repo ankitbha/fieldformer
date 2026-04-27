@@ -40,7 +40,7 @@ from tqdm.auto import tqdm  # notebook-friendly
 # Config
 # ----------------------
 class Config:
-    data = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz"
+    data = "/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz"
     seed = 123
     train_frac = 0.80
     val_frac = 0.10
@@ -53,7 +53,7 @@ class Config:
     min_noise = 1e-6
     max_noise = 1e-1
     patience = 10
-    save = "svgp_heat_best.pt"
+    save = "svgp_heatsharp_best.pt"
     num_workers = 4
 
 
