@@ -17,7 +17,7 @@ import torch
 
 SIZE = 4096              # Matrix dimension (NxN)
 DTYPE = "fp16"           # "fp16", "bf16", or "fp32"
-BURST_ITERS = 24         # GEMMs per cycle
+BURST_ITERS = 30         # GEMMs per cycle
 SLEEP_MS = 12.0          # Sleep duration per cycle (ms)
 WARMUP_ITERS = 5         # Warmup GEMMs before looping
 DEVICE = "cuda"          # Typically "cuda"

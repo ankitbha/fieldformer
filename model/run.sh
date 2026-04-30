@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
-#SBATCH --time=24:00:00
+#SBATCH --time=5:00:00
 #SBATCH --partition=l40s_public
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --account=torch_pr_633_general

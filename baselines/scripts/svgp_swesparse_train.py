@@ -329,7 +329,7 @@ def main(cfg: Config = CFG) -> None:
         se_sum, n_sum = 0.0, 0
         for q_lin in dl_val:
             q_lin = q_lin.to(device)
-            pred_eta = predict_observed(q_lin)
+            pred_eta = predict_observed(q_lin)[:, 0]
             tgt_eta = obs_eta[q_lin]
             se_sum += F.mse_loss(pred_eta * y_std + y_mean, tgt_eta * y_std + y_mean, reduction="sum").item()
             n_sum += q_lin.numel()
