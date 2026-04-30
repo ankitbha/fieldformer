@@ -27,7 +27,7 @@ from gpytorch.variational import CholeskyVariationalDistribution, VariationalStr
 
 @dataclass
 class Config:
-    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz"
+    data: str = "/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz"
     obs_key: str = "sensor_noisy"  # or "sensor_clean"
     batch_size: int = 2048
     val_batch_size: int = 4096
@@ -44,14 +44,14 @@ class Config:
     noise: float = 1e-3
     min_noise: float = 1e-6
     max_noise: float = 1e-1
-    lambda_phys: float = 0.2
-    lambda_bc: float = 0.2
+    lambda_phys: float = 0.0
+    lambda_bc: float = 0.0
     phys_samples: int = 1024
     bc_samples: int = 512
     match_grad_bc: bool = False
     grad_clip: float = 1.0
     patience: int = 12
-    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/svgp_heatsparse_best.pt"
+    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/svgp_heatsparse_nophysics_best.pt"
 
 
 CFG = Config()

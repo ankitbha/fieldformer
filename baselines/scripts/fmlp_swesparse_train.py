@@ -39,14 +39,14 @@ class Config:
     nhead: int = 4
     layers: int = 3
     d_ff: int = 256
-    lambda_phys: float = 0.2
-    lambda_bc: float = 0.2
+    lambda_phys: float = 0.0
+    lambda_bc: float = 0.0
     phys_samples: int = 1024
     bc_samples: int = 512
     match_grad_bc: bool = False
     grad_clip: float = 1.0
     patience: int = 12
-    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_swesparse_best.pt"
+    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_swesparse_nophysics_best.pt"
 
 
 CFG = Config()

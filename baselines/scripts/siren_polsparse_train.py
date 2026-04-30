@@ -36,8 +36,8 @@ class Config:
     depth: int = 6
     w0: float = 30.0
     w0_hidden: float = 1.0
-    lambda_sponge: float = 0.05
-    lambda_rad: float = 0.05
+    lambda_sponge: float = 0.0
+    lambda_rad: float = 0.0
     sponge_samples: int = 512
     rad_samples: int = 512
     sponge_border_frac: float = 0.05
@@ -49,7 +49,7 @@ class Config:
     huber_delta: float = 1.0
     grad_clip: float = 1.0
     patience: int = 10
-    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_polsparse_best.pt"
+    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_polsparse_nophysics_best.pt"
 
 
 CFG = Config()

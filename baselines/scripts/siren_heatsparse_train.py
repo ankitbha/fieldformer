@@ -38,14 +38,14 @@ class Config:
     depth: int = 6
     w0: float = 30.0
     w0_hidden: float = 1.0
-    lambda_phys: float = 0.2
-    lambda_bc: float = 0.2
+    lambda_phys: float = 0.0
+    lambda_bc: float = 0.0
     phys_samples: int = 1024
     bc_samples: int = 512
     match_grad_bc: bool = False
     grad_clip: float = 1.0
     patience: int = 12
-    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_heatsparse_best.pt"
+    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_heatsparse_nophysics_best.pt"
 
 
 CFG = Config()

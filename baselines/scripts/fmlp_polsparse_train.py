@@ -37,8 +37,8 @@ class Config:
     kx: int = 16
     ky: int = 16
     kt: int = 8
-    lambda_sponge: float = 0.05
-    lambda_rad: float = 0.03
+    lambda_sponge: float = 0.0
+    lambda_rad: float = 0.0
     sponge_samples: int = 512
     rad_samples: int = 512
     sponge_border_frac: float = 0.05
@@ -50,7 +50,7 @@ class Config:
     huber_delta: float = 1.0
     grad_clip: float = 1.0
     patience: int = 10
-    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_polsparse_best.pt"
+    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_polsparse_nophysics_best.pt"
 
 
 CFG = Config()
