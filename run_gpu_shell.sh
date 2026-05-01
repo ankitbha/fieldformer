@@ -3,7 +3,7 @@ srun \
   --nodes=1 \
   --cpus-per-task=4 \
   --mem=32GB \
-  --time=7:00:00 \
+  --time=6:00:00 \
   --partition=l40s_public \
   --gres=gpu:l40s:1 \
   --account=torch_pr_633_general \

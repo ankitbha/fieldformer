@@ -13,8 +13,6 @@ import torch.nn.functional as F
 from einops import repeat
 from torch.utils.data import DataLoader, Dataset
 
-from Attention_layers import AttentionLayer, EmbeddedAttention
-
 try:
     from tqdm.auto import tqdm
 except Exception:  # pragma: no cover - convenience fallback for lean envs
@@ -125,6 +123,68 @@ class SparseNeighborIndexer:
             pad = lin_nb[:, -1:].expand(-1, self.k_neighbors - lin_nb.shape[1])
             lin_nb = torch.cat([lin_nb, pad], dim=1)
         return lin_nb
+
+
+class AttentionLayer(nn.Module):
+    """Multi-head scaled dot-product attention used by ImputeFormer."""
+
+    def __init__(self, model_dim: int, num_heads: int = 8, mask: bool | None = False):
+        super().__init__()
+        if model_dim % num_heads != 0:
+            raise ValueError(f"model_dim={model_dim} must be divisible by num_heads={num_heads}")
+
+        self.model_dim = model_dim
+        self.num_heads = num_heads
+        self.mask = mask
+        self.head_dim = model_dim // num_heads
+
+        self.FC_Q = nn.Linear(model_dim, model_dim)
+        self.FC_K = nn.Linear(model_dim, model_dim)
+        self.FC_V = nn.Linear(model_dim, model_dim)
+        self.out_proj = nn.Linear(model_dim, model_dim)
+
+    def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
+        batch_size = query.shape[0]
+        tgt_length = query.shape[-2]
+        src_length = key.shape[-2]
+
+        query = self.FC_Q(query)
+        key = self.FC_K(key)
+        value = self.FC_V(value)
+
+        query = torch.cat(torch.split(query, self.head_dim, dim=-1), dim=0)
+        key = torch.cat(torch.split(key, self.head_dim, dim=-1), dim=0)
+        value = torch.cat(torch.split(value, self.head_dim, dim=-1), dim=0)
+
+        attn_score = (query @ key.transpose(-1, -2)) / self.head_dim**0.5
+
+        if self.mask:
+            mask = torch.ones(tgt_length, src_length, dtype=torch.bool, device=query.device).tril()
+            attn_score.masked_fill_(~mask, -torch.inf)
+
+        out = torch.softmax(attn_score, dim=-1) @ value
+        out = torch.cat(torch.split(out, batch_size, dim=0), dim=-1)
+        return self.out_proj(out)
+
+
+class EmbeddedAttention(nn.Module):
+    """Spatial embedded attention used by ImputeFormer."""
+
+    def __init__(self, model_dim: int, adaptive_embedding_dim: int):
+        super().__init__()
+        self.FC_Q_K = nn.Linear(adaptive_embedding_dim, model_dim)
+        self.FC_V = nn.Linear(model_dim, model_dim)
+
+    def forward(self, value: torch.Tensor, emb: torch.Tensor) -> torch.Tensor:
+        batch_size = value.shape[0]
+        query = torch.softmax(self.FC_Q_K(emb), dim=-1)
+        key = torch.softmax(self.FC_Q_K(emb).transpose(-1, -2), dim=-1)
+        value = self.FC_V(value)
+
+        query = repeat(query, "n s1 s2 -> b n s1 s2", b=batch_size)
+        key = repeat(key, "n s2 s1 -> b n s2 s1", b=batch_size)
+
+        return query @ (key @ value)
 
 
 class EmbeddedAttentionLayer(nn.Module):

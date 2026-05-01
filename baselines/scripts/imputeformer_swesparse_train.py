@@ -11,13 +11,13 @@ from __future__ import annotations
 
 import argparse
 import sys
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from pathlib import Path
 
-IMPUTEFORMER_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(IMPUTEFORMER_DIR))
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
-from imputeformer_sparse_common import run_sparse_experiment
+from imputeformer_sparse_common import add_config_args, run_sparse_experiment
 
 
 @dataclass
@@ -54,13 +54,7 @@ CFG = Config()
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(description="Train ImputeFormer on sparse SWE eta sensor observations.")
-    for field in fields(Config):
-        value = getattr(CFG, field.name)
-        arg = f"--{field.name}"
-        if isinstance(value, bool):
-            parser.add_argument(arg, action=argparse.BooleanOptionalAction, default=value)
-        else:
-            parser.add_argument(arg, type=type(value), default=value)
+    add_config_args(parser, CFG)
     return Config(**vars(parser.parse_args()))
 
 
