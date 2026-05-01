@@ -222,6 +222,11 @@ def train_senseiver(cfg: Any) -> None:
             toks.append(torch.cat([sxy, tt, val, mask], dim=-1))
         return torch.stack(toks, dim=0)
 
+    def first_query_scalar(out: torch.Tensor) -> torch.Tensor:
+        if out.ndim == 2:
+            return out[:, 0]
+        return out[:, 0, 0]
+
     def run_eval() -> float:
         model.eval()
         se, n = 0.0, 0
@@ -235,7 +240,7 @@ def train_senseiver(cfg: Any) -> None:
                 toks = sensor_tokens(times)
                 for i, q in enumerate(q_lin):
                     b = time_to_b[int((q % n_times).item())]
-                    preds.append(model(toks[b:b + 1], queries[i:i + 1])[:, 0, 0])
+                    preds.append(first_query_scalar(model(toks[b:b + 1], queries[i:i + 1])))
                 pred = torch.cat(preds) * vals_std + vals_mean
                 tgt = torch.from_numpy(values[(q_lin // n_times).cpu().numpy(), (q_lin % n_times).cpu().numpy()]).float().to(device)
                 se += F.mse_loss(pred, tgt, reduction="sum").item()
@@ -254,7 +259,7 @@ def train_senseiver(cfg: Any) -> None:
             preds = []
             for i, q in enumerate(q_lin):
                 b = time_to_b[int((q % n_times).item())]
-                preds.append(model(toks[b:b + 1], queries[i:i + 1])[:, 0, 0])
+                preds.append(first_query_scalar(model(toks[b:b + 1], queries[i:i + 1])))
             pred = torch.cat(preds)
             loss = F.mse_loss(pred, vals_t[q_lin])
             opt.zero_grad(set_to_none=True)
