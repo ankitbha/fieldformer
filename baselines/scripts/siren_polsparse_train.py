@@ -19,7 +19,7 @@ class Config:
     data: str = "/scratch/ab9738/fieldformer/data/pollution_dataset.npz"
     obs_key: str = "U_sensor_noisy"
     save: str = ""
-    pinn: bool = False
+    pinn: bool = True
     train_frac: float = 0.8
     val_frac: float = 0.1
     seed: int = 123
@@ -41,8 +41,8 @@ class Config:
     bc_warmup: int = 0
     bc_ramp: int = 1
     match_grad_bc: bool = False
-    lambda_sponge: float = 0.0
-    lambda_rad: float = 0.0
+    lambda_sponge: float = 0.03
+    lambda_rad: float = 0.01
     sponge_samples: int = 512
     rad_samples: int = 512
     sponge_border_frac: float = 0.05

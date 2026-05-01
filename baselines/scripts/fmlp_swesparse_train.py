@@ -23,7 +23,7 @@ class Config:
     data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset.npz"
     obs_key: str = "eta_sensor_noisy"
     save: str = ""
-    pinn: bool = False
+    pinn: bool = True
     train_frac: float = 0.8
     val_frac: float = 0.1
     seed: int = 123
@@ -37,8 +37,8 @@ class Config:
     kx: int = 16
     ky: int = 16
     kt: int = 8
-    lambda_phys: float = 0.0
-    lambda_bc: float = 0.0
+    lambda_phys: float = 0.2
+    lambda_bc: float = 0.2
     phys_samples: int = 1024
     bc_samples: int = 512
     phys_warmup: int = 0

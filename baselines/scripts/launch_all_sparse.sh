@@ -7,7 +7,8 @@ RUN_SH="${SCRIPT_DIR}/run.sh"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
 MODELS=(
-  senseiver
+  fmlp
+  siren
 )
 
 DATASETS=(
@@ -74,7 +75,7 @@ for model in "${MODELS[@]}"; do
       exit 2
     fi
 
-    exp_name="${model}-${dataset}"
+    exp_name="${model}-pinn-${dataset}"
     cmd=(
       sbatch
       --job-name="${exp_name}"

@@ -19,7 +19,7 @@ class Config:
     data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"
     obs_key: str = "sensor_noisy"
     save: str = ""
-    pinn: bool = False
+    pinn: bool = True
     train_frac: float = 0.8
     val_frac: float = 0.1
     seed: int = 123

@@ -61,8 +61,12 @@ def _dataset_key(cfg: Any) -> str:
 def _make_save_path(cfg: Any, dataset_key: str, model_key: str) -> str:
     if getattr(cfg, "save", ""):
         return str(cfg.save)
-    suffix = "-pinn" if getattr(cfg, "pinn", False) else ""
-    return f"/scratch/ab9738/fieldformer/baselines/checkpoints/{model_key}{suffix}_{dataset_key}sparse_best.pt"
+    uses_pinn_loss = bool(getattr(cfg, "pinn", False)) or any(
+        float(getattr(cfg, name, 0.0)) > 0.0
+        for name in ("lambda_phys", "lambda_bc", "lambda_sponge", "lambda_rad")
+    )
+    model_stem = f"{model_key}_pinn" if uses_pinn_loss else model_key
+    return f"/scratch/ab9738/fieldformer/baselines/checkpoints/{model_stem}_{dataset_key}sparse_best.pt"
 
 
 def _ranges(pack: Any, sensors_xy: np.ndarray, t_np: np.ndarray) -> tuple[float, float, float, float, float, float, float, float, float]:
