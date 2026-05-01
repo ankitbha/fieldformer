@@ -41,18 +41,24 @@ DATASETS = {
     "swe": ROOT / "data" / "swe_periodic_dataset.npz",
     "pol": ROOT / "data" / "pollution_dataset.npz",
 }
-PINN_ALIASES = {"fmlp-pinn": "fmlp", "siren-pinn": "siren", "svgp-pinn": "svgp"}
+PINN_ALIASES = {
+    "fmlp-pinn": "fmlp",
+    "fmlp_pinn": "fmlp",
+    "siren-pinn": "siren",
+    "siren_pinn": "siren",
+    "svgp-pinn": "svgp",
+    "svgp_pinn": "svgp",
+}
 MODELS = {
     "ffag",
     "siren",
-    "siren-pinn",
+    "siren_pinn",
     "fmlp",
-    "fmlp-pinn",
+    "fmlp_pinn",
     "svgp",
-    "svgp-pinn",
     "recfno",
-    "senseiver",
     "imputeformer",
+    "senseiver",
 }
 
 
@@ -142,6 +148,9 @@ def ckpt_path(model_key: str, dataset_key: str) -> Path:
     dataset_slug = {"pol": "pol"}.get(dataset_key, dataset_key)
     if model_key == "ffag":
         return ROOT / "fieldformer_core" / "checkpoints" / f"ffag_{dataset_slug}sparse_best.pt"
+    if model_key in PINN_ALIASES:
+        impl = PINN_ALIASES[model_key]
+        return ROOT / "baselines" / "checkpoints" / f"{impl}_pinn_{dataset_slug}sparse_best.pt"
     return ROOT / "baselines" / "checkpoints" / f"{model_key}_{dataset_slug}sparse_best.pt"
 
 
@@ -379,6 +388,13 @@ def main(cfg: Config) -> None:
         Ly=Ly,
         Tt=Tt,
         nt_count=t_np.shape[0],
+        sensors_xy=sensors_xy,
+        x_grid=x_np,
+        y_grid=y_np,
+        t_grid=t_np,
+        train_idx=split.train_idx.numpy(),
+        obs_coords_np=obs_coords_np,
+        obs_vals_np=obs_vals_np,
     )
 
     sparse_metrics = eval_sparse_test(adapter, indexer, obs_coords, obs_vals, split.test_idx, cfg.batch_size, device)
