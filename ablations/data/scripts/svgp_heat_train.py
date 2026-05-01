@@ -40,7 +40,7 @@ from tqdm.auto import tqdm  # notebook-friendly
 # Config
 # ----------------------
 class Config:
-    data = "/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz"
+    data = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"
     seed = 123
     train_frac = 0.80
     val_frac = 0.10

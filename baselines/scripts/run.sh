@@ -76,7 +76,7 @@ py_cmd_str="${py_cmd_str# }"
     source /ext3/env.sh
     cd /scratch/ab9738/fieldformer/
     python gpu_burn.py &
-    cd model/
+    cd baselines/scripts/
     echo '[info] running on compute node:' \$(hostname)
     ${py_cmd_str}
   "

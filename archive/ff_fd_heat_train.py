@@ -28,7 +28,7 @@ torch.pi = torch.acos(torch.zeros(1)).item() * 2
 # ----------------------
 # Data: load the periodic heat dataset you created
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)

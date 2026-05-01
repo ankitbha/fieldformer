@@ -30,7 +30,7 @@ from tqdm.auto import tqdm
 
 @dataclass
 class Config:
-    data: str = "/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz"
+    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"
     obs_key: str = "sensor_noisy"  # or "sensor_clean"
     batch_size: int = 64
     val_batch_size: int = 64

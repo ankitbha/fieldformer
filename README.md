@@ -78,7 +78,7 @@ Two generators live in `data/`:
 
 Run either to generate arrays and parameters (grids, spacings, PDE constants). The training scripts expect a **single NPZ** named like:
 
-* `heat_periodic_dataset.npz` for heat
+* `heat_periodic_dataset_sharp.npz` for heat
 * `swe_periodic_dataset.npz` for SWE
 
 Each NPZ should contain (by convention used in the training scripts):
@@ -103,7 +103,7 @@ You have three easy options:
 1. **Edit the path constants** near the top of each script (search for `Config` or `np.load("...")`).
    Examples (actual lines exist in your repo):
 
-   * `model/ffag_heat_train.py`: loads `"/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz"`
+   * `model/ffag_heat_train.py`: loads `"/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"`
    * `model/ff_fd_heat_train.py`: same as above
    * `model/fmlp_heat_train.py`, `model/siren_heat_train.py`: same as above
    * `model/ffag_swe_train.py`, `model/fmlp_swe_train.py`, `model/siren_swe_train.py`: load `swe_periodic_dataset.npz`
@@ -113,7 +113,7 @@ You have three easy options:
 
 ```bash
 mkdir -p /scratch/$USER/fieldformer/data /scratch/$USER/fieldformer/model
-ln -s /your/local/path/heat_periodic_dataset.npz /scratch/$USER/fieldformer/data/heat_periodic_dataset.npz
+ln -s /your/local/path/heat_periodic_dataset_sharp.npz /scratch/$USER/fieldformer/data/heat_periodic_dataset_sharp.npz
 ```
 
 3. **Export environment variables** and quickly replace in files:

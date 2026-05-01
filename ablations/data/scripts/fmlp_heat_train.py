@@ -28,7 +28,7 @@ from dataclasses import dataclass
 # ----------------------
 # Data: load the periodic heat dataset (same path as your FieldFormer script)
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)

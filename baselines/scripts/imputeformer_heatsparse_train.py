@@ -1,72 +1,50 @@
 #!/usr/bin/env python3
-"""
-ImputeFormer (sparse heat): train only from sensor observations.
-
-This is a standalone sparse adaptation of the ImputeFormer attention blocks for
-the heat sparse datasets used in this repository. It follows the same train
-script structure as the Senseiver sparse baselines and does not add physics loss.
-"""
-
 from __future__ import annotations
 
-import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from imputeformer_sparse_common import add_config_args, run_sparse_experiment
+from baselines.models.imputeformer import FixedNodeImputeFormer
+from baselines.scripts.fair_sparse_train import train_imputeformer
 
 
 @dataclass
 class Config:
-    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz"
-    obs_key: str = "sensor_noisy"  # or "sensor_clean"
-    batch_size: int = 128
-    val_batch_size: int = 256
-    epochs: int = 300
-    lr: float = 1e-3
-    weight_decay: float = 0.0
+    dataset: str = "heat"
+    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"
+    obs_key: str = "sensor_noisy"
+    save: str = ""
     train_frac: float = 0.8
     val_frac: float = 0.1
-    seed: int = 42
-    k_neighbors: int = 128
-    time_radius: int = 3
-    input_dim: int = 5
-    output_dim: int = 1
+    seed: int = 123
+    batch_size: int = 8
+    val_batch_size: int = 8
+    epochs: int = 120
+    lr: float = 3e-4
+    weight_decay: float = 1e-4
+    windows: int = 128
+    window_stride: int = 64
+    mask_rate: float = 0.25
     input_embedding_dim: int = 32
     learnable_embedding_dim: int = 96
-    feed_forward_dim: int = 256
-    num_temporal_heads: int = 4
     num_layers: int = 3
+    num_temporal_heads: int = 4
     dim_proj: int = 8
     dropout: float = 0.1
-    f1_loss_weight: float = 0.01
-    grad_clip: float = 5.0
-    patience: int = 20
-    save: str = "/scratch/ab9738/fieldformer/baselines/checkpoints/imputeformer_heatsparse_best.pt"
+    grad_clip: float = 1.0
+    patience: int = 12
 
 
 CFG = Config()
+MODEL_CLASS = FixedNodeImputeFormer
 
 
-def parse_args() -> Config:
-    parser = argparse.ArgumentParser(description="Train ImputeFormer on sparse heat sensor observations.")
-    add_config_args(parser, CFG)
-    return Config(**vars(parser.parse_args()))
-
-
-def main(cfg: Config) -> None:
-    run_sparse_experiment(
-        cfg,
-        variant="imputeformer_heat_sparse",
-        description="heat",
-        fallback_keys=("sensor_noisy", "sensor_clean"),
-        error_name="heat",
-    )
+def main(cfg: Config = CFG) -> None:
+    train_imputeformer(cfg)
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    main(CFG)

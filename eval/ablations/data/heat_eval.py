@@ -46,7 +46,7 @@ from gpytorch.kernels import ScaleKernel, ProductKernel, PeriodicKernel
 # ----------------------
 class Config:
     # Data
-    data_path = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset.npz"
+    data_path = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"
     seed = 123
     train_frac = 0.80
     val_frac = 0.10

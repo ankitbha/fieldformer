@@ -34,7 +34,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ----------------------
 # Data: load the periodic heat dataset (same path as original)
 # ----------------------
-pack = np.load("/scratch/ab9738/fieldformer/data/heat_sharp_dataset.npz")
+pack = np.load("/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz")
 u_np   = pack["u"]           # (Nx, Ny, Nt)
 x_np   = pack["x"]           # (Nx,)
 y_np   = pack["y"]           # (Ny,)

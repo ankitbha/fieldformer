@@ -29,7 +29,7 @@ SENSORS = 20         # number of sensor locations to sample
 NOISE_MODE = "max"    # "std" or "max"; noise σ = (signal_std or signal_max)/NOISE_DIV
 NOISE_DIV = 10.0
 RNG_SEED = 42
-SAVE_PATH = "heat_periodic_dataset.npz"
+SAVE_PATH = "heat_periodic_dataset_sharp.npz"
 DTYPE = np.float32
 
 
