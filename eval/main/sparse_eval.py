@@ -21,7 +21,10 @@ except Exception:  # pragma: no cover
 
 THIS_DIR = Path(__file__).resolve().parent
 ROOT = THIS_DIR.parents[1]
-sys.path.insert(0, str(THIS_DIR))
+for path in (ROOT, THIS_DIR):
+    path_str = str(path)
+    if path_str not in sys.path:
+        sys.path.insert(0, path_str)
 
 from sparse_models import build_sparse_model
 
@@ -34,6 +37,8 @@ class Config:
     output_path: str = ""
     device: str = "cuda"
     obs_key: str = ""
+    max_sparse_test: int = 0
+    max_full_field: int = 0
 
 
 DATASETS = {
@@ -256,15 +261,17 @@ def eval_sparse_test(
     adapter.eval()
     se_sum, ae_sum, n_sum = 0.0, 0.0, 0
     starts = range(0, test_idx.numel(), batch_size)
-    for start in tqdm(starts, desc="sparse-test", leave=False):
-        q_lin = test_idx[start:start + batch_size].to(device)
-        nb_idx = indexer.gather_observed_neighbors(q_lin, exclude_self=True) if adapter.needs_sensor_context else None
-        pred = adapter.predict_observed(q_lin, obs_coords, obs_vals, nb_idx)
-        tgt = obs_vals[q_lin]
-        se, ae, n = metric_sums(pred, tgt)
-        se_sum += se
-        ae_sum += ae
-        n_sum += n
+    with tqdm(total=int(test_idx.numel()), desc="sparse-test", unit="pts", leave=False) as pbar:
+        for start in starts:
+            q_lin = test_idx[start:start + batch_size].to(device)
+            nb_idx = indexer.gather_observed_neighbors(q_lin, exclude_self=True) if adapter.needs_sensor_context else None
+            pred = adapter.predict_observed(q_lin, obs_coords, obs_vals, nb_idx)
+            tgt = obs_vals[q_lin]
+            se, ae, n = metric_sums(pred, tgt)
+            se_sum += se
+            ae_sum += ae
+            n_sum += n
+            pbar.update(int(q_lin.numel()))
     return finish_metrics(se_sum, ae_sum, n_sum)
 
 
@@ -282,15 +289,17 @@ def eval_full_field(
     adapter.eval()
     se_sum, ae_sum, n_sum = 0.0, 0.0, 0
     starts = range(0, full_coords.shape[0], batch_size)
-    for start in tqdm(starts, desc="full-field", leave=False):
-        xyt = full_coords[start:start + batch_size].to(device)
-        tgt = full_vals[start:start + batch_size].to(device)
-        nb_idx = indexer.gather_continuous_neighbors(xyt) if adapter.needs_sensor_context else None
-        pred = adapter.predict_continuous(xyt, obs_coords, obs_vals, nb_idx)
-        se, ae, n = metric_sums(pred, tgt)
-        se_sum += se
-        ae_sum += ae
-        n_sum += n
+    with tqdm(total=int(full_coords.shape[0]), desc="full-field", unit="pts", leave=False) as pbar:
+        for start in starts:
+            xyt = full_coords[start:start + batch_size].to(device)
+            tgt = full_vals[start:start + batch_size].to(device)
+            nb_idx = indexer.gather_continuous_neighbors(xyt) if adapter.needs_sensor_context else None
+            pred = adapter.predict_continuous(xyt, obs_coords, obs_vals, nb_idx)
+            se, ae, n = metric_sums(pred, tgt)
+            se_sum += se
+            ae_sum += ae
+            n_sum += n
+            pbar.update(int(xyt.shape[0]))
     return finish_metrics(se_sum, ae_sum, n_sum)
 
 
@@ -361,7 +370,14 @@ def main(cfg: Config) -> None:
 
     obs_coords = torch.from_numpy(obs_coords_np).float().to(device)
     obs_vals = torch.from_numpy(obs_vals_np).float().to(device)
+    sparse_test_idx = split.test_idx
+    if cfg.max_sparse_test > 0:
+        sparse_test_idx = sparse_test_idx[: cfg.max_sparse_test]
+
     full_coords_np, full_vals_np = full_field(pack, dataset_key)
+    if cfg.max_full_field > 0:
+        full_coords_np = full_coords_np[: cfg.max_full_field]
+        full_vals_np = full_vals_np[: cfg.max_full_field]
     full_coords = torch.from_numpy(full_coords_np).float()
     full_vals = torch.from_numpy(full_vals_np).float()
 
@@ -397,14 +413,14 @@ def main(cfg: Config) -> None:
         obs_vals_np=obs_vals_np,
     )
 
-    sparse_metrics = eval_sparse_test(adapter, indexer, obs_coords, obs_vals, split.test_idx, cfg.batch_size, device)
+    sparse_metrics = eval_sparse_test(adapter, indexer, obs_coords, obs_vals, sparse_test_idx, cfg.batch_size, device)
     full_metrics = eval_full_field(adapter, indexer, obs_coords, obs_vals, full_coords, full_vals, cfg.batch_size, device)
     result = {
         "dataset": dataset_key,
         "model": model_key,
         "checkpoint": str(path),
         "obs_key": obs_key,
-        "num_sparse_test": int(split.test_idx.numel()),
+        "num_sparse_test": int(sparse_test_idx.numel()),
         "num_full_field": int(full_coords.shape[0]),
         "sparse_test": sparse_metrics,
         "full_field": full_metrics,

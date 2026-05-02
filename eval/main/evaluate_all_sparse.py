@@ -13,13 +13,16 @@ import torch
 
 THIS_DIR = Path(__file__).resolve().parent
 ROOT = THIS_DIR.parents[1]
-sys.path.insert(0, str(THIS_DIR))
+for path in (ROOT, THIS_DIR):
+    path_str = str(path)
+    if path_str not in sys.path:
+        sys.path.insert(0, path_str)
 
 from sparse_eval import Config, main as run_sparse_eval
 
 
 DEFAULT_DATASETS = ("heat", "pol", "swe")
-DEFAULT_MODELS = ("ffag", "fmlp", "fmlp_pinn", "siren", "siren_pinn", "svgp", "recfno", "imputeformer")
+DEFAULT_MODELS = ("ffag", "fmlp", "fmlp_pinn", "siren", "siren_pinn", "svgp", "recfno", "imputeformer", "senseiver")
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,6 +33,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--datasets", nargs="+", default=list(DEFAULT_DATASETS))
     parser.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS))
+    parser.add_argument("--max_sparse_test", type=int, default=0, help="Optional cap on sparse test points per run; 0 evaluates all.")
+    parser.add_argument("--max_full_field", type=int, default=0, help="Optional cap on full-field points per run; 0 evaluates all.")
     parser.add_argument("--stop_on_error", action="store_true")
     return parser.parse_args()
 
@@ -117,6 +122,8 @@ def main() -> None:
                 output_path=str(result_path),
                 device=args.device,
                 obs_key="",
+                max_sparse_test=args.max_sparse_test,
+                max_full_field=args.max_full_field,
             )
             try:
                 run_sparse_eval(cfg)

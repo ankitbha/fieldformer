@@ -1,2 +1,2 @@
-python gpu_burn.py > logs/gpu_burn.log 2>&1 &
+python gpu_burn.py > gpu_burn.log 2>&1 &
 BURN_PID=$!

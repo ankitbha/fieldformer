@@ -10,6 +10,8 @@ TARGET="${ROOT}/eval/main/evaluate_all_sparse.py"
 DRY_RUN=0
 BATCH_SIZE=4096
 SUMMARY_NAME="sparse_eval_all"
+MAX_SPARSE_TEST=0
+MAX_FULL_FIELD=0
 EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -30,16 +32,22 @@ while [[ $# -gt 0 ]]; do
       SUMMARY_NAME="$2"
       shift 2
       ;;
+    --max_sparse_test)
+      MAX_SPARSE_TEST="$2"
+      shift 2
+      ;;
+    --max_full_field)
+      MAX_FULL_FIELD="$2"
+      shift 2
+      ;;
     --help|-h)
       cat <<EOF
-Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--summary_name NAME] [-- extra args]
+Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--summary_name NAME] [--max_sparse_test N] [--max_full_field N] [-- extra args]
 
 Submits one 20-hour GPU job that evaluates:
-  ffag, fmlp, fmlp_pinn, siren, siren_pinn, svgp, recfno, imputeformer
+  ffag, fmlp, fmlp_pinn, siren, siren_pinn, svgp, recfno, imputeformer, senseiver
 on:
   heat, pol, swe
-
-Senseiver is intentionally skipped.
 
 Outputs:
   ${OUT_DIR}/<model>-<dataset>.json
@@ -77,6 +85,8 @@ cmd=(
   --batch_size "${BATCH_SIZE}"
   --output_dir "${OUT_DIR}"
   --summary_name "${SUMMARY_NAME}"
+  --max_sparse_test "${MAX_SPARSE_TEST}"
+  --max_full_field "${MAX_FULL_FIELD}"
   "${EXTRA_ARGS[@]}"
 )
 
