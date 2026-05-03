@@ -1,0 +1,22 @@
+{
+  "dataset": "swe",
+  "model": "siren_pinn",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_pinn_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.10080889276908125,
+    "mae": 0.08029423828125,
+    "rmse_bootstrap_std": 0.00043550739764035713,
+    "mae_bootstrap_std": 0.00028101499644655163
+  },
+  "full_field": {
+    "rmse": 0.1799181988590483,
+    "mae": 0.13104702561448017,
+    "rmse_bootstrap_std": 0.00016960114650135816,
+    "mae_bootstrap_std": 0.00014478424805188552
+  }
+}

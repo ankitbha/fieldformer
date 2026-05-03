@@ -1,0 +1,22 @@
+{
+  "dataset": "swe",
+  "model": "ffag",
+  "checkpoint": "/scratch/ab9738/fieldformer/fieldformer_core/checkpoints/ffag_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.01722950380434439,
+    "mae": 0.006311190795898438,
+    "rmse_bootstrap_std": 0.00041647908146795335,
+    "mae_bootstrap_std": 0.00011525193851196249
+  },
+  "full_field": {
+    "rmse": 0.23785601591166838,
+    "mae": 0.1719883975058794,
+    "rmse_bootstrap_std": 0.00019844241128333227,
+    "mae_bootstrap_std": 0.00016238581660366479
+  }
+}

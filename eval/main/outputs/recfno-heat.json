@@ -1,0 +1,22 @@
+{
+  "dataset": "heat",
+  "model": "recfno",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/recfno_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.10375813647618083,
+    "mae": 0.08268653259277343,
+    "rmse_bootstrap_std": 0.0006048845732359218,
+    "mae_bootstrap_std": 0.00043218965960302257
+  },
+  "full_field": {
+    "rmse": 0.17708930248321134,
+    "mae": 0.1211943537786603,
+    "rmse_bootstrap_std": 0.001173330587870916,
+    "mae_bootstrap_std": 0.0007413919769516839
+  }
+}

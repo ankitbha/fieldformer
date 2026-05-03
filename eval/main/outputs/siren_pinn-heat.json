@@ -1,0 +1,22 @@
+{
+  "dataset": "heat",
+  "model": "siren_pinn",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_pinn_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.17926628832585048,
+    "mae": 0.14337328186035156,
+    "rmse_bootstrap_std": 0.0009729232856016625,
+    "mae_bootstrap_std": 0.0007186326706270645
+  },
+  "full_field": {
+    "rmse": 0.19496616086575655,
+    "mae": 0.1532518696224317,
+    "rmse_bootstrap_std": 0.0009060786146800102,
+    "mae_bootstrap_std": 0.0007206529554818499
+  }
+}

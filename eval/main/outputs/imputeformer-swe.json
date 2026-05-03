@@ -1,0 +1,22 @@
+{
+  "dataset": "swe",
+  "model": "imputeformer",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/imputeformer_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.06512156599366796,
+    "mae": 0.051108143615722655,
+    "rmse_bootstrap_std": 0.0005652771632099835,
+    "mae_bootstrap_std": 0.00045868391139494436
+  },
+  "full_field": {
+    "rmse": 0.18164775950680992,
+    "mae": 0.13205012318193912,
+    "rmse_bootstrap_std": 0.00017373144496426416,
+    "mae_bootstrap_std": 0.00015237948132585793
+  }
+}

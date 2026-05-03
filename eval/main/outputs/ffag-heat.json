@@ -1,0 +1,22 @@
+{
+  "dataset": "heat",
+  "model": "ffag",
+  "checkpoint": "/scratch/ab9738/fieldformer/fieldformer_core/checkpoints/ffag_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.09409864877993453,
+    "mae": 0.07487444000244141,
+    "rmse_bootstrap_std": 0.0008036410591630758,
+    "mae_bootstrap_std": 0.00059986093454906
+  },
+  "full_field": {
+    "rmse": 0.16273838075811173,
+    "mae": 0.11828114288994111,
+    "rmse_bootstrap_std": 0.0010857097830780805,
+    "mae_bootstrap_std": 0.000792650194309326
+  }
+}

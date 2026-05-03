@@ -1,0 +1,22 @@
+{
+  "dataset": "pol",
+  "model": "svgp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/svgp_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "num_sparse_test": 32000,
+  "num_full_field": 16000000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.11713885302130116,
+    "mae": 0.09339837074279785,
+    "rmse_bootstrap_std": 0.00031271081497682865,
+    "mae_bootstrap_std": 0.00030827159303335906
+  },
+  "full_field": {
+    "rmse": 0.4348595176756952,
+    "mae": 0.08208323371446133,
+    "rmse_bootstrap_std": 0.04505259245207678,
+    "mae_bootstrap_std": 0.006107357169838298
+  }
+}

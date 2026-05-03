@@ -1,0 +1,22 @@
+{
+  "dataset": "swe",
+  "model": "recfno",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/recfno_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.06295583549945508,
+    "mae": 0.04938607177734375,
+    "rmse_bootstrap_std": 0.0005097949739011098,
+    "mae_bootstrap_std": 0.0004467132969120818
+  },
+  "full_field": {
+    "rmse": 0.19854086395267684,
+    "mae": 0.14997335655291874,
+    "rmse_bootstrap_std": 0.00023628916413965728,
+    "mae_bootstrap_std": 0.0001696558052544466
+  }
+}

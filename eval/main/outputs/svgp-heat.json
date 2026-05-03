@@ -1,0 +1,22 @@
+{
+  "dataset": "heat",
+  "model": "svgp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/svgp_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.11853620216007504,
+    "mae": 0.09251740570068359,
+    "rmse_bootstrap_std": 0.0008308455331429896,
+    "mae_bootstrap_std": 0.000609310145200386
+  },
+  "full_field": {
+    "rmse": 0.17883448632759258,
+    "mae": 0.1305555716006318,
+    "rmse_bootstrap_std": 0.0012136079165257184,
+    "mae_bootstrap_std": 0.0008949220071815125
+  }
+}

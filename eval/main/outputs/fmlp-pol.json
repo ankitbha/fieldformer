@@ -1,0 +1,22 @@
+{
+  "dataset": "pol",
+  "model": "fmlp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "num_sparse_test": 32000,
+  "num_full_field": 16000000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.1146840772195987,
+    "mae": 0.09152661991119385,
+    "rmse_bootstrap_std": 0.0003252404726515115,
+    "mae_bootstrap_std": 0.00022352834099678907
+  },
+  "full_field": {
+    "rmse": 0.4325758909036184,
+    "mae": 0.09857422396528721,
+    "rmse_bootstrap_std": 0.044865828173250286,
+    "mae_bootstrap_std": 0.005979415959708294
+  }
+}

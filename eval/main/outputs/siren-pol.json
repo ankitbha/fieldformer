@@ -1,0 +1,22 @@
+{
+  "dataset": "pol",
+  "model": "siren",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "num_sparse_test": 32000,
+  "num_full_field": 16000000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.11619901297801728,
+    "mae": 0.0928029899597168,
+    "rmse_bootstrap_std": 0.0003094541475444903,
+    "mae_bootstrap_std": 0.0002088649900116964
+  },
+  "full_field": {
+    "rmse": 0.45556342358498986,
+    "mae": 0.12562703470754624,
+    "rmse_bootstrap_std": 0.043058595156721655,
+    "mae_bootstrap_std": 0.006148752316449474
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "dataset": "heat",
+  "model": "fmlp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.09786348129445088,
+    "mae": 0.07786385345458985,
+    "rmse_bootstrap_std": 0.0006985009064349809,
+    "mae_bootstrap_std": 0.0005516519134018222
+  },
+  "full_field": {
+    "rmse": 0.21461008955467467,
+    "mae": 0.14688498505840544,
+    "rmse_bootstrap_std": 0.0013859125882054433,
+    "mae_bootstrap_std": 0.0009122597776588684
+  }
+}

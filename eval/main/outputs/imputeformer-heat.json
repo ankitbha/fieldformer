@@ -1,0 +1,22 @@
+{
+  "dataset": "heat",
+  "model": "imputeformer",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/imputeformer_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.10579486257847329,
+    "mae": 0.08422825164794921,
+    "rmse_bootstrap_std": 0.000653230551155107,
+    "mae_bootstrap_std": 0.0005680260031748682
+  },
+  "full_field": {
+    "rmse": 0.19163770028273341,
+    "mae": 0.1434822848631069,
+    "rmse_bootstrap_std": 0.0010011129231555643,
+    "mae_bootstrap_std": 0.000781008011313259
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "dataset": "swe",
+  "model": "fmlp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.10105182609739019,
+    "mae": 0.08048815155029297,
+    "rmse_bootstrap_std": 0.0004408461866684526,
+    "mae_bootstrap_std": 0.00029466874967469026
+  },
+  "full_field": {
+    "rmse": 0.18074814884278861,
+    "mae": 0.13189521201799312,
+    "rmse_bootstrap_std": 0.00016867196124571073,
+    "mae_bootstrap_std": 0.0001417068182650774
+  }
+}
