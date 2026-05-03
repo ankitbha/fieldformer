@@ -1,0 +1,24 @@
+{
+  "dataset": "heat",
+  "model": "senseiver",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 4096000,
+  "num_full_field_total": 40960000,
+  "full_field_sample_fraction": 0.1,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.10109180761060217,
+    "mae": 0.08045268707275391,
+    "rmse_bootstrap_std": 0.0007449349828367351,
+    "mae_bootstrap_std": 0.0005725716411738275
+  },
+  "full_field": {
+    "rmse": 0.19591585256190713,
+    "mae": 0.1420820241998881,
+    "rmse_bootstrap_std": 0.0021207524143083524,
+    "mae_bootstrap_std": 0.001957561377322859
+  }
+}

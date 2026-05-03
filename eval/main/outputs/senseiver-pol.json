@@ -1,0 +1,24 @@
+{
+  "dataset": "pol",
+  "model": "senseiver",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "num_sparse_test": 32000,
+  "num_full_field": 1600000,
+  "num_full_field_total": 16000000,
+  "full_field_sample_fraction": 0.1,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.11629974562189913,
+    "mae": 0.09293537616729736,
+    "rmse_bootstrap_std": 0.00026245953407380253,
+    "mae_bootstrap_std": 0.0001971821062677178
+  },
+  "full_field": {
+    "rmse": 0.4428716874366154,
+    "mae": 0.09243497818946839,
+    "rmse_bootstrap_std": 0.008749739529580025,
+    "mae_bootstrap_std": 0.001076653241021913
+  }
+}

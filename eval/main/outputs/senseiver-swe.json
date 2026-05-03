@@ -1,0 +1,24 @@
+{
+  "dataset": "swe",
+  "model": "senseiver",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 4096000,
+  "num_full_field_total": 40960000,
+  "full_field_sample_fraction": 0.1,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.07722430814888202,
+    "mae": 0.060562918853759765,
+    "rmse_bootstrap_std": 0.0005242746564232067,
+    "mae_bootstrap_std": 0.0003741495839568931
+  },
+  "full_field": {
+    "rmse": 0.18666208367002726,
+    "mae": 0.136386642207702,
+    "rmse_bootstrap_std": 0.0006654445857582658,
+    "mae_bootstrap_std": 0.0004550809758397262
+  }
+}
