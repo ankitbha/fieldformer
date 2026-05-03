@@ -9,9 +9,9 @@ TARGET="${ROOT}/eval/main/evaluate_all_sparse.py"
 
 DRY_RUN=0
 BATCH_SIZE=4096
-SUMMARY_NAME="sparse_eval_all"
 MAX_SPARSE_TEST=0
 MAX_FULL_FIELD=0
+SENSEIVER_FULL_FIELD_FRACTION=0.10
 BOOTSTRAP_SAMPLES=1000
 BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
@@ -30,16 +30,16 @@ while [[ $# -gt 0 ]]; do
       OUT_DIR="$2"
       shift 2
       ;;
-    --summary_name)
-      SUMMARY_NAME="$2"
-      shift 2
-      ;;
     --max_sparse_test)
       MAX_SPARSE_TEST="$2"
       shift 2
       ;;
     --max_full_field)
       MAX_FULL_FIELD="$2"
+      shift 2
+      ;;
+    --senseiver_full_field_fraction)
+      SENSEIVER_FULL_FIELD_FRACTION="$2"
       shift 2
       ;;
     --bootstrap_samples)
@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --help|-h)
       cat <<EOF
-Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--summary_name NAME] [--max_sparse_test N] [--max_full_field N] [--bootstrap_samples N] [--bootstrap_seed N] [-- extra args]
+Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--max_sparse_test N] [--max_full_field N] [--senseiver_full_field_fraction F] [--bootstrap_samples N] [--bootstrap_seed N] [-- extra args]
 
 Submits a 27-task Slurm array with a 6-hour limit per task. Each task evaluates one
 model/dataset pair from:
@@ -62,8 +62,6 @@ on:
 
 Outputs:
   ${OUT_DIR}/<model>-<dataset>.json
-  ${OUT_DIR}/${SUMMARY_NAME}-<model>-<dataset>.csv
-  ${OUT_DIR}/${SUMMARY_NAME}-<model>-<dataset>.jsonl
 
 Logs:
   ${LOG_DIR}/sparse-eval-all-%A_%a.out
@@ -97,9 +95,9 @@ cmd=(
   --slurm_array
   --batch_size "${BATCH_SIZE}"
   --output_dir "${OUT_DIR}"
-  --summary_name "${SUMMARY_NAME}"
   --max_sparse_test "${MAX_SPARSE_TEST}"
   --max_full_field "${MAX_FULL_FIELD}"
+  --senseiver_full_field_fraction "${SENSEIVER_FULL_FIELD_FRACTION}"
   --bootstrap_samples "${BOOTSTRAP_SAMPLES}"
   --bootstrap_seed "${BOOTSTRAP_SEED}"
   "${EXTRA_ARGS[@]}"

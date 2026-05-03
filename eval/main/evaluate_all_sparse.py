@@ -2,12 +2,9 @@
 from __future__ import annotations
 
 import argparse
-import csv
-import json
 import os
 import sys
 import traceback
-from dataclasses import asdict
 from pathlib import Path
 
 import torch
@@ -28,14 +25,14 @@ DEFAULT_MODELS = ("ffag", "fmlp", "fmlp_pinn", "siren", "siren_pinn", "svgp", "r
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run sparse eval for all selected models/datasets.")
-    parser.add_argument("--output_dir", default=str(ROOT / "eval" / "main" / "outputs"), help="Directory for per-run JSON and summary files.")
-    parser.add_argument("--summary_name", default="sparse_eval_all", help="Basename for summary CSV/JSONL.")
+    parser.add_argument("--output_dir", default=str(ROOT / "eval" / "main" / "outputs"), help="Directory for per-run JSON files.")
     parser.add_argument("--batch_size", type=int, default=4096)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--datasets", nargs="+", default=list(DEFAULT_DATASETS))
     parser.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS))
     parser.add_argument("--max_sparse_test", type=int, default=0, help="Optional cap on sparse test points per run; 0 evaluates all.")
     parser.add_argument("--max_full_field", type=int, default=0, help="Optional cap on full-field points per run; 0 evaluates all.")
+    parser.add_argument("--senseiver_full_field_fraction", type=float, default=0.10, help="Fraction of the full field to sample for Senseiver full-field eval.")
     parser.add_argument("--bootstrap_samples", type=int, default=1000, help="Bootstrap resamples for metric standard deviations; 0 disables.")
     parser.add_argument("--bootstrap_seed", type=int, default=123, help="Seed for bootstrap resampling.")
     parser.add_argument("--slurm_array", action="store_true", help="Run one model/dataset pair selected by SLURM_ARRAY_TASK_ID.")
@@ -58,88 +55,7 @@ def apply_slurm_array_selection(args: argparse.Namespace) -> None:
     dataset, model = combos[task_id]
     args.datasets = [dataset]
     args.models = [model]
-    args.summary_name = f"{args.summary_name}-{model}-{dataset}"
     print(f"[array] task_id={task_id} dataset={dataset} model={model}")
-
-
-def flatten_result(result: dict) -> dict:
-    return {
-        "dataset": result["dataset"],
-        "model": result["model"],
-        "status": "ok",
-        "checkpoint": result["checkpoint"],
-        "obs_key": result.get("obs_key", ""),
-        "num_sparse_test": result.get("num_sparse_test", ""),
-        "num_full_field": result.get("num_full_field", ""),
-        "bootstrap_samples": result.get("bootstrap_samples", ""),
-        "bootstrap_seed": result.get("bootstrap_seed", ""),
-        "sparse_test_rmse": result["sparse_test"]["rmse"],
-        "sparse_test_mae": result["sparse_test"]["mae"],
-        "sparse_test_rmse_bootstrap_std": result["sparse_test"]["rmse_bootstrap_std"],
-        "sparse_test_mae_bootstrap_std": result["sparse_test"]["mae_bootstrap_std"],
-        "full_field_rmse": result["full_field"]["rmse"],
-        "full_field_mae": result["full_field"]["mae"],
-        "full_field_rmse_bootstrap_std": result["full_field"]["rmse_bootstrap_std"],
-        "full_field_mae_bootstrap_std": result["full_field"]["mae_bootstrap_std"],
-        "error": "",
-    }
-
-
-def error_row(dataset: str, model: str, exc: BaseException) -> dict:
-    return {
-        "dataset": dataset,
-        "model": model,
-        "status": "error",
-        "checkpoint": "",
-        "obs_key": "",
-        "num_sparse_test": "",
-        "num_full_field": "",
-        "bootstrap_samples": "",
-        "bootstrap_seed": "",
-        "sparse_test_rmse": "",
-        "sparse_test_mae": "",
-        "sparse_test_rmse_bootstrap_std": "",
-        "sparse_test_mae_bootstrap_std": "",
-        "full_field_rmse": "",
-        "full_field_mae": "",
-        "full_field_rmse_bootstrap_std": "",
-        "full_field_mae_bootstrap_std": "",
-        "error": f"{type(exc).__name__}: {exc}",
-    }
-
-
-def write_summary(rows: list[dict], out_dir: Path, summary_name: str) -> None:
-    fields = [
-        "dataset",
-        "model",
-        "status",
-        "checkpoint",
-        "obs_key",
-        "num_sparse_test",
-        "num_full_field",
-        "bootstrap_samples",
-        "bootstrap_seed",
-        "sparse_test_rmse",
-        "sparse_test_mae",
-        "sparse_test_rmse_bootstrap_std",
-        "sparse_test_mae_bootstrap_std",
-        "full_field_rmse",
-        "full_field_mae",
-        "full_field_rmse_bootstrap_std",
-        "full_field_mae_bootstrap_std",
-        "error",
-    ]
-    csv_path = out_dir / f"{summary_name}.csv"
-    jsonl_path = out_dir / f"{summary_name}.jsonl"
-    with csv_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
-    with jsonl_path.open("w") as f:
-        for row in rows:
-            f.write(json.dumps(row) + "\n")
-    print(f"[summary] {csv_path}")
-    print(f"[summary] {jsonl_path}")
 
 
 def main() -> None:
@@ -147,10 +63,10 @@ def main() -> None:
     apply_slurm_array_selection(args)
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    rows: list[dict] = []
 
     total = len(args.datasets) * len(args.models)
     done = 0
+    ok = 0
     for dataset in args.datasets:
         for model in args.models:
             done += 1
@@ -166,27 +82,23 @@ def main() -> None:
                 obs_key="",
                 max_sparse_test=args.max_sparse_test,
                 max_full_field=args.max_full_field,
+                senseiver_full_field_fraction=args.senseiver_full_field_fraction,
                 bootstrap_samples=args.bootstrap_samples,
                 bootstrap_seed=args.bootstrap_seed,
             )
             try:
                 run_sparse_eval(cfg)
-                result = json.loads(result_path.read_text())
-                rows.append(flatten_result(result))
+                ok += 1
             except BaseException as exc:
                 print(f"[error] {exp}: {type(exc).__name__}: {exc}", file=sys.stderr)
                 traceback.print_exc()
-                rows.append(error_row(dataset, model, exc))
                 if args.stop_on_error:
-                    write_summary(rows, out_dir, args.summary_name)
                     raise
             finally:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                write_summary(rows, out_dir, args.summary_name)
 
-    ok = sum(row["status"] == "ok" for row in rows)
-    print(f"\n[done] {ok}/{len(rows)} evaluations succeeded.")
+    print(f"\n[done] {ok}/{total} evaluations succeeded.")
 
 
 if __name__ == "__main__":

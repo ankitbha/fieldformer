@@ -39,6 +39,7 @@ class Config:
     obs_key: str = ""
     max_sparse_test: int = 0
     max_full_field: int = 0
+    senseiver_full_field_fraction: float = 0.10
     bootstrap_samples: int = 1000
     bootstrap_seed: int = 123
 
@@ -67,6 +68,13 @@ MODELS = {
     "imputeformer",
     "senseiver",
 }
+
+
+def load_checkpoint(path: Path, device: torch.device) -> Any:
+    try:
+        return torch.load(path, map_location=device, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=device)
 
 
 class ObservedIndexDataset(Dataset):
@@ -227,6 +235,45 @@ def full_field(pack: Any, dataset_key: str) -> tuple[np.ndarray, np.ndarray]:
     return coords, vals
 
 
+def sampled_full_field(
+    pack: Any,
+    dataset_key: str,
+    fraction: float,
+    seed: int,
+    max_points: int = 0,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    x_np = pack["x"].astype(np.float32)
+    y_np = pack["y"].astype(np.float32)
+    t_np = pack["t"].astype(np.float32)
+    shape = (x_np.shape[0], y_np.shape[0], t_np.shape[0])
+    total = int(np.prod(shape))
+    fraction = min(max(float(fraction), 0.0), 1.0)
+    sample_count = total if fraction >= 1.0 else max(1, int(math.ceil(total * fraction)))
+    if max_points > 0:
+        sample_count = min(sample_count, int(max_points))
+
+    rng = np.random.default_rng(seed)
+    flat_idx = rng.choice(total, size=sample_count, replace=False)
+    ix, iy, it = np.unravel_index(flat_idx, shape)
+    order = np.lexsort((iy, ix, it))
+    ix, iy, it = ix[order], iy[order], it[order]
+    coords = np.stack([x_np[ix], y_np[iy], t_np[it]], axis=1).astype(np.float32)
+    if dataset_key == "swe":
+        vals = np.stack(
+            [
+                pack["eta"][ix, iy, it],
+                pack["u"][ix, iy, it],
+                pack["v"][ix, iy, it],
+            ],
+            axis=1,
+        ).astype(np.float32)
+    elif dataset_key == "pol":
+        vals = pack["U"][ix, iy, it].astype(np.float32)
+    else:
+        vals = pack["u"][ix, iy, it].astype(np.float32)
+    return coords, vals, total
+
+
 def align_prediction(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     if pred.ndim == 1 and target.ndim == 2:
         return pred[:, None]
@@ -384,7 +431,7 @@ def main(cfg: Config) -> None:
 
     device = torch.device(cfg.device if cfg.device == "cpu" or torch.cuda.is_available() else "cpu")
     pack = np.load(DATASETS[dataset_key])
-    ckpt = torch.load(path, map_location=device)
+    ckpt = load_checkpoint(path, device)
     ckpt_cfg = ckpt.get("config", {})
 
     sensors_xy = pack["sensors_xy"].astype(np.float32)
@@ -421,8 +468,18 @@ def main(cfg: Config) -> None:
     if cfg.max_sparse_test > 0:
         sparse_test_idx = sparse_test_idx[: cfg.max_sparse_test]
 
-    full_coords_np, full_vals_np = full_field(pack, dataset_key)
-    if cfg.max_full_field > 0:
+    full_field_total = None
+    if impl_model_key == "senseiver" and cfg.senseiver_full_field_fraction < 1.0:
+        full_coords_np, full_vals_np, full_field_total = sampled_full_field(
+            pack,
+            dataset_key,
+            cfg.senseiver_full_field_fraction,
+            cfg.bootstrap_seed + 2,
+            cfg.max_full_field,
+        )
+    else:
+        full_coords_np, full_vals_np = full_field(pack, dataset_key)
+    if cfg.max_full_field > 0 and not (impl_model_key == "senseiver" and cfg.senseiver_full_field_fraction < 1.0):
         full_coords_np = full_coords_np[: cfg.max_full_field]
         full_vals_np = full_vals_np[: cfg.max_full_field]
     full_coords = torch.from_numpy(full_coords_np).float()
@@ -490,6 +547,8 @@ def main(cfg: Config) -> None:
         "obs_key": obs_key,
         "num_sparse_test": int(sparse_test_idx.numel()),
         "num_full_field": int(full_coords.shape[0]),
+        "num_full_field_total": int(full_field_total if full_field_total is not None else full_coords.shape[0]),
+        "full_field_sample_fraction": float(cfg.senseiver_full_field_fraction if impl_model_key == "senseiver" else 1.0),
         "bootstrap_samples": int(cfg.bootstrap_samples),
         "bootstrap_seed": int(cfg.bootstrap_seed),
         "sparse_test": sparse_metrics,

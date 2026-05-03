@@ -1,0 +1,24 @@
+{
+  "dataset": "pol",
+  "model": "ffag",
+  "checkpoint": "/scratch/ab9738/fieldformer/fieldformer_core/checkpoints/ffag_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "num_sparse_test": 32000,
+  "num_full_field": 16000000,
+  "num_full_field_total": 16000000,
+  "full_field_sample_fraction": 1.0,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.11036423439929643,
+    "mae": 0.08798800563812256,
+    "rmse_bootstrap_std": 0.00022185458432927207,
+    "mae_bootstrap_std": 0.00013607975097470348
+  },
+  "full_field": {
+    "rmse": 0.4581139760991358,
+    "mae": 0.1391794042069912,
+    "rmse_bootstrap_std": 0.044080244619113695,
+    "mae_bootstrap_std": 0.006249836850374895
+  }
+}

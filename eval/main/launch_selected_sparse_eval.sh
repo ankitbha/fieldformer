@@ -54,11 +54,8 @@ while [[ $# -gt 0 ]]; do
       cat <<EOF
 Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--max_sparse_test N] [--max_full_field N] [--bootstrap_samples N] [--bootstrap_seed N] [-- extra args]
 
-Submits four sparse eval jobs with an 8-hour limit:
+Submits sparse eval jobs with an 8-hour limit:
   ffag-pol
-  senseiver-heat
-  senseiver-pol
-  senseiver-swe
 
 Senseiver full-field eval uses a fixed sample fraction of ${SENSEIVER_FULL_FIELD_FRACTION}.
 
