@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 import traceback
 from dataclasses import asdict
@@ -35,8 +36,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS))
     parser.add_argument("--max_sparse_test", type=int, default=0, help="Optional cap on sparse test points per run; 0 evaluates all.")
     parser.add_argument("--max_full_field", type=int, default=0, help="Optional cap on full-field points per run; 0 evaluates all.")
+    parser.add_argument("--bootstrap_samples", type=int, default=1000, help="Bootstrap resamples for metric standard deviations; 0 disables.")
+    parser.add_argument("--bootstrap_seed", type=int, default=123, help="Seed for bootstrap resampling.")
+    parser.add_argument("--slurm_array", action="store_true", help="Run one model/dataset pair selected by SLURM_ARRAY_TASK_ID.")
     parser.add_argument("--stop_on_error", action="store_true")
     return parser.parse_args()
+
+
+def apply_slurm_array_selection(args: argparse.Namespace) -> None:
+    if not args.slurm_array:
+        return
+
+    task_id_raw = os.environ.get("SLURM_ARRAY_TASK_ID")
+    if task_id_raw is None:
+        raise SystemExit("--slurm_array requires SLURM_ARRAY_TASK_ID to be set")
+    task_id = int(task_id_raw)
+    combos = [(dataset, model) for dataset in args.datasets for model in args.models]
+    if task_id < 0 or task_id >= len(combos):
+        raise SystemExit(f"SLURM_ARRAY_TASK_ID={task_id} is out of range for {len(combos)} tasks")
+
+    dataset, model = combos[task_id]
+    args.datasets = [dataset]
+    args.models = [model]
+    args.summary_name = f"{args.summary_name}-{model}-{dataset}"
+    print(f"[array] task_id={task_id} dataset={dataset} model={model}")
 
 
 def flatten_result(result: dict) -> dict:
@@ -48,10 +71,16 @@ def flatten_result(result: dict) -> dict:
         "obs_key": result.get("obs_key", ""),
         "num_sparse_test": result.get("num_sparse_test", ""),
         "num_full_field": result.get("num_full_field", ""),
+        "bootstrap_samples": result.get("bootstrap_samples", ""),
+        "bootstrap_seed": result.get("bootstrap_seed", ""),
         "sparse_test_rmse": result["sparse_test"]["rmse"],
         "sparse_test_mae": result["sparse_test"]["mae"],
+        "sparse_test_rmse_bootstrap_std": result["sparse_test"]["rmse_bootstrap_std"],
+        "sparse_test_mae_bootstrap_std": result["sparse_test"]["mae_bootstrap_std"],
         "full_field_rmse": result["full_field"]["rmse"],
         "full_field_mae": result["full_field"]["mae"],
+        "full_field_rmse_bootstrap_std": result["full_field"]["rmse_bootstrap_std"],
+        "full_field_mae_bootstrap_std": result["full_field"]["mae_bootstrap_std"],
         "error": "",
     }
 
@@ -65,10 +94,16 @@ def error_row(dataset: str, model: str, exc: BaseException) -> dict:
         "obs_key": "",
         "num_sparse_test": "",
         "num_full_field": "",
+        "bootstrap_samples": "",
+        "bootstrap_seed": "",
         "sparse_test_rmse": "",
         "sparse_test_mae": "",
+        "sparse_test_rmse_bootstrap_std": "",
+        "sparse_test_mae_bootstrap_std": "",
         "full_field_rmse": "",
         "full_field_mae": "",
+        "full_field_rmse_bootstrap_std": "",
+        "full_field_mae_bootstrap_std": "",
         "error": f"{type(exc).__name__}: {exc}",
     }
 
@@ -82,10 +117,16 @@ def write_summary(rows: list[dict], out_dir: Path, summary_name: str) -> None:
         "obs_key",
         "num_sparse_test",
         "num_full_field",
+        "bootstrap_samples",
+        "bootstrap_seed",
         "sparse_test_rmse",
         "sparse_test_mae",
+        "sparse_test_rmse_bootstrap_std",
+        "sparse_test_mae_bootstrap_std",
         "full_field_rmse",
         "full_field_mae",
+        "full_field_rmse_bootstrap_std",
+        "full_field_mae_bootstrap_std",
         "error",
     ]
     csv_path = out_dir / f"{summary_name}.csv"
@@ -103,6 +144,7 @@ def write_summary(rows: list[dict], out_dir: Path, summary_name: str) -> None:
 
 def main() -> None:
     args = parse_args()
+    apply_slurm_array_selection(args)
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
@@ -124,6 +166,8 @@ def main() -> None:
                 obs_key="",
                 max_sparse_test=args.max_sparse_test,
                 max_full_field=args.max_full_field,
+                bootstrap_samples=args.bootstrap_samples,
+                bootstrap_seed=args.bootstrap_seed,
             )
             try:
                 run_sparse_eval(cfg)

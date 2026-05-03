@@ -12,6 +12,8 @@ BATCH_SIZE=4096
 SUMMARY_NAME="sparse_eval_all"
 MAX_SPARSE_TEST=0
 MAX_FULL_FIELD=0
+BOOTSTRAP_SAMPLES=1000
+BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -40,23 +42,32 @@ while [[ $# -gt 0 ]]; do
       MAX_FULL_FIELD="$2"
       shift 2
       ;;
+    --bootstrap_samples)
+      BOOTSTRAP_SAMPLES="$2"
+      shift 2
+      ;;
+    --bootstrap_seed)
+      BOOTSTRAP_SEED="$2"
+      shift 2
+      ;;
     --help|-h)
       cat <<EOF
-Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--summary_name NAME] [--max_sparse_test N] [--max_full_field N] [-- extra args]
+Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--summary_name NAME] [--max_sparse_test N] [--max_full_field N] [--bootstrap_samples N] [--bootstrap_seed N] [-- extra args]
 
-Submits one 20-hour GPU job that evaluates:
+Submits a 27-task Slurm array with a 6-hour limit per task. Each task evaluates one
+model/dataset pair from:
   ffag, fmlp, fmlp_pinn, siren, siren_pinn, svgp, recfno, imputeformer, senseiver
 on:
   heat, pol, swe
 
 Outputs:
   ${OUT_DIR}/<model>-<dataset>.json
-  ${OUT_DIR}/${SUMMARY_NAME}.csv
-  ${OUT_DIR}/${SUMMARY_NAME}.jsonl
+  ${OUT_DIR}/${SUMMARY_NAME}-<model>-<dataset>.csv
+  ${OUT_DIR}/${SUMMARY_NAME}-<model>-<dataset>.jsonl
 
 Logs:
-  ${LOG_DIR}/sparse-eval-all-%j.out
-  ${LOG_DIR}/sparse-eval-all-%j.err
+  ${LOG_DIR}/sparse-eval-all-%A_%a.out
+  ${LOG_DIR}/sparse-eval-all-%A_%a.err
 EOF
       exit 0
       ;;
@@ -77,16 +88,20 @@ mkdir -p "${LOG_DIR}" "${OUT_DIR}"
 cmd=(
   sbatch
   --job-name="sparse-eval-all"
-  --time="20:00:00"
-  --output="${LOG_DIR}/sparse-eval-all-%j.out"
-  --error="${LOG_DIR}/sparse-eval-all-%j.err"
+  --array="0-26"
+  --time="6:00:00"
+  --output="${LOG_DIR}/sparse-eval-all-%A_%a.out"
+  --error="${LOG_DIR}/sparse-eval-all-%A_%a.err"
   "${RUN_SH}"
   "${TARGET}"
+  --slurm_array
   --batch_size "${BATCH_SIZE}"
   --output_dir "${OUT_DIR}"
   --summary_name "${SUMMARY_NAME}"
   --max_sparse_test "${MAX_SPARSE_TEST}"
   --max_full_field "${MAX_FULL_FIELD}"
+  --bootstrap_samples "${BOOTSTRAP_SAMPLES}"
+  --bootstrap_seed "${BOOTSTRAP_SEED}"
   "${EXTRA_ARGS[@]}"
 )
 

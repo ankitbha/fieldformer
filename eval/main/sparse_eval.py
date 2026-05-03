@@ -39,6 +39,8 @@ class Config:
     obs_key: str = ""
     max_sparse_test: int = 0
     max_full_field: int = 0
+    bootstrap_samples: int = 1000
+    bootstrap_seed: int = 123
 
 
 DATASETS = {
@@ -243,9 +245,42 @@ def metric_sums(pred: torch.Tensor, target: torch.Tensor) -> tuple[float, float,
     return float((diff * diff).sum().item()), float(diff.abs().sum().item()), int(diff.numel())
 
 
-def finish_metrics(se_sum: float, ae_sum: float, n_sum: int) -> dict[str, float]:
+def bootstrap_metric_std(
+    batch_sums: list[tuple[float, float, int]],
+    samples: int,
+    seed: int,
+) -> dict[str, float]:
+    if samples <= 1 or len(batch_sums) <= 1:
+        return {"rmse_bootstrap_std": 0.0, "mae_bootstrap_std": 0.0}
+
+    sums = np.asarray(batch_sums, dtype=np.float64)
+    rng = np.random.default_rng(seed)
+    boot_rmse = np.empty(samples, dtype=np.float64)
+    boot_mae = np.empty(samples, dtype=np.float64)
+    for i in range(samples):
+        sample_idx = rng.integers(0, len(batch_sums), size=len(batch_sums))
+        se_sum, ae_sum, n_sum = sums[sample_idx].sum(axis=0)
+        n = max(1.0, n_sum)
+        boot_rmse[i] = math.sqrt(se_sum / n)
+        boot_mae[i] = ae_sum / n
+    return {
+        "rmse_bootstrap_std": float(boot_rmse.std(ddof=1)),
+        "mae_bootstrap_std": float(boot_mae.std(ddof=1)),
+    }
+
+
+def finish_metrics(
+    se_sum: float,
+    ae_sum: float,
+    n_sum: int,
+    batch_sums: list[tuple[float, float, int]],
+    bootstrap_samples: int,
+    bootstrap_seed: int,
+) -> dict[str, float]:
     n = max(1, n_sum)
-    return {"rmse": math.sqrt(se_sum / n), "mae": ae_sum / n}
+    metrics = {"rmse": math.sqrt(se_sum / n), "mae": ae_sum / n}
+    metrics.update(bootstrap_metric_std(batch_sums, bootstrap_samples, bootstrap_seed))
+    return metrics
 
 
 @torch.no_grad()
@@ -257,9 +292,12 @@ def eval_sparse_test(
     test_idx: torch.Tensor,
     batch_size: int,
     device: torch.device,
+    bootstrap_samples: int,
+    bootstrap_seed: int,
 ) -> dict[str, float]:
     adapter.eval()
     se_sum, ae_sum, n_sum = 0.0, 0.0, 0
+    batch_sums: list[tuple[float, float, int]] = []
     starts = range(0, test_idx.numel(), batch_size)
     with tqdm(total=int(test_idx.numel()), desc="sparse-test", unit="pts", leave=False) as pbar:
         for start in starts:
@@ -271,8 +309,9 @@ def eval_sparse_test(
             se_sum += se
             ae_sum += ae
             n_sum += n
+            batch_sums.append((se, ae, n))
             pbar.update(int(q_lin.numel()))
-    return finish_metrics(se_sum, ae_sum, n_sum)
+    return finish_metrics(se_sum, ae_sum, n_sum, batch_sums, bootstrap_samples, bootstrap_seed)
 
 
 @torch.no_grad()
@@ -285,9 +324,12 @@ def eval_full_field(
     full_vals: torch.Tensor,
     batch_size: int,
     device: torch.device,
+    bootstrap_samples: int,
+    bootstrap_seed: int,
 ) -> dict[str, float]:
     adapter.eval()
     se_sum, ae_sum, n_sum = 0.0, 0.0, 0
+    batch_sums: list[tuple[float, float, int]] = []
     starts = range(0, full_coords.shape[0], batch_size)
     with tqdm(total=int(full_coords.shape[0]), desc="full-field", unit="pts", leave=False) as pbar:
         for start in starts:
@@ -299,8 +341,9 @@ def eval_full_field(
             se_sum += se
             ae_sum += ae
             n_sum += n
+            batch_sums.append((se, ae, n))
             pbar.update(int(xyt.shape[0]))
-    return finish_metrics(se_sum, ae_sum, n_sum)
+    return finish_metrics(se_sum, ae_sum, n_sum, batch_sums, bootstrap_samples, bootstrap_seed)
 
 
 def write_output(path: Path, result: dict[str, Any]) -> None:
@@ -312,8 +355,12 @@ def write_output(path: Path, result: dict[str, Any]) -> None:
             "checkpoint": result["checkpoint"],
             "sparse_test_rmse": result["sparse_test"]["rmse"],
             "sparse_test_mae": result["sparse_test"]["mae"],
+            "sparse_test_rmse_bootstrap_std": result["sparse_test"]["rmse_bootstrap_std"],
+            "sparse_test_mae_bootstrap_std": result["sparse_test"]["mae_bootstrap_std"],
             "full_field_rmse": result["full_field"]["rmse"],
             "full_field_mae": result["full_field"]["mae"],
+            "full_field_rmse_bootstrap_std": result["full_field"]["rmse_bootstrap_std"],
+            "full_field_mae_bootstrap_std": result["full_field"]["mae_bootstrap_std"],
         }
         with path.open("w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=list(flat))
@@ -413,8 +460,29 @@ def main(cfg: Config) -> None:
         obs_vals_np=obs_vals_np,
     )
 
-    sparse_metrics = eval_sparse_test(adapter, indexer, obs_coords, obs_vals, sparse_test_idx, cfg.batch_size, device)
-    full_metrics = eval_full_field(adapter, indexer, obs_coords, obs_vals, full_coords, full_vals, cfg.batch_size, device)
+    sparse_metrics = eval_sparse_test(
+        adapter,
+        indexer,
+        obs_coords,
+        obs_vals,
+        sparse_test_idx,
+        cfg.batch_size,
+        device,
+        cfg.bootstrap_samples,
+        cfg.bootstrap_seed,
+    )
+    full_metrics = eval_full_field(
+        adapter,
+        indexer,
+        obs_coords,
+        obs_vals,
+        full_coords,
+        full_vals,
+        cfg.batch_size,
+        device,
+        cfg.bootstrap_samples,
+        cfg.bootstrap_seed + 1,
+    )
     result = {
         "dataset": dataset_key,
         "model": model_key,
@@ -422,16 +490,24 @@ def main(cfg: Config) -> None:
         "obs_key": obs_key,
         "num_sparse_test": int(sparse_test_idx.numel()),
         "num_full_field": int(full_coords.shape[0]),
+        "bootstrap_samples": int(cfg.bootstrap_samples),
+        "bootstrap_seed": int(cfg.bootstrap_seed),
         "sparse_test": sparse_metrics,
         "full_field": full_metrics,
     }
 
     print(f"[eval] dataset={dataset_key} model={model_key} checkpoint={path.relative_to(ROOT)}")
     print("")
-    print(f"{'metric':<18} {'rmse':>14} {'mae':>14}")
-    print(f"{'-' * 48}")
-    print(f"{'sparse_test':<18} {sparse_metrics['rmse']:>14.6g} {sparse_metrics['mae']:>14.6g}")
-    print(f"{'full_field':<18} {full_metrics['rmse']:>14.6g} {full_metrics['mae']:>14.6g}")
+    print(f"{'metric':<18} {'rmse':>14} {'mae':>14} {'rmse_bs_std':>14} {'mae_bs_std':>14}")
+    print(f"{'-' * 78}")
+    print(
+        f"{'sparse_test':<18} {sparse_metrics['rmse']:>14.6g} {sparse_metrics['mae']:>14.6g} "
+        f"{sparse_metrics['rmse_bootstrap_std']:>14.6g} {sparse_metrics['mae_bootstrap_std']:>14.6g}"
+    )
+    print(
+        f"{'full_field':<18} {full_metrics['rmse']:>14.6g} {full_metrics['mae']:>14.6g} "
+        f"{full_metrics['rmse_bootstrap_std']:>14.6g} {full_metrics['mae_bootstrap_std']:>14.6g}"
+    )
 
     if cfg.output_path:
         out = Path(cfg.output_path)
