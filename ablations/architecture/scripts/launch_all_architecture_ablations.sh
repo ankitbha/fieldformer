@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 SCRIPT_DIR="${ROOT}/ablations/architecture/scripts"
-RUN_SH="${ROOT}/fieldformer_core/scripts/run.sh"
+RUN_SH="${ROOT}/ablations/architecture/scripts/run.sh"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
 DRY_RUN=0
