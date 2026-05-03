@@ -21,12 +21,14 @@ except Exception:  # pragma: no cover
 
 THIS_DIR = Path(__file__).resolve().parent
 ROOT = THIS_DIR.parents[1]
-for path in (ROOT, THIS_DIR):
+CORE_SCRIPT_DIR = ROOT / "fieldformer_core" / "scripts"
+for path in (ROOT, THIS_DIR, CORE_SCRIPT_DIR):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.insert(0, path_str)
 
 from sparse_models import build_sparse_model
+from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
 
 
 @dataclass
@@ -487,11 +489,13 @@ def main(cfg: Config) -> None:
 
     indexer = None
     if impl_model_key == "ffag":
-        indexer = FieldFormerNeighborIndexer(
+        visible_idx = torch.cat([split.train_idx, split.val_idx]).to(device)
+        indexer = SplitAwareSparseNeighborIndexer(
             torch.from_numpy(sensors_xy).float().to(device),
             torch.from_numpy(t_np).float().to(device),
             int(ckpt_cfg.get("time_radius", 3)),
             int(ckpt_cfg.get("k_neighbors", 128)),
+            allowed_indices=visible_idx,
         )
     adapter = build_sparse_model(
         model_key=impl_model_key,

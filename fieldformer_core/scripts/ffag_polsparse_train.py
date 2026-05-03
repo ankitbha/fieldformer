@@ -28,6 +28,8 @@ from torch.backends.cuda import sdp_kernel
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
+from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
+
 
 @dataclass
 class Config:
@@ -164,6 +166,9 @@ class SparseNeighborIndexer:
         if lin_nb.shape[1] > self.k_neighbors:
             lin_nb = lin_nb[:, : self.k_neighbors]
         return lin_nb
+
+
+SparseNeighborIndexer = SplitAwareSparseNeighborIndexer
 
 
 class FieldFormerSparsePollution(nn.Module):
@@ -335,7 +340,7 @@ def main(cfg: Config = CFG) -> None:
     ds_val.set_split("val")
     dl_val = DataLoader(ds_val, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
 
-    indexer = SparseNeighborIndexer(sensors_xy_t, t_grid_t, cfg.time_radius, cfg.k_neighbors)
+    indexer = SparseNeighborIndexer(sensors_xy_t, t_grid_t, cfg.time_radius, cfg.k_neighbors, allowed_indices=ds.train_idx.to(device))
 
     model = FieldFormerSparsePollution(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
     with torch.no_grad():

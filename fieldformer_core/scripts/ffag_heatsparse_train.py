@@ -27,6 +27,8 @@ from torch.backends.cuda import sdp_kernel
 from torch.utils.data import Dataset, DataLoader
 from tqdm.auto import tqdm
 
+from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
+
 
 @dataclass
 class Config:
@@ -168,6 +170,9 @@ class SparseNeighborIndexer:
         if lin_nb.shape[1] > self.k_neighbors:
             lin_nb = lin_nb[:, : self.k_neighbors]
         return lin_nb
+
+
+SparseNeighborIndexer = SplitAwareSparseNeighborIndexer
 
 
 class FieldFormerSparse(nn.Module):
@@ -328,6 +333,7 @@ def main(cfg: Config = CFG) -> None:
         t_grid=t_grid_t,
         time_radius=cfg.time_radius,
         k_neighbors=cfg.k_neighbors,
+        allowed_indices=ds.train_idx.to(device),
     )
 
     model = FieldFormerSparse(d_model=cfg.d_model, nhead=cfg.nhead, layers=cfg.layers, d_ff=cfg.d_ff).to(device)

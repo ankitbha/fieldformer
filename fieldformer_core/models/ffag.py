@@ -14,6 +14,9 @@ def _load_legacy(stem: str) -> Any:
     path = SCRIPT_DIR / f"{stem}.py"
     if not path.exists():
         raise FileNotFoundError(f"Missing FieldFormer source: {path}")
+    script_dir = str(SCRIPT_DIR)
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
     name = f"_fieldformer_core_{stem}"
     if name in sys.modules:
         return sys.modules[name]

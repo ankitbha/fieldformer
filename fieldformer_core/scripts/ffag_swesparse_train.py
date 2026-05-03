@@ -20,6 +20,8 @@ from torch.backends.cuda import sdp_kernel
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
+from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
+
 
 @dataclass
 class Config:
@@ -141,6 +143,9 @@ class SparseNeighborIndexer:
         return lin_nb
 
 
+SparseNeighborIndexer = SplitAwareSparseNeighborIndexer
+
+
 class FieldFormerSparseSWE(nn.Module):
     def __init__(self, d_model: int, nhead: int, layers: int, d_ff: int):
         super().__init__()
@@ -235,14 +240,20 @@ def main(cfg: Config = CFG) -> None:
 
     obs_coords = torch.from_numpy(coords_np).float().to(device)
     obs_eta = torch.from_numpy(eta_obs_np).float().to(device)
-    indexer = SparseNeighborIndexer(torch.from_numpy(sensors_xy).float().to(device), torch.from_numpy(t_np).float().to(device), cfg.time_radius, cfg.k_neighbors)
-
     ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed)
     ds.set_split("train")
     dl = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
     ds_val = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed)
     ds_val.set_split("val")
     dl_val = DataLoader(ds_val, batch_size=cfg.val_batch_size, shuffle=False)
+
+    indexer = SparseNeighborIndexer(
+        torch.from_numpy(sensors_xy).float().to(device),
+        torch.from_numpy(t_np).float().to(device),
+        cfg.time_radius,
+        cfg.k_neighbors,
+        allowed_indices=ds.train_idx.to(device),
+    )
 
     model = FieldFormerSparseSWE(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)

@@ -129,7 +129,7 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     ds_val.set_split("val")
     dl_val = DataLoader(ds_val, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
 
-    indexer = core["SparseNeighborIndexer"](sensors_xy_t, t_grid_t, cfg.time_radius, cfg.k_neighbors)
+    indexer = core["SparseNeighborIndexer"](sensors_xy_t, t_grid_t, cfg.time_radius, cfg.k_neighbors, allowed_indices=ds.train_idx.to(device))
     model_cls = class_for_dataset(dataset_key)
     model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
     if dataset_key == "pol":

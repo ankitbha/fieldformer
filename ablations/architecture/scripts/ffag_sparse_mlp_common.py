@@ -82,6 +82,7 @@ def _load_sparse_context(dataset_key: str, cfg: Any) -> dict[str, Any]:
         torch.from_numpy(t_np).float().to(device),
         cfg.time_radius,
         cfg.k_neighbors,
+        allowed_indices=ds.train_idx.to(device),
     )
 
     return {
