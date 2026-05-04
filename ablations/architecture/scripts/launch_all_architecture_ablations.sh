@@ -10,12 +10,8 @@ DRY_RUN=0
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
-  "ffag-nophys-heatsparse ffag_heatsparse_nophys_train.py"
-  "ffag-nophys-swesparse ffag_swesparse_nophys_train.py"
   "ffag-nophys-polsparse ffag_polsparse_nophys_train.py"
   "ffag-mlp-heatsparse ffag_mlp_heatsparse_train.py"
-  "ffag-mlp-swesparse ffag_mlp_swesparse_train.py"
-  "ffag-mlp-polsparse ffag_mlp_polsparse_train.py"
 )
 
 while [[ $# -gt 0 ]]; do

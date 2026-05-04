@@ -5,18 +5,20 @@
   "obs_key": "eta_sensor_noisy",
   "num_sparse_test": 20000,
   "num_full_field": 40960000,
+  "num_full_field_total": 40960000,
+  "full_field_sample_fraction": 1.0,
   "bootstrap_samples": 1000,
   "bootstrap_seed": 123,
   "sparse_test": {
-    "rmse": 0.01722950380434439,
-    "mae": 0.006311190795898438,
-    "rmse_bootstrap_std": 0.00041647908146795335,
-    "mae_bootstrap_std": 0.00011525193851196249
+    "rmse": 0.05716282171362815,
+    "mae": 0.04541345672607422,
+    "rmse_bootstrap_std": 0.0002378109710786984,
+    "mae_bootstrap_std": 0.00020468665032656635
   },
   "full_field": {
-    "rmse": 0.23785601591166838,
-    "mae": 0.1719883975058794,
-    "rmse_bootstrap_std": 0.00019844241128333227,
-    "mae_bootstrap_std": 0.00016238581660366479
+    "rmse": 0.2373631315765248,
+    "mae": 0.17172797953685126,
+    "rmse_bootstrap_std": 0.0001900145285869808,
+    "mae_bootstrap_std": 0.00015700628294171176
   }
 }

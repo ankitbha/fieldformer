@@ -1,0 +1,24 @@
+{
+  "dataset": "pol",
+  "model": "ffag_nophys",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_polsparse_nophys_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "num_sparse_test": 32000,
+  "num_full_field": 16000000,
+  "num_full_field_total": 16000000,
+  "full_field_sample_fraction": 1.0,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.11540896776781387,
+    "mae": 0.0921640510559082,
+    "rmse_bootstrap_std": 0.0003199826710078172,
+    "mae_bootstrap_std": 0.00021757745074980428
+  },
+  "full_field": {
+    "rmse": 0.43593514244644666,
+    "mae": 0.08309852317714692,
+    "rmse_bootstrap_std": 0.04525152207303219,
+    "mae_bootstrap_std": 0.006115425344837785
+  }
+}

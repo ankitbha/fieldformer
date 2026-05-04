@@ -1,0 +1,24 @@
+{
+  "dataset": "heat",
+  "model": "ffag_nophys",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_heatsparse_nophys_best.pt",
+  "obs_key": "sensor_noisy",
+  "num_sparse_test": 20000,
+  "num_full_field": 40960000,
+  "num_full_field_total": 40960000,
+  "full_field_sample_fraction": 1.0,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.09887693238811511,
+    "mae": 0.0787590118408203,
+    "rmse_bootstrap_std": 0.0007416214174607898,
+    "mae_bootstrap_std": 0.0005815146285470099
+  },
+  "full_field": {
+    "rmse": 0.1818363744409429,
+    "mae": 0.13131801345217972,
+    "rmse_bootstrap_std": 0.0011789407437060556,
+    "mae_bootstrap_std": 0.0008449178641288268
+  }
+}

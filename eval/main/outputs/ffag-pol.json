@@ -10,15 +10,15 @@
   "bootstrap_samples": 1000,
   "bootstrap_seed": 123,
   "sparse_test": {
-    "rmse": 0.11036423439929643,
-    "mae": 0.08798800563812256,
-    "rmse_bootstrap_std": 0.00022185458432927207,
-    "mae_bootstrap_std": 0.00013607975097470348
+    "rmse": 0.12144865976790048,
+    "mae": 0.09683146572113037,
+    "rmse_bootstrap_std": 0.0003220814706504698,
+    "mae_bootstrap_std": 0.0002315165686113727
   },
   "full_field": {
-    "rmse": 0.4581139760991358,
-    "mae": 0.1391794042069912,
-    "rmse_bootstrap_std": 0.044080244619113695,
-    "mae_bootstrap_std": 0.006249836850374895
+    "rmse": 0.4582437953187038,
+    "mae": 0.13860576621031762,
+    "rmse_bootstrap_std": 0.04408568045975207,
+    "mae_bootstrap_std": 0.006249927152725525
   }
 }

@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-RUN_SH="${ROOT}/baselines/scripts/run.sh"
-LOG_DIR="${ROOT}/eval/main/logs"
-OUT_DIR="${ROOT}/eval/main/outputs"
-TARGET="${ROOT}/eval/main/evaluate_all_sparse.py"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+RUN_SH="${ROOT}/ablations/architecture/scripts/run.sh"
+LOG_DIR="${ROOT}/eval/ablations/architecture/logs"
+OUT_DIR="${ROOT}/eval/ablations/architecture/outputs"
+TARGET="${ROOT}/eval/ablations/architecture/evaluate_all_sparse.py"
 
 DRY_RUN=0
 BATCH_SIZE=4096
 MAX_SPARSE_TEST=0
 MAX_FULL_FIELD=0
-SENSEIVER_FULL_FIELD_FRACTION=0.10
 BOOTSTRAP_SAMPLES=1000
 BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
-  "ffag pol"
-  "ffag heat"
-  "ffag swe"
+  "ffag_nophys heat"
+  "ffag_nophys pol"
+  "ffag_nophys swe"
+  "ffag_mlp heat"
+  "ffag_mlp pol"
+  "ffag_mlp swe"
 )
 
 while [[ $# -gt 0 ]]; do
@@ -56,17 +58,20 @@ while [[ $# -gt 0 ]]; do
       cat <<EOF
 Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--max_sparse_test N] [--max_full_field N] [--bootstrap_samples N] [--bootstrap_seed N] [-- extra args]
 
-Submits sparse eval jobs with an 8-hour limit:
-  ffag-pol
-
-Senseiver full-field eval uses a fixed sample fraction of ${SENSEIVER_FULL_FIELD_FRACTION}.
+Submits sparse architecture-ablation eval jobs with an 8-hour limit:
+  ffag_nophys-heat
+  ffag_nophys-pol
+  ffag_nophys-swe
+  ffag_mlp-heat
+  ffag_mlp-pol
+  ffag_mlp-swe
 
 Outputs:
   ${OUT_DIR}/<model>-<dataset>.json
 
 Logs:
-  ${LOG_DIR}/sparse-eval-selected-<model>-<dataset>-%j.out
-  ${LOG_DIR}/sparse-eval-selected-<model>-<dataset>-%j.err
+  ${LOG_DIR}/sparse-arch-eval-selected-<model>-<dataset>-%j.out
+  ${LOG_DIR}/sparse-arch-eval-selected-<model>-<dataset>-%j.err
 EOF
       exit 0
       ;;
@@ -89,10 +94,10 @@ for exp in "${EXPERIMENTS[@]}"; do
   name="${model}-${dataset}"
   cmd=(
     sbatch
-    --job-name="sparse-eval-${name}"
+    --job-name="sparse-arch-eval-${name}"
     --time="8:00:00"
-    --output="${LOG_DIR}/sparse-eval-selected-${name}-%j.out"
-    --error="${LOG_DIR}/sparse-eval-selected-${name}-%j.err"
+    --output="${LOG_DIR}/sparse-arch-eval-selected-${name}-%j.out"
+    --error="${LOG_DIR}/sparse-arch-eval-selected-${name}-%j.err"
     "${RUN_SH}"
     "${TARGET}"
     --batch_size "${BATCH_SIZE}"
@@ -101,7 +106,6 @@ for exp in "${EXPERIMENTS[@]}"; do
     --models "${model}"
     --max_sparse_test "${MAX_SPARSE_TEST}"
     --max_full_field "${MAX_FULL_FIELD}"
-    --senseiver_full_field_fraction "${SENSEIVER_FULL_FIELD_FRACTION}"
     --bootstrap_samples "${BOOTSTRAP_SAMPLES}"
     --bootstrap_seed "${BOOTSTRAP_SEED}"
     "${EXTRA_ARGS[@]}"
