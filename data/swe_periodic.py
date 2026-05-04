@@ -20,11 +20,11 @@ T = 20.0             # total simulation time
 Nx, Ny = 64, 64
 Nt = 10000
 Lx, Ly = 1.0, 1.0   # domain size
-SENSORS = 20
+SENSORS = 128
 NOISE_MODE = "max"  # "std" or "max"
 NOISE_DIV = 10.0
 RNG_SEED = 42
-SAVE_PATH = "swe_periodic_dataset.npz"
+SAVE_PATH = "swe_periodic_dataset_128.npz"
 DTYPE = np.float32
 
 
