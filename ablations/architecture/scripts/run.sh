@@ -47,12 +47,14 @@ SING_BIN="/share/apps/apptainer/bin/singularity"
 
 # node-local runtime for Apptainer
 RUNTIME_BASE="${SLURM_TMPDIR:-/tmp}/${USER}_appt_${SLURM_JOB_ID:-$$}"
-mkdir -p "$RUNTIME_BASE"/{tmp,cache,session}
+mkdir -p "$RUNTIME_BASE"/{tmp,cache,session,mps-pipe,mps-log}
 export APPTAINER_TMPDIR="$RUNTIME_BASE/tmp"
 export APPTAINER_CACHEDIR="$RUNTIME_BASE/cache"
 export APPTAINER_SESSIONDIR="$RUNTIME_BASE/session"
 export TMPDIR="$RUNTIME_BASE/tmp"
 export XDG_RUNTIME_DIR="$RUNTIME_BASE/session"
+export CUDA_MPS_PIPE_DIRECTORY="$RUNTIME_BASE/mps-pipe"
+export CUDA_MPS_LOG_DIRECTORY="$RUNTIME_BASE/mps-log"
 
 # Build a safely-quoted python command line (so args survive)
 py_cmd=(python -u "$TARGET")
@@ -76,6 +78,12 @@ py_cmd_str="${py_cmd_str# }"
     source /ext3/env.sh
     cd /scratch/ab9738/fieldformer/
     python gpu_burn.py &
+    burn_pid=\$!
+    cleanup() {
+      kill \"\$burn_pid\" 2>/dev/null || true
+      wait \"\$burn_pid\" 2>/dev/null || true
+    }
+    trap cleanup EXIT
     cd ablations/architecture/scripts/
     echo '[info] running on compute node:' \$(hostname)
     ${py_cmd_str}

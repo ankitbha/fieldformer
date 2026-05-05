@@ -17,6 +17,7 @@ from tqdm.auto import tqdm
 
 from ffag_sparse_mlp_model import class_for_dataset
 from ffag_sparse_nophys_common import _core_symbols, _domain_extents, _load_observations, _sensors_are_aligned
+from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
 @torch.no_grad()
@@ -116,6 +117,7 @@ def _save_checkpoint(path: Path, payload: dict[str, Any]) -> None:
 
 
 def train_periodic_mlp(dataset_key: str, cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
     assert dataset_key in {"heat", "swe"}
     ctx = _load_sparse_context(dataset_key, cfg)
     device, domain = ctx["device"], ctx["domain"]
@@ -203,8 +205,17 @@ def train_periodic_mlp(dataset_key: str, cfg: Any) -> None:
         return math.sqrt(se_sum / max(1, n_sum))
 
     best_path = Path(cfg.save)
-    best_rmse = float("inf")
-    for epoch in range(1, cfg.epochs + 1):
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        best_path,
+        model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        device=device,
+        strict=True,
+    )
+    stopper.best = best_rmse
+    for epoch in range(start_epoch, cfg.epochs + 1):
         model.train()
         running = {"data": 0.0, "phys": 0.0, "bc": 0.0, "total": 0.0}
         n_batches = 0
@@ -273,6 +284,7 @@ def train_periodic_mlp(dataset_key: str, cfg: Any) -> None:
 
 
 def train_pollution_mlp(cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
     ctx = _load_sparse_context("pol", cfg)
     device, domain = ctx["device"], ctx["domain"]
     obs_coords, obs_vals, indexer = ctx["obs_coords"], ctx["obs_vals"], ctx["indexer"]
@@ -352,8 +364,19 @@ def train_pollution_mlp(cfg: Any) -> None:
         return math.sqrt(se_sum / max(1, n_sum))
 
     best_path = Path(cfg.save)
-    best_rmse = float("inf")
-    for epoch in range(1, cfg.epochs + 1):
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        best_path,
+        model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        scaler=scaler,
+        ema_model=ema_model,
+        device=device,
+        strict=True,
+    )
+    stopper.best = best_rmse
+    for epoch in range(start_epoch, cfg.epochs + 1):
         model.train()
         lam_sp = _cosine_ramp(epoch, cfg.sponge_warmup, cfg.sponge_ramp, cfg.lambda_sponge)
         lam_rad = _cosine_ramp(epoch, cfg.rad_warmup, cfg.rad_ramp, cfg.lambda_rad)

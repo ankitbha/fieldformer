@@ -16,6 +16,7 @@ Dataset contract (npz produced by data/pollution.py):
 from __future__ import annotations
 
 import math
+import sys
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -29,6 +30,11 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
 from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
 @dataclass
@@ -297,6 +303,7 @@ def ema_update(ema: nn.Module, online: nn.Module, decay: float) -> None:
 
 
 def main(cfg: Config = CFG) -> None:
+    cfg = apply_cli_overrides(cfg)
     set_seed(cfg.seed)
     torch.set_float32_matmul_precision("high")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -455,9 +462,20 @@ def main(cfg: Config = CFG) -> None:
 
     best_path = Path(cfg.save)
     best_path.parent.mkdir(parents=True, exist_ok=True)
-    best_rmse = float("inf")
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        best_path,
+        model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        scaler=scaler,
+        ema_model=ema_model,
+        device=device,
+        strict=True,
+    )
+    stopper.best = best_rmse
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
         model.train()
         lam_sp = cosine_ramp(epoch, cfg.sponge_warmup, cfg.sponge_ramp, cfg.lambda_sponge)
         lam_rad = cosine_ramp(epoch, cfg.rad_warmup, cfg.rad_ramp, cfg.lambda_rad)

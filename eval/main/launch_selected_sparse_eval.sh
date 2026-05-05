@@ -17,9 +17,12 @@ BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
-  "ffag pol"
-  "ffag heat"
-  "ffag swe"
+  # "fmlp govpol"
+  "siren govpol"
+  # "svgp govpol"
+  # "imputeformer govpol"
+  # "recfno govpol"
+  # "senseiver govpol"
 )
 
 while [[ $# -gt 0 ]]; do

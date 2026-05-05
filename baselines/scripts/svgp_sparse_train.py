@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 
 from baselines.models.data import ObservedIndexDataset, build_observed_tuples, mask_key, sensor_key
 from baselines.models.svgp import MultitaskPeriodicSVGP, MultitaskPollutionSVGP, PeriodicSVGP, PollutionSVGP, gpytorch, make_likelihood
+from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
 def _dataset_key(cfg: Any) -> str:
@@ -35,6 +36,7 @@ def _save_path(cfg: Any, dataset_key: str) -> str:
 
 
 def train_svgp_sparse(cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
     if gpytorch is None:
         raise ImportError("gpytorch is required to train SVGP baselines")
 
@@ -103,7 +105,15 @@ def train_svgp_sparse(cfg: Any) -> None:
     mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=len(ds))
     save_path = Path(_save_path(cfg, dataset_key))
     save_path.parent.mkdir(parents=True, exist_ok=True)
-    best_rmse = float("inf")
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        save_path,
+        model,
+        optimizer=optimizer,
+        likelihood=likelihood,
+        device=device,
+        strict=True,
+    )
     bad_epochs = 0
 
     @torch.no_grad()
@@ -125,7 +135,7 @@ def train_svgp_sparse(cfg: Any) -> None:
         scale = float(np.sqrt(np.mean(np.square(obs_std)))) if np.ndim(obs_std) else float(obs_std)
         return math.sqrt(se_sum / max(1, n_sum)) * scale
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
         running = 0.0
         n_batches = 0
         pbar = tqdm(dl, desc=f"Epoch {epoch:03d}/{cfg.epochs}", leave=False)

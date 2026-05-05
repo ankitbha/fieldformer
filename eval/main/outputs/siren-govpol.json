@@ -1,0 +1,28 @@
+{
+  "dataset": "govpol",
+  "model": "siren",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 64690,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 76.97116670205664,
+    "mae": 48.55175897741763,
+    "rmse_bootstrap_std": 0.27030828793533984,
+    "mae_bootstrap_std": 0.10433713373330145,
+    "channels": {
+      "pm10": {
+        "rmse": 92.8126328591857,
+        "mae": 62.40797921916531,
+        "count": 57938
+      },
+      "pm25": {
+        "rmse": 58.94943099862807,
+        "mae": 35.932463020890644,
+        "count": 63617
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "dataset": "govpol",
+  "model": "recfno",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/recfno_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 64690,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 44.262532302923006,
+    "mae": 24.81840897638929,
+    "rmse_bootstrap_std": 0.5677599394729612,
+    "mae_bootstrap_std": 0.1112255346520167,
+    "channels": {
+      "pm10": {
+        "rmse": 53.90388972887059,
+        "mae": 32.469109220200906,
+        "count": 57938
+      },
+      "pm25": {
+        "rmse": 33.12406342313786,
+        "mae": 17.850674741028342,
+        "count": 63617
+      }
+    }
+  }
+}

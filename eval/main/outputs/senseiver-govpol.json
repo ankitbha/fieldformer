@@ -1,0 +1,28 @@
+{
+  "dataset": "govpol",
+  "model": "senseiver",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 64690,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 58.88813558650217,
+    "mae": 33.34735343568755,
+    "rmse_bootstrap_std": 0.45514899126662955,
+    "mae_bootstrap_std": 0.10327634732001702,
+    "channels": {
+      "pm10": {
+        "rmse": 73.35236019311711,
+        "mae": 44.9232843729504,
+        "count": 57938
+      },
+      "pm25": {
+        "rmse": 41.5428181969849,
+        "mae": 22.804790779194242,
+        "count": 63617
+      }
+    }
+  }
+}

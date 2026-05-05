@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from baselines.models.data import ObservedIndexDataset, build_observed_tuples, mask_key, sensor_key
+from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
 def set_seed(seed: int) -> None:
@@ -105,6 +106,7 @@ def _swe_params(pack: Any) -> tuple[float, float]:
 
 
 def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[Any], torch.nn.Module]) -> None:
+    cfg = apply_cli_overrides(cfg)
     set_seed(int(cfg.seed))
     torch.set_float32_matmul_precision("high")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -279,9 +281,18 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
 
     save_path = Path(_make_save_path(cfg, dataset_key, model_key))
     save_path.parent.mkdir(parents=True, exist_ok=True)
-    best_rmse = float("inf")
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        save_path,
+        model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        device=device,
+        strict=True,
+    )
+    stopper.best = best_rmse
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
         model.train()
         running = {"data": 0.0, "phys": 0.0, "bc": 0.0, "total": 0.0}
         n_batches = 0

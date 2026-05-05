@@ -9,6 +9,7 @@ Predictions are 3-channel [eta, u, v], with u/v learned through physics + BC los
 from __future__ import annotations
 
 import math
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -21,6 +22,11 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
 from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
 @dataclass
@@ -202,6 +208,7 @@ def build_observed_tuples(sensors_xy: np.ndarray, t_grid: np.ndarray, eta_sensor
 
 
 def main(cfg: Config = CFG) -> None:
+    cfg = apply_cli_overrides(cfg)
     set_seed(cfg.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -326,9 +333,18 @@ def main(cfg: Config = CFG) -> None:
 
     best_path = Path(cfg.save)
     best_path.parent.mkdir(parents=True, exist_ok=True)
-    best_rmse = float("inf")
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        best_path,
+        model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        device=device,
+        strict=True,
+    )
+    stopper.best = best_rmse
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
         model.train()
         running, n_batches = {"data": 0.0, "phys": 0.0, "bc": 0.0, "total": 0.0}, 0
         pbar = tqdm(dl, desc=f"Epoch {epoch}/{cfg.epochs}", leave=False)

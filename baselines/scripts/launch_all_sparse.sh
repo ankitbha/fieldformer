@@ -16,13 +16,13 @@ LOG_DIR="${SCRIPT_DIR}/logs"
 # )
 
 MODELS=(
-  svgp
+  imputeformer
 )
 
 DATASETS=(
-  heat
-  pol
-  swe
+  # heat
+  # pol
+  # swe
   govpol
 )
 

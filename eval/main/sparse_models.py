@@ -130,7 +130,7 @@ class EvalAdapter(nn.Module):
             return self._predict_points(obs_coords[q_lin])
         assert nb_idx is not None
         obs_vals_m = self._obs_values(obs_vals)
-        if self.dataset_key == "pol":
+        if self.dataset_key in {"pol", "govpol"}:
             return self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx)
         return self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly)
 
@@ -145,7 +145,7 @@ class EvalAdapter(nn.Module):
             return self._predict_points(xyt_q)
         assert nb_idx is not None
         obs_vals_m = self._obs_values(obs_vals)
-        if self.dataset_key == "pol":
+        if self.dataset_key in {"pol", "govpol"}:
             return self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx)
         return self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly)
 

@@ -62,6 +62,7 @@ def build_ablation_sparse_model(
     train_idx: np.ndarray | None = None,
     obs_coords_np: np.ndarray | None = None,
     obs_vals_np: np.ndarray | None = None,
+    obs_mask_np: np.ndarray | None = None,
 ) -> EvalAdapter:
     model_key = canonical_model_key(model_key)
     architecture = str(ckpt.get("meta", {}).get("architecture", "")).lower()
@@ -90,6 +91,7 @@ def build_ablation_sparse_model(
             train_idx=train_idx,
             obs_coords_np=obs_coords_np,
             obs_vals_np=obs_vals_np,
+            obs_mask_np=obs_mask_np,
         )
     if model_key != "ffag_mlp":
         raise KeyError(model_key)

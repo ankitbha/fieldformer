@@ -1,0 +1,28 @@
+{
+  "dataset": "govpol",
+  "model": "fmlp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 64690,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 69.30150893239524,
+    "mae": 42.73246035745136,
+    "rmse_bootstrap_std": 0.2759762922512955,
+    "mae_bootstrap_std": 0.09832984569312922,
+    "channels": {
+      "pm10": {
+        "rmse": 83.48153547026052,
+        "mae": 54.807449342400496,
+        "count": 57938
+      },
+      "pm25": {
+        "rmse": 53.194260150128066,
+        "mae": 31.7353832308974,
+        "count": 63617
+      }
+    }
+  }
+}

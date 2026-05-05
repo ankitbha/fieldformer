@@ -16,12 +16,12 @@ BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
-  "ffag_nophys heat"
-  "ffag_nophys pol"
-  "ffag_nophys swe"
-  "ffag_mlp heat"
-  "ffag_mlp pol"
-  "ffag_mlp swe"
+#   "ffag_nophys heat"
+  "ffag_nophys govpol"
+#   "ffag_nophys swe"
+#   "ffag_mlp heat"
+#   "ffag_mlp pol"
+#   "ffag_mlp swe"
 )
 
 while [[ $# -gt 0 ]]; do

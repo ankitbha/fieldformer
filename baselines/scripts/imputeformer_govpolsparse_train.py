@@ -23,7 +23,7 @@ class Config:
     seed: int = 123
     batch_size: int = 8
     val_batch_size: int = 8
-    epochs: int = 120
+    epochs: int = 300
     lr: float = 3e-4
     weight_decay: float = 1e-4
     windows: int = 128

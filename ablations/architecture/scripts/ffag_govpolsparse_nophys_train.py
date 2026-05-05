@@ -3,9 +3,21 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
+_DEBUG_START = time.monotonic()
+
+
+def _debug(msg: str) -> None:
+    elapsed = time.monotonic() - _DEBUG_START
+    print(f"[debug:govpol-entry +{elapsed:7.2f}s] {msg}", flush=True)
+
+
+_debug("entrypoint module import started")
+_debug("importing shared no-physics trainer")
 from ffag_sparse_nophys_common import train_sparse_nophys
+_debug("imported shared no-physics trainer")
 
 
 @dataclass
@@ -36,4 +48,5 @@ CFG = Config()
 
 
 if __name__ == "__main__":
+    _debug(f"starting train_sparse_nophys with data={CFG.data}")
     train_sparse_nophys("govpol", CFG)

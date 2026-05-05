@@ -1,0 +1,28 @@
+{
+  "dataset": "govpol",
+  "model": "ffag_nophys",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_govpolsparse_nophys_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 64690,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 31.445952112169838,
+    "mae": 15.544580256879602,
+    "rmse_bootstrap_std": 0.5444383448090478,
+    "mae_bootstrap_std": 0.06716361114813547,
+    "channels": {
+      "pm10": {
+        "rmse": 39.2472510560224,
+        "mae": 20.28125107873934,
+        "count": 57938
+      },
+      "pm25": {
+        "rmse": 22.058571306572567,
+        "mae": 11.230744140717103,
+        "count": 63617
+      }
+    }
+  }
+}

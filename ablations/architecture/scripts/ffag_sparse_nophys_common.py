@@ -5,27 +5,54 @@ from __future__ import annotations
 
 import math
 import sys
+import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+_DEBUG_START = time.monotonic()
+
+
+def _debug(msg: str) -> None:
+    elapsed = time.monotonic() - _DEBUG_START
+    print(f"[debug:nophys-common +{elapsed:7.2f}s] {msg}", flush=True)
+
+
+_debug("module import started")
+_debug("importing numpy")
 import numpy as np
+_debug("imported numpy")
+_debug("importing torch")
 import torch
+_debug("imported torch")
+_debug("importing torch.nn.functional")
 import torch.nn.functional as F
+_debug("imported torch.nn.functional")
+_debug("importing DataLoader")
 from torch.utils.data import DataLoader
+_debug("imported DataLoader")
+_debug("importing tqdm")
 from tqdm.auto import tqdm
+_debug("imported tqdm")
 
 
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+_debug("importing FieldFormer dataset dispatch")
 from fieldformer_core.models.ffag import class_for_dataset, module_for_dataset
+_debug("imported FieldFormer dataset dispatch")
+_debug("importing baseline mask_key helper")
 from baselines.models.data import mask_key
+_debug("imported baseline mask_key helper")
+from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
 def _core_symbols(dataset_key: str) -> dict[str, Any]:
+    _debug(f"loading core symbols for dataset={dataset_key}")
     mod = module_for_dataset(dataset_key)
+    _debug(f"loaded core module {mod.__name__}")
     return {
         "set_seed": mod.set_seed,
         "ObservedIndexDataset": mod.ObservedIndexDataset,
@@ -97,67 +124,100 @@ def _sensors_are_aligned(pack: np.lib.npyio.NpzFile, sensors_xy: np.ndarray, dat
 
 
 def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
+    _debug(f"train_sparse_nophys start dataset={dataset_key}")
     core = _core_symbols(dataset_key)
+    _debug(f"setting seed={cfg.seed}")
     core["set_seed"](cfg.seed)
+    _debug("setting matmul precision")
     torch.set_float32_matmul_precision("high")
+    _debug("checking CUDA availability")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    _debug(f"selected device={device}")
 
+    _debug(f"loading data npz {cfg.data}")
     pack = np.load(cfg.data)
+    _debug(f"loaded npz keys={list(pack.files)}")
     sensors_xy = pack["sensors_xy"].astype(np.float32)
     t_np = pack["t"].astype(np.float32)
+    _debug(f"loaded sensors_xy shape={sensors_xy.shape}, t shape={t_np.shape}")
     sensor_values = _load_observations(pack, dataset_key, cfg.obs_key)
+    _debug(f"loaded observations key={cfg.obs_key}, shape={sensor_values.shape}")
     obs_mask_key = mask_key(pack, getattr(cfg, "mask_key", ""))
+    _debug(f"resolved mask key={obs_mask_key or '<none>'}")
     sensor_mask = pack[obs_mask_key].astype(np.float32) if obs_mask_key else None
+    if sensor_mask is not None:
+        _debug(f"loaded sensor mask shape={sensor_mask.shape}")
 
     assert sensors_xy.ndim == 2 and sensors_xy.shape[1] == 2, "sensors_xy must be (S,2)"
     assert sensor_values.ndim in {2, 3}, "sensor values must be (S,Nt) or (S,Nt,C)"
     n_sensors, n_times = sensor_values.shape[:2]
     assert t_np.shape[0] == n_times, "time grid length must match sensor series"
+    _debug(f"validated shapes: sensors={n_sensors}, times={n_times}")
     _sensors_are_aligned(pack, sensors_xy, dataset_key)
 
     if sensor_mask is not None:
+        _debug("building observed tuples with mask")
         coords_np, vals_np, mask_np = core["build_observed_tuples"](sensors_xy, t_np, sensor_values, sensor_mask)
         valid_idx = np.flatnonzero(mask_np.reshape(mask_np.shape[0], -1).any(axis=1))
+        _debug(f"built observed tuples coords={coords_np.shape}, vals={vals_np.shape}, valid={valid_idx.shape[0]}")
     else:
+        _debug("building observed tuples without mask")
         coords_np, vals_np = core["build_observed_tuples"](sensors_xy, t_np, sensor_values)
         mask_np = np.ones_like(vals_np, dtype=np.float32)
         valid_idx = None
+        _debug(f"built observed tuples coords={coords_np.shape}, vals={vals_np.shape}")
     n_obs = coords_np.shape[0]
     domain = _domain_extents(pack, sensors_xy, t_np)
+    _debug(f"domain extents={domain}")
 
+    _debug("moving observed tensors to device")
     obs_coords = torch.from_numpy(coords_np).float().to(device)
     obs_vals = torch.from_numpy(vals_np).float().to(device)
     obs_mask = torch.from_numpy(mask_np).float().to(device)
     sensors_xy_t = torch.from_numpy(sensors_xy).float().to(device)
     t_grid_t = torch.from_numpy(t_np).float().to(device)
+    _debug("moved observed tensors to device")
 
     dataset_cls = core["ObservedIndexDataset"]
+    _debug("constructing train split and DataLoader")
     ds = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed, valid_idx=valid_idx)
     ds.set_split("train")
     dl = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
+    _debug(f"train split size={len(ds)}, train batches={len(dl)}")
 
+    _debug("constructing val split and DataLoader")
     ds_val = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed, valid_idx=valid_idx)
     ds_val.set_split("val")
     dl_val = DataLoader(ds_val, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
+    _debug(f"val split size={len(ds_val)}, val batches={len(dl_val)}")
 
+    _debug("constructing sparse neighbor indexer")
     indexer = core["SparseNeighborIndexer"](sensors_xy_t, t_grid_t, cfg.time_radius, cfg.k_neighbors, allowed_indices=ds.train_idx.to(device))
+    _debug("constructed sparse neighbor indexer")
+    _debug("loading model class")
     model_cls = class_for_dataset(dataset_key)
     out_dim = int(sensor_values.shape[2]) if sensor_values.ndim == 3 else 1
+    _debug(f"constructing model class={model_cls.__name__}, out_dim={out_dim}")
     try:
         model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff, out_dim=out_dim).to(device)
     except TypeError:
         model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
+    _debug("constructed model on device")
     if dataset_key in {"pol", "govpol"}:
         with torch.no_grad():
             model.log_gammas[:] = torch.log(torch.tensor([1.0, 1.0, 0.5], device=device))
+        _debug("initialized pollution log_gammas")
 
+    _debug("constructing optimizer/scheduler/early stopper")
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
     stopper = core["EarlyStopping"](patience=cfg.patience)
+    _debug("constructed optimizer/scheduler/early stopper")
 
     def predict_observed(q_lin: torch.Tensor) -> torch.Tensor:
         nb_idx = indexer.gather_observed_neighbors(q_lin, exclude_self=True)
-        if dataset_key == "pol":
+        if dataset_key in {"pol", "govpol"}:
             return model.forward_observed(q_lin, obs_coords, obs_vals, nb_idx)
         return model.forward_observed(q_lin, obs_coords, obs_vals, nb_idx, Lx=domain["Lx"], Ly=domain["Ly"])
 
@@ -190,9 +250,20 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
 
     best_path = Path(cfg.save)
     best_path.parent.mkdir(parents=True, exist_ok=True)
-    best_rmse = float("inf")
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        best_path,
+        model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        device=device,
+        strict=True,
+    )
+    stopper.best = best_rmse
+    _debug(f"checkpoint path ready: {best_path}")
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
+        _debug(f"entering epoch {epoch}/{cfg.epochs}")
         model.train()
         running_data, n_batches = 0.0, 0
         pbar = tqdm(dl, desc=f"Epoch {epoch:03d}/{cfg.epochs}", leave=False)

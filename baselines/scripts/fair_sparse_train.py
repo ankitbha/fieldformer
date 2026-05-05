@@ -15,6 +15,7 @@ from baselines.models.data import ObservedIndexDataset, build_observed_tuples, m
 from baselines.models.imputeformer import FixedNodeImputeFormer
 from baselines.models.recfno import VoronoiFNO2d
 from baselines.models.senseiver import Senseiver
+from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
 def set_seed(seed: int) -> None:
@@ -104,6 +105,7 @@ class IndexDataset(Dataset):
 
 
 def train_recfno(cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
     set_seed(cfg.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_sparse_arrays(cfg)
@@ -129,6 +131,7 @@ def train_recfno(cfg: Any) -> None:
     bad = 0
     path = save_path(cfg, "recfno", key)
     path.parent.mkdir(parents=True, exist_ok=True)
+    start_epoch, best = maybe_load_checkpoint(cfg, path, model, optimizer=opt, device=device, strict=True)
 
     def make_input(times: torch.Tensor, context_mask_np: np.ndarray, drop_lin: torch.Tensor | None = None) -> torch.Tensor:
         bsz = int(times.numel())
@@ -165,7 +168,7 @@ def train_recfno(cfg: Any) -> None:
         model.train()
         return math.sqrt(se / max(1, n))
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
         total, batches = 0.0, 0
         for q_lin in tqdm(train_dl, desc=f"Epoch {epoch:03d}/{cfg.epochs}", leave=False):
             q_lin = q_lin.to(device)
@@ -195,6 +198,7 @@ def train_recfno(cfg: Any) -> None:
 
 
 def train_senseiver(cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
     set_seed(cfg.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_sparse_arrays(cfg)
@@ -239,7 +243,8 @@ def train_senseiver(cfg: Any) -> None:
     val_dl = DataLoader(IndexDataset(data["split"].val_idx), batch_size=cfg.val_batch_size, shuffle=False)
     path = save_path(cfg, "senseiver", key)
     path.parent.mkdir(parents=True, exist_ok=True)
-    best, bad = float("inf"), 0
+    start_epoch, best = maybe_load_checkpoint(cfg, path, model, optimizer=opt, device=device, strict=True)
+    bad = 0
 
     def sensor_tokens(times: torch.Tensor, drop_lin: torch.Tensor | None = None) -> torch.Tensor:
         toks = []
@@ -283,7 +288,7 @@ def train_senseiver(cfg: Any) -> None:
         model.train()
         return math.sqrt(se / max(1, n))
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
         total, batches = 0.0, 0
         for q_lin in tqdm(train_dl, desc=f"Epoch {epoch:03d}/{cfg.epochs}", leave=False):
             q_lin = q_lin.to(device)
@@ -316,6 +321,7 @@ def train_senseiver(cfg: Any) -> None:
 
 
 def train_imputeformer(cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
     set_seed(cfg.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_sparse_arrays(cfg)
@@ -346,7 +352,8 @@ def train_imputeformer(cfg: Any) -> None:
     starts = np.arange(0, max(1, n_times - windows + 1), max(1, cfg.window_stride), dtype=np.int64)
     path = save_path(cfg, "imputeformer", key)
     path.parent.mkdir(parents=True, exist_ok=True)
-    best, bad = float("inf"), 0
+    start_epoch, best = maybe_load_checkpoint(cfg, path, model, optimizer=opt, device=device, strict=True)
+    bad = 0
 
     def batch_window(starts_np: np.ndarray, target_mask_np: np.ndarray, context_mask_np: np.ndarray) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         vals, ctx, tgt = [], [], []
@@ -361,7 +368,7 @@ def train_imputeformer(cfg: Any) -> None:
             torch.from_numpy(np.stack(tgt)).float().to(device),
         )
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(start_epoch, cfg.epochs + 1):
         rng = np.random.default_rng(cfg.seed + epoch)
         rng.shuffle(starts)
         total, batches = 0.0, 0
