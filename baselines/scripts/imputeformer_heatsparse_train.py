@@ -14,7 +14,7 @@ from baselines.scripts.fair_sparse_train import train_imputeformer
 @dataclass
 class Config:
     dataset: str = "heat"
-    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"
+    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp_64.npz"
     obs_key: str = "sensor_noisy"
     save: str = ""
     train_frac: float = 0.8

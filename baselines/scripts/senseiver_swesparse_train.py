@@ -14,7 +14,7 @@ from baselines.scripts.fair_sparse_train import train_senseiver
 @dataclass
 class Config:
     dataset: str = "swe"
-    data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset.npz"
+    data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset_64.npz"
     obs_key: str = "eta_sensor_noisy"
     save: str = ""
     train_frac: float = 0.8

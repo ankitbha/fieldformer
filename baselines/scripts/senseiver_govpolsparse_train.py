@@ -13,9 +13,10 @@ from baselines.scripts.fair_sparse_train import train_senseiver
 
 @dataclass
 class Config:
-    dataset: str = "heat"
-    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp_64.npz"
-    obs_key: str = "sensor_noisy"
+    dataset: str = "govpol"
+    data: str = "/scratch/ab9738/fieldformer/data/gov_sensor_dataset.npz"
+    obs_key: str = "U_sensor"
+    mask_key: str = "U_sensor_mask"
     save: str = ""
     train_frac: float = 0.8
     val_frac: float = 0.1

@@ -77,13 +77,21 @@ def set_seed(seed: int) -> None:
 
 
 class ObservedIndexDataset(Dataset):
-    def __init__(self, n_obs: int, train_frac: float, val_frac: float, seed: int):
+    def __init__(
+        self,
+        n_obs: int,
+        train_frac: float,
+        val_frac: float,
+        seed: int,
+        valid_idx: np.ndarray | torch.Tensor | None = None,
+    ):
         rng = np.random.default_rng(seed)
-        all_idx = np.arange(n_obs)
+        all_idx = np.asarray(valid_idx if valid_idx is not None else np.arange(n_obs), dtype=np.int64)
         rng.shuffle(all_idx)
 
-        n_train = int(train_frac * n_obs)
-        n_val = int(val_frac * n_obs)
+        n_split = int(all_idx.shape[0])
+        n_train = int(train_frac * n_split)
+        n_val = int(val_frac * n_split)
         self.train_idx = torch.from_numpy(all_idx[:n_train]).long()
         self.val_idx = torch.from_numpy(all_idx[n_train:n_train + n_val]).long()
         self.test_idx = torch.from_numpy(all_idx[n_train + n_val:]).long()
@@ -172,26 +180,29 @@ SparseNeighborIndexer = SplitAwareSparseNeighborIndexer
 
 
 class FieldFormerSparsePollution(nn.Module):
-    def __init__(self, d_model: int, nhead: int, layers: int, d_ff: int):
+    def __init__(self, d_model: int, nhead: int, layers: int, d_ff: int, out_dim: int = 1):
         super().__init__()
+        self.out_dim = int(out_dim)
         self.log_gammas = nn.Parameter(torch.zeros(3))
-        self.input_proj = nn.Linear(4, d_model)
+        self.input_proj = nn.Linear(3 + self.out_dim, d_model)
         enc = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=d_ff, batch_first=True)
         self.encoder = nn.TransformerEncoder(enc, num_layers=layers)
         self.head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, d_model),
             nn.GELU(),
-            nn.Linear(d_model, 1),
+            nn.Linear(d_model, self.out_dim),
         )
 
     def _forward_tokens(self, xyt_q: torch.Tensor, nb_xyt: torch.Tensor, nb_vals: torch.Tensor) -> torch.Tensor:
         rel = nb_xyt - xyt_q[:, None, :]
         rel = rel * torch.exp(self.log_gammas)[None, None, :]
+        if nb_vals.ndim == 2:
+            nb_vals = nb_vals[..., None]
 
         mu = nb_vals.mean(dim=1, keepdim=True)
         sigma = nb_vals.std(dim=1, keepdim=True).clamp_min(1e-3)
-        nb_vals_norm = ((nb_vals - mu) / sigma)[..., None]
+        nb_vals_norm = (nb_vals - mu) / sigma
         tokens = torch.cat([rel, nb_vals_norm], dim=-1)
 
         kernel_ctx = sdp_kernel(enable_flash=False, enable_mem_efficient=False, enable_math=True)
@@ -199,8 +210,9 @@ class FieldFormerSparsePollution(nn.Module):
         with kernel_ctx, amp_ctx:
             h = self.input_proj(tokens)
             h = self.encoder(h)
-            u_std_res = self.head(h.mean(dim=1)).squeeze(-1)
-        return u_std_res * sigma.squeeze(1) + mu.squeeze(1)
+            u_std_res = self.head(h.mean(dim=1))
+        out = u_std_res * sigma.squeeze(1) + mu.squeeze(1)
+        return out.squeeze(-1) if out.shape[-1] == 1 else out
 
     def forward_observed(
         self,
@@ -238,8 +250,18 @@ class EarlyStopping:
                 self.stopped = True
 
 
-def build_observed_tuples(sensors_xy: np.ndarray, t_grid: np.ndarray, sensor_values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    s_count, nt_count = sensor_values.shape
+def build_observed_tuples(
+    sensors_xy: np.ndarray,
+    t_grid: np.ndarray,
+    sensor_values: np.ndarray,
+    sensor_mask: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if sensor_values.ndim == 2:
+        s_count, nt_count = sensor_values.shape
+    elif sensor_values.ndim == 3:
+        s_count, nt_count, _ = sensor_values.shape
+    else:
+        raise ValueError("sensor_values must be (S,Nt) or (S,Nt,C)")
     coords = np.stack(
         [
             np.repeat(sensors_xy[:, 0], nt_count),
@@ -248,8 +270,11 @@ def build_observed_tuples(sensors_xy: np.ndarray, t_grid: np.ndarray, sensor_val
         ],
         axis=1,
     ).astype(np.float32)
-    vals = sensor_values.reshape(-1).astype(np.float32)
-    return coords, vals
+    vals = sensor_values.reshape(s_count * nt_count, *sensor_values.shape[2:]).astype(np.float32)
+    if sensor_mask is None:
+        return coords, vals
+    mask = sensor_mask.reshape(s_count * nt_count, *sensor_mask.shape[2:]).astype(np.float32)
+    return coords, vals, mask
 
 
 def cosine_ramp(epoch: int, warmup: int, ramp_epochs: int, max_value: float) -> float:

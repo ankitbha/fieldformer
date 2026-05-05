@@ -30,11 +30,21 @@ def _load_legacy(stem: str) -> Any:
 
 
 def module_for_dataset(dataset_key: str) -> Any:
-    stem = {"heat": "ffag_heatsparse_train", "swe": "ffag_swesparse_train", "pol": "ffag_polsparse_train"}[dataset_key]
+    stem = {
+        "heat": "ffag_heatsparse_train",
+        "swe": "ffag_swesparse_train",
+        "pol": "ffag_polsparse_train",
+        "govpol": "ffag_polsparse_train",
+    }[dataset_key]
     return _load_legacy(stem)
 
 
 def class_for_dataset(dataset_key: str) -> Any:
     mod = module_for_dataset(dataset_key)
-    name = {"heat": "FieldFormerSparse", "swe": "FieldFormerSparseSWE", "pol": "FieldFormerSparsePollution"}[dataset_key]
+    name = {
+        "heat": "FieldFormerSparse",
+        "swe": "FieldFormerSparseSWE",
+        "pol": "FieldFormerSparsePollution",
+        "govpol": "FieldFormerSparsePollution",
+    }[dataset_key]
     return getattr(mod, name)

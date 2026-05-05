@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from fieldformer_core.models.ffag import class_for_dataset, module_for_dataset
+from baselines.models.data import mask_key
 
 
 def _core_symbols(dataset_key: str) -> dict[str, Any]:
@@ -39,6 +40,7 @@ def _load_observations(pack: np.lib.npyio.NpzFile, dataset_key: str, obs_key: st
         "heat": ("sensor_noisy", "sensor_clean"),
         "swe": ("eta_sensor_noisy", "eta_sensor_clean"),
         "pol": ("U_sensor_noisy", "U_sensor_clean", "sensor_noisy", "sensor_clean"),
+        "govpol": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
     }[dataset_key]
     for key in (obs_key, *fallbacks):
         if key in pack:
@@ -104,35 +106,48 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     sensors_xy = pack["sensors_xy"].astype(np.float32)
     t_np = pack["t"].astype(np.float32)
     sensor_values = _load_observations(pack, dataset_key, cfg.obs_key)
+    obs_mask_key = mask_key(pack, getattr(cfg, "mask_key", ""))
+    sensor_mask = pack[obs_mask_key].astype(np.float32) if obs_mask_key else None
 
     assert sensors_xy.ndim == 2 and sensors_xy.shape[1] == 2, "sensors_xy must be (S,2)"
-    assert sensor_values.ndim == 2, "sensor values must be (S,Nt)"
-    n_sensors, n_times = sensor_values.shape
+    assert sensor_values.ndim in {2, 3}, "sensor values must be (S,Nt) or (S,Nt,C)"
+    n_sensors, n_times = sensor_values.shape[:2]
     assert t_np.shape[0] == n_times, "time grid length must match sensor series"
     _sensors_are_aligned(pack, sensors_xy, dataset_key)
 
-    coords_np, vals_np = core["build_observed_tuples"](sensors_xy, t_np, sensor_values)
+    if sensor_mask is not None:
+        coords_np, vals_np, mask_np = core["build_observed_tuples"](sensors_xy, t_np, sensor_values, sensor_mask)
+        valid_idx = np.flatnonzero(mask_np.reshape(mask_np.shape[0], -1).any(axis=1))
+    else:
+        coords_np, vals_np = core["build_observed_tuples"](sensors_xy, t_np, sensor_values)
+        mask_np = np.ones_like(vals_np, dtype=np.float32)
+        valid_idx = None
     n_obs = coords_np.shape[0]
     domain = _domain_extents(pack, sensors_xy, t_np)
 
     obs_coords = torch.from_numpy(coords_np).float().to(device)
     obs_vals = torch.from_numpy(vals_np).float().to(device)
+    obs_mask = torch.from_numpy(mask_np).float().to(device)
     sensors_xy_t = torch.from_numpy(sensors_xy).float().to(device)
     t_grid_t = torch.from_numpy(t_np).float().to(device)
 
     dataset_cls = core["ObservedIndexDataset"]
-    ds = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed)
+    ds = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed, valid_idx=valid_idx)
     ds.set_split("train")
     dl = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
 
-    ds_val = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed)
+    ds_val = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed, valid_idx=valid_idx)
     ds_val.set_split("val")
     dl_val = DataLoader(ds_val, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
 
     indexer = core["SparseNeighborIndexer"](sensors_xy_t, t_grid_t, cfg.time_radius, cfg.k_neighbors, allowed_indices=ds.train_idx.to(device))
     model_cls = class_for_dataset(dataset_key)
-    model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
-    if dataset_key == "pol":
+    out_dim = int(sensor_values.shape[2]) if sensor_values.ndim == 3 else 1
+    try:
+        model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff, out_dim=out_dim).to(device)
+    except TypeError:
+        model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
+    if dataset_key in {"pol", "govpol"}:
         with torch.no_grad():
             model.log_gammas[:] = torch.log(torch.tensor([1.0, 1.0, 0.5], device=device))
 
@@ -149,16 +164,28 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     def observed_channel(pred: torch.Tensor) -> torch.Tensor:
         return pred[:, 0] if dataset_key == "swe" else pred
 
+    def masked_mse(pred: torch.Tensor, tgt: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        pred = observed_channel(pred)
+        pred = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
+        tgt = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred.ndim == 2 else tgt
+        mask = mask.unsqueeze(-1) if mask.ndim == 1 and pred.ndim == 2 else mask
+        return (((pred - tgt) ** 2) * mask).sum() / mask.sum().clamp_min(1.0)
+
     @torch.no_grad()
     def val_rmse() -> float:
         model.eval()
         se_sum, n_sum = 0.0, 0
         for q_lin in dl_val:
             q_lin = q_lin.to(device)
-            pred = observed_channel(predict_observed(q_lin))
+            pred = predict_observed(q_lin)
             tgt = obs_vals[q_lin]
-            se_sum += F.mse_loss(pred, tgt, reduction="sum").item()
-            n_sum += q_lin.numel()
+            mask = obs_mask[q_lin]
+            pred = observed_channel(pred)
+            pred = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
+            tgt = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred.ndim == 2 else tgt
+            mask = mask.unsqueeze(-1) if mask.ndim == 1 and pred.ndim == 2 else mask
+            se_sum += ((((pred - tgt) ** 2) * mask).sum()).item()
+            n_sum += int(mask.sum().item())
         return math.sqrt(se_sum / max(1, n_sum))
 
     best_path = Path(cfg.save)
@@ -171,8 +198,7 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
         pbar = tqdm(dl, desc=f"Epoch {epoch:03d}/{cfg.epochs}", leave=False)
         for q_lin in pbar:
             q_lin = q_lin.to(device)
-            pred = observed_channel(predict_observed(q_lin))
-            loss = F.mse_loss(pred, obs_vals[q_lin])
+            loss = masked_mse(predict_observed(q_lin), obs_vals[q_lin], obs_mask[q_lin])
 
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -205,7 +231,9 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
                         "obs_key": cfg.obs_key,
                         "num_sensors": int(n_sensors),
                         "num_times": int(n_times),
+                        "output_dim": int(out_dim),
                         "num_observations": int(n_obs),
+                        "num_valid_observations": int(valid_idx.shape[0]) if valid_idx is not None else int(n_obs),
                         "x_range": [domain["x_min"], domain["x_max"]],
                         "y_range": [domain["y_min"], domain["y_max"]],
                         "t_range": [domain["t_min"], domain["t_max"]],
@@ -213,6 +241,10 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
                         "dy": domain["dy"],
                         "dt": domain["dt"],
                         "physics_loss": False,
+                        "mask_key": obs_mask_key,
+                        "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,
+                        "merged_sensor_names": pack["merged_sensor_names"].tolist() if "merged_sensor_names" in pack else None,
+                        "merged_sensor_sources": pack["merged_sensor_sources"].tolist() if "merged_sensor_sources" in pack else None,
                     },
                 },
                 best_path,

@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from baselines.models.data import ObservedIndexDataset, build_observed_tuples, sensor_key
+from baselines.models.data import ObservedIndexDataset, build_observed_tuples, mask_key, sensor_key
 
 
 def set_seed(seed: int) -> None:
@@ -53,6 +53,8 @@ def _dataset_key(cfg: Any) -> str:
     data = str(cfg.data).lower()
     if "pollution" in data:
         return "pol"
+    if "gov_sensor" in data or "govdata" in data:
+        return "govpol"
     if "swe" in data:
         return "swe"
     return "heat"
@@ -113,16 +115,25 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
     t_np = pack["t"].astype(np.float32)
     obs_key = sensor_key(pack, dataset_key, getattr(cfg, "obs_key", ""))
     sensor_values = pack[obs_key].astype(np.float32)
-    coords_np, vals_np = build_observed_tuples(sensors_xy, t_np, sensor_values)
+    obs_mask_key = mask_key(pack, getattr(cfg, "mask_key", ""))
+    sensor_mask = pack[obs_mask_key].astype(np.float32) if obs_mask_key else None
+    if sensor_mask is not None:
+        coords_np, vals_np, mask_np = build_observed_tuples(sensors_xy, t_np, sensor_values, sensor_mask)
+        valid_idx = np.flatnonzero(mask_np.reshape(mask_np.shape[0], -1).any(axis=1))
+    else:
+        coords_np, vals_np = build_observed_tuples(sensors_xy, t_np, sensor_values)
+        mask_np = np.ones_like(vals_np, dtype=np.float32)
+        valid_idx = None
     x_min, x_max, y_min, y_max, t_min, t_max, Lx, Ly, Tt = _ranges(pack, sensors_xy, t_np)
 
     obs_coords = torch.from_numpy(coords_np).float().to(device)
     obs_vals = torch.from_numpy(vals_np).float().to(device)
+    obs_mask = torch.from_numpy(mask_np).float().to(device)
     n_obs = int(obs_coords.shape[0])
 
-    train_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed)
+    train_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
     train_ds.set_split("train")
-    val_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed)
+    val_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
     val_ds.set_split("val")
     train_dl = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
     val_dl = DataLoader(val_ds, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
@@ -133,6 +144,11 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
     stopper = EarlyStopping(cfg.patience)
 
     def predict_all(xyt: torch.Tensor) -> torch.Tensor:
+        if bool(getattr(cfg, "normalize_coords", False)):
+            xyt = xyt.clone()
+            xyt[:, 0] = (xyt[:, 0] - x_min) / Lx
+            xyt[:, 1] = (xyt[:, 1] - y_min) / Ly
+            xyt[:, 2] = (xyt[:, 2] - t_min) / Tt
         if model_key == "fmlp":
             pred = model(xyt, Lx=Lx, Ly=Ly, Tt=Tt)
         else:
@@ -141,9 +157,15 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
 
     def predict(xyt: torch.Tensor) -> torch.Tensor:
         pred = predict_all(xyt)
-        if pred.ndim == 2:
+        if pred.ndim == 2 and pred.shape[-1] == 1:
             pred = pred[:, 0]
         return pred
+
+    def masked_mse(pred: torch.Tensor, tgt: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        pred = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
+        tgt = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred.ndim == 2 else tgt
+        mask = mask.unsqueeze(-1) if mask.ndim == 1 and pred.ndim == 2 else mask
+        return (((pred - tgt) ** 2) * mask).sum() / mask.sum().clamp_min(1.0)
 
     def sample_interior(n: int) -> torch.Tensor:
         return torch.stack(
@@ -247,8 +269,12 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
             q_lin = q_lin.to(device)
             pred = predict(obs_coords[q_lin])
             tgt = obs_vals[q_lin]
-            se_sum += F.mse_loss(pred, tgt, reduction="sum").item()
-            n_sum += int(q_lin.numel())
+            mask = obs_mask[q_lin]
+            pred_m = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
+            tgt_m = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred_m.ndim == 2 else tgt
+            mask_m = mask.unsqueeze(-1) if mask.ndim == 1 and pred_m.ndim == 2 else mask
+            se_sum += ((((pred_m - tgt_m) ** 2) * mask_m).sum()).item()
+            n_sum += int(mask_m.sum().item())
         return math.sqrt(se_sum / max(1, n_sum))
 
     save_path = Path(_make_save_path(cfg, dataset_key, model_key))
@@ -268,7 +294,7 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
         for q_lin in pbar:
             q_lin = q_lin.to(device)
             pred = predict(obs_coords[q_lin])
-            data_loss = F.mse_loss(pred, obs_vals[q_lin])
+            data_loss = masked_mse(pred, obs_vals[q_lin], obs_mask[q_lin])
             phys_term = torch.tensor(0.0, device=device)
             bc_term = torch.tensor(0.0, device=device)
             sponge_term = torch.tensor(0.0, device=device)
@@ -324,10 +350,15 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
                         "obs_key": obs_key,
                         "num_sensors": int(sensor_values.shape[0]),
                         "num_times": int(sensor_values.shape[1]),
+                        "output_dim": int(sensor_values.shape[2]) if sensor_values.ndim == 3 else 1,
                         "num_observations": n_obs,
+                        "num_valid_observations": int(valid_idx.shape[0]) if valid_idx is not None else n_obs,
                         "x_range": [x_min, x_max],
                         "y_range": [y_min, y_max],
                         "t_range": [t_min, t_max],
+                        "mask_key": obs_mask_key,
+                        "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,
+                        "physics_loss": False,
                         "swe_params": list(_swe_params(pack)) if dataset_key == "swe" else None,
                     },
                 },

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SVGP sparse SWE training without FieldFormer local context."""
+"""SVGP sparse real pollution training with two pollutant tasks."""
 
 from __future__ import annotations
 
@@ -9,22 +9,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from baselines.models.svgp import MultitaskPeriodicSVGP
+from baselines.models.svgp import MultitaskPollutionSVGP
 from baselines.scripts.svgp_sparse_train import train_svgp_sparse
 
 
 @dataclass
 class Config:
-    dataset: str = "swe"
-    data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset_64.npz"
-    obs_key: str = "eta_sensor_noisy"
+    dataset: str = "govpol"
+    data: str = "/scratch/ab9738/fieldformer/data/gov_sensor_dataset.npz"
+    obs_key: str = "U_sensor"
+    mask_key: str = "U_sensor_mask"
     save: str = ""
     pinn: bool = False
     train_frac: float = 0.8
     val_frac: float = 0.1
     seed: int = 123
-    batch_size: int = 512
-    val_batch_size: int = 1024
+    batch_size: int = 2048
+    val_batch_size: int = 4096
     epochs: int = 300
     lr: float = 3e-4
     lr_noise: float = 5e-3
@@ -33,8 +34,8 @@ class Config:
     noise: float = 1e-3
     lambda_phys: float = 0.0
     lambda_bc: float = 0.0
-    phys_samples: int = 1024
-    bc_samples: int = 512
+    phys_samples: int = 0
+    bc_samples: int = 0
     phys_warmup: int = 0
     phys_ramp: int = 1
     bc_warmup: int = 0
@@ -42,14 +43,14 @@ class Config:
     match_grad_bc: bool = False
     lambda_sponge: float = 0.0
     lambda_rad: float = 0.0
-    ard_lengthscale_init: tuple[float, float, float] = (0.2, 0.2, 0.1)
+    ard_lengthscale_init: tuple[float, float, float] = (0.2, 0.2, 24.0)
     outputscale_init: float = 1.0
     grad_clip: float = 1.0
-    patience: int = 12
+    patience: int = 10
 
 
 CFG = Config()
-MODEL_CLASS = MultitaskPeriodicSVGP
+MODEL_CLASS = MultitaskPollutionSVGP
 
 
 def main(cfg: Config = CFG) -> None:

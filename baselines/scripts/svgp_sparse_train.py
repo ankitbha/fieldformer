@@ -10,8 +10,8 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from baselines.models.data import ObservedIndexDataset, build_observed_tuples, sensor_key
-from baselines.models.svgp import MultitaskPeriodicSVGP, PeriodicSVGP, PollutionSVGP, gpytorch, make_likelihood
+from baselines.models.data import ObservedIndexDataset, build_observed_tuples, mask_key, sensor_key
+from baselines.models.svgp import MultitaskPeriodicSVGP, MultitaskPollutionSVGP, PeriodicSVGP, PollutionSVGP, gpytorch, make_likelihood
 
 
 def _dataset_key(cfg: Any) -> str:
@@ -20,6 +20,8 @@ def _dataset_key(cfg: Any) -> str:
     data = str(cfg.data).lower()
     if "pollution" in data:
         return "pol"
+    if "gov_sensor" in data or "govdata" in data:
+        return "govpol"
     if "swe" in data:
         return "swe"
     return "heat"
@@ -47,7 +49,14 @@ def train_svgp_sparse(cfg: Any) -> None:
     t_np = pack["t"].astype(np.float32)
     obs_key = sensor_key(pack, dataset_key, getattr(cfg, "obs_key", ""))
     sensor_values = pack[obs_key].astype(np.float32)
-    coords_np, vals_np = build_observed_tuples(sensors_xy, t_np, sensor_values)
+    obs_mask_key = mask_key(pack, getattr(cfg, "mask_key", ""))
+    sensor_mask = pack[obs_mask_key].astype(np.float32) if obs_mask_key else None
+    if sensor_mask is not None:
+        coords_np, vals_np, mask_np = build_observed_tuples(sensors_xy, t_np, sensor_values, sensor_mask)
+        valid_idx = np.flatnonzero(mask_np.reshape(mask_np.shape[0], -1).all(axis=1))
+    else:
+        coords_np, vals_np = build_observed_tuples(sensors_xy, t_np, sensor_values)
+        valid_idx = None
 
     x_min, y_min, t_min = coords_np.min(axis=0)
     x_max, y_max, t_max = coords_np.max(axis=0)
@@ -61,17 +70,19 @@ def train_svgp_sparse(cfg: Any) -> None:
     obs_vals = torch.from_numpy(vals_np).float().to(device)
     n_obs = int(obs_coords.shape[0])
 
-    ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed)
+    ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
     ds.set_split("train")
     dl = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
-    val_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed)
+    val_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
     val_ds.set_split("val")
     val_dl = DataLoader(val_ds, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
 
     m = min(int(cfg.inducing_points), n_obs)
     inducing_idx = torch.randperm(n_obs, device=device)[:m]
     inducing = obs_coords[inducing_idx].detach().clone()
-    if dataset_key == "pol":
+    if dataset_key == "govpol":
+        model = MultitaskPollutionSVGP(inducing, num_tasks=2, ard_lengthscale_init=tuple(cfg.ard_lengthscale_init), outputscale_init=cfg.outputscale_init).to(device)
+    elif dataset_key == "pol":
         model = PollutionSVGP(inducing, tuple(cfg.ard_lengthscale_init), cfg.outputscale_init).to(device)
     elif dataset_key == "swe":
         model = MultitaskPeriodicSVGP(inducing, num_tasks=3).to(device)
@@ -108,7 +119,7 @@ def train_svgp_sparse(cfg: Any) -> None:
             pred = likelihood(output).mean
             tgt = obs_vals[q_lin]
             se_sum += torch.sum((pred - tgt) ** 2).item()
-            n_sum += int(q_lin.numel())
+            n_sum += int(tgt.numel())
         model.train()
         likelihood.train()
         scale = float(np.sqrt(np.mean(np.square(obs_std)))) if np.ndim(obs_std) else float(obs_std)
@@ -153,6 +164,8 @@ def train_svgp_sparse(cfg: Any) -> None:
                         "obs_mean": [float(obs_mean), 0.0, 0.0] if dataset_key == "swe" else np.asarray(obs_mean).tolist(),
                         "obs_std": [float(obs_std), 1.0, 1.0] if dataset_key == "swe" else np.asarray(obs_std).tolist(),
                         "output_dim": 3 if dataset_key == "swe" else (int(vals_np.shape[-1]) if vals_np.ndim == 2 else 1),
+                        "mask_key": obs_mask_key,
+                        "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,
                         "supervised_channels": ["eta"] if dataset_key == "swe" else None,
                     },
                 },

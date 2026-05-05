@@ -10,7 +10,7 @@ from ffag_sparse_nophys_common import train_sparse_nophys
 
 @dataclass
 class Config:
-    data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset.npz"
+    data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset_64.npz"
     obs_key: str = "eta_sensor_noisy"
     batch_size: int = 64
     val_batch_size: int = 64

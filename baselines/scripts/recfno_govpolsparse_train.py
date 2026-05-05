@@ -13,9 +13,10 @@ from baselines.scripts.fair_sparse_train import train_recfno
 
 @dataclass
 class Config:
-    dataset: str = "pol"
-    data: str = "/scratch/ab9738/fieldformer/data/pollution_dataset_60.npz"
-    obs_key: str = "U_sensor_noisy"
+    dataset: str = "govpol"
+    data: str = "/scratch/ab9738/fieldformer/data/gov_sensor_dataset.npz"
+    obs_key: str = "U_sensor"
+    mask_key: str = "U_sensor_mask"
     save: str = ""
     train_frac: float = 0.8
     val_frac: float = 0.1

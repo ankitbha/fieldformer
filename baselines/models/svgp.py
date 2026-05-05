@@ -89,10 +89,38 @@ class PollutionSVGP(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(self.mean_module(x), self.covar_module(x))
 
 
+class MultitaskPollutionSVGP(ApproximateGP):
+    def __init__(
+        self,
+        inducing_points: torch.Tensor,
+        num_tasks: int = 2,
+        ard_lengthscale_init: tuple[float, float, float] = (0.2, 0.2, 0.1),
+        outputscale_init: float = 1.0,
+    ):
+        if gpytorch is None:
+            raise ImportError("gpytorch is required for SVGP baselines")
+        batch_shape = torch.Size([num_tasks])
+        inducing = inducing_points.unsqueeze(0).expand(num_tasks, -1, -1).contiguous()
+        q = CholeskyVariationalDistribution(inducing.size(-2), batch_shape=batch_shape)
+        base_vs = VariationalStrategy(self, inducing, q, learn_inducing_locations=True)
+        vs = IndependentMultitaskVariationalStrategy(base_vs, num_tasks=num_tasks)
+        super().__init__(vs)
+        self.mean_module = ZeroMean(batch_shape=batch_shape)
+        self.covar_module = ScaleKernel(RBFKernel(ard_num_dims=inducing_points.shape[-1], batch_shape=batch_shape), batch_shape=batch_shape)
+        with torch.no_grad():
+            lengthscale = torch.tensor(ard_lengthscale_init, dtype=torch.float32, device=inducing_points.device)
+            self.covar_module.base_kernel.lengthscale = lengthscale
+            self.covar_module.outputscale = torch.full(batch_shape, float(outputscale_init), dtype=torch.float32, device=inducing_points.device)
+
+    def forward(self, x: torch.Tensor):
+        return gpytorch.distributions.MultivariateNormal(self.mean_module(x), self.covar_module(x))
+
+
 def make_likelihood(dataset_key: str):
     if gpytorch is None:
         raise ImportError("gpytorch is required for SVGP baselines")
     if dataset_key == "swe":
         return MultitaskGaussianLikelihood(num_tasks=3)
+    if dataset_key == "govpol":
+        return MultitaskGaussianLikelihood(num_tasks=2)
     return GaussianLikelihood()
-

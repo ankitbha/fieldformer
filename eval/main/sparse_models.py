@@ -20,6 +20,13 @@ def _get(cfg: SimpleNamespace, name: str, default: Any) -> Any:
     return getattr(cfg, name, default)
 
 
+def output_dim_for(dataset_key: str, ckpt: dict[str, Any], cfg: SimpleNamespace, default: int = 1) -> int:
+    if dataset_key == "swe":
+        return 3
+    meta = ckpt.get("meta", {})
+    return int(meta.get("output_dim", meta.get("out_dim", _get(cfg, "out_dim", default))))
+
+
 def infer_inducing_points(state: dict[str, torch.Tensor]) -> torch.Tensor:
     for key, value in state.items():
         if key.endswith("inducing_points"):
@@ -173,13 +180,21 @@ class RecFNOEvalAdapter(EvalAdapter):
         t_grid: np.ndarray,
         sensors_xy: np.ndarray,
         obs_vals_np: np.ndarray,
+        obs_mask_np: np.ndarray | None,
         train_idx: np.ndarray,
         device: torch.device,
     ):
         super().__init__(model, model_key="recfno", dataset_key=dataset_key)
         self.device_ref = device
         self.n_sensors, self.n_times = int(sensors_xy.shape[0]), int(t_grid.shape[0])
-        self.values = obs_vals_np.reshape(self.n_sensors, self.n_times).astype(np.float32)
+        vals = obs_vals_np.reshape(self.n_sensors, self.n_times, -1).astype(np.float32)
+        self.values = vals
+        self.out_dim = int(vals.shape[-1])
+        self.masks = (
+            obs_mask_np.reshape(self.n_sensors, self.n_times, self.out_dim).astype(np.float32)
+            if obs_mask_np is not None
+            else np.ones_like(vals, dtype=np.float32)
+        )
         self.train_mask = split_train_mask(train_idx, self.n_sensors, self.n_times)
         self.ix_np, self.iy_np = sensor_grid_indices(x_grid, y_grid, sensors_xy)
         self.ix = torch.from_numpy(self.ix_np).long().to(device)
@@ -197,16 +212,16 @@ class RecFNOEvalAdapter(EvalAdapter):
     def _make_input(self, times: torch.Tensor) -> torch.Tensor:
         bsz = int(times.numel())
         nx, ny = int(self.x_grid.numel()), int(self.y_grid.numel())
-        val_grid = torch.zeros(bsz, nx, ny, device=self.device_ref)
-        mask_grid = torch.zeros(bsz, nx, ny, device=self.device_ref)
+        val_grid = torch.zeros(bsz, self.out_dim, nx, ny, device=self.device_ref)
+        mask_grid = torch.zeros(bsz, self.out_dim, nx, ny, device=self.device_ref)
         for b, k_t in enumerate(times.detach().cpu().numpy()):
             m = self.train_mask[:, int(k_t)]
             ix = torch.from_numpy(self.ix_np[m]).long().to(self.device_ref)
             iy = torch.from_numpy(self.iy_np[m]).long().to(self.device_ref)
-            val_grid[b, ix, iy] = torch.from_numpy(self.values[m, int(k_t)]).float().to(self.device_ref)
-            mask_grid[b, ix, iy] = 1.0
+            val_grid[b, :, ix, iy] = torch.from_numpy(self.values[m, int(k_t)].T).float().to(self.device_ref)
+            mask_grid[b, :, ix, iy] = torch.from_numpy(self.masks[m, int(k_t)].T).float().to(self.device_ref)
         coords = self.coord_grid.unsqueeze(0).expand(bsz, -1, -1, -1)
-        return torch.cat([val_grid[:, None], mask_grid[:, None], coords], dim=1)
+        return torch.cat([val_grid, mask_grid, coords], dim=1)
 
     def _grid_for_times(self, times: torch.Tensor) -> tuple[torch.Tensor, dict[int, int]]:
         times = torch.unique(times.long())
@@ -239,15 +254,25 @@ class SenseiverEvalAdapter(EvalAdapter):
         t_grid: np.ndarray,
         obs_coords_np: np.ndarray,
         obs_vals_np: np.ndarray,
+        obs_mask_np: np.ndarray | None,
         train_idx: np.ndarray,
         device: torch.device,
     ):
-        vals_mean = float(obs_vals_np.mean())
-        vals_std = float(obs_vals_np.std() + 1e-6)
+        vals = obs_vals_np.reshape(sensors_xy.shape[0], t_grid.shape[0], -1).astype(np.float32)
+        out_dim = int(vals.shape[-1])
+        masks = obs_mask_np.reshape(sensors_xy.shape[0], t_grid.shape[0], out_dim).astype(np.float32) if obs_mask_np is not None else np.ones_like(vals, dtype=np.float32)
+        denom = masks.sum(axis=(0, 1))
+        vals_mean = np.divide((vals * masks).sum(axis=(0, 1)), denom, out=np.zeros(out_dim, dtype=np.float32), where=denom > 0).astype(np.float32)
+        vals_std = np.ones(out_dim, dtype=np.float32)
+        for c in range(out_dim):
+            valid = masks[..., c].astype(bool)
+            vals_std[c] = float(vals[..., c][valid].std() + 1e-6) if valid.any() else 1.0
         super().__init__(model, model_key="senseiver", dataset_key=dataset_key, normalizes_values=True, obs_mean=vals_mean, obs_std=vals_std)
         self.device_ref = device
         self.n_sensors, self.n_times = int(sensors_xy.shape[0]), int(t_grid.shape[0])
-        self.values = obs_vals_np.reshape(self.n_sensors, self.n_times).astype(np.float32)
+        self.out_dim = out_dim
+        self.values = vals
+        self.masks = masks
         self.train_mask = split_train_mask(train_idx, self.n_sensors, self.n_times)
         mins = obs_coords_np.min(axis=0).astype(np.float32)
         spans = np.maximum(obs_coords_np.max(axis=0).astype(np.float32) - mins, 1e-6)
@@ -263,8 +288,9 @@ class SenseiverEvalAdapter(EvalAdapter):
         toks = []
         for k in times.detach().cpu().numpy():
             k = int(k)
-            mask = torch.from_numpy(self.train_mask[:, k].astype(np.float32))[:, None].to(self.device_ref)
-            val = self.vals_norm[:, k:k + 1] * mask
+            base_mask = torch.from_numpy(self.train_mask[:, k].astype(np.float32))[:, None].to(self.device_ref)
+            mask = torch.from_numpy(self.masks[:, k].astype(np.float32)).to(self.device_ref) * base_mask
+            val = self.vals_norm[:, k] * mask
             tt = torch.full((self.n_sensors, 1), float(self.t_norm[k].item()), device=self.device_ref)
             toks.append(torch.cat([self.sxy, tt, val, mask], dim=-1))
         return torch.stack(toks, dim=0)
@@ -273,7 +299,7 @@ class SenseiverEvalAdapter(EvalAdapter):
         return (xyt_q - self.coord_min) / self.coord_span
 
     def _predict_queries(self, xyt_q: torch.Tensor, kt: torch.Tensor) -> torch.Tensor:
-        out_shape = 3 if self.dataset_key == "swe" else 1
+        out_shape = 3 if self.dataset_key == "swe" else self.out_dim
         pred = torch.empty(xyt_q.shape[0], out_shape, device=self.device_ref)
         for k in torch.unique(kt):
             mask = kt == k
@@ -282,7 +308,7 @@ class SenseiverEvalAdapter(EvalAdapter):
             out = self.model(toks, q)
             if out.ndim == 2:
                 out = out.unsqueeze(-1)
-            out = out[0] * float(self.obs_std) + float(self.obs_mean)
+            out = out[0] * torch.as_tensor(self.obs_std, dtype=out.dtype, device=out.device) + torch.as_tensor(self.obs_mean, dtype=out.dtype, device=out.device)
             pred[mask] = out if out_shape > 1 else out[:, :1]
         return pred[:, 0] if out_shape == 1 else pred
 
@@ -306,36 +332,50 @@ class ImputeFormerEvalAdapter(EvalAdapter):
         t_grid: np.ndarray,
         sensors_xy: np.ndarray,
         obs_vals_np: np.ndarray,
+        obs_mask_np: np.ndarray | None,
         train_idx: np.ndarray,
         cfg: SimpleNamespace,
         device: torch.device,
     ):
-        mean = float(obs_vals_np.reshape(sensors_xy.shape[0], t_grid.shape[0])[split_train_mask(train_idx, sensors_xy.shape[0], t_grid.shape[0])].mean())
-        std = float(obs_vals_np.reshape(sensors_xy.shape[0], t_grid.shape[0])[split_train_mask(train_idx, sensors_xy.shape[0], t_grid.shape[0])].std() + 1e-6)
+        vals = obs_vals_np.reshape(sensors_xy.shape[0], t_grid.shape[0], -1).astype(np.float32)
+        out_dim = int(vals.shape[-1])
+        masks = obs_mask_np.reshape(sensors_xy.shape[0], t_grid.shape[0], out_dim).astype(np.float32) if obs_mask_np is not None else np.ones_like(vals, dtype=np.float32)
+        train_mask_arr = split_train_mask(train_idx, sensors_xy.shape[0], t_grid.shape[0])
+        channel_mask = train_mask_arr[..., None] * masks
+        denom = channel_mask.sum(axis=(0, 1))
+        mean = np.divide((vals * channel_mask).sum(axis=(0, 1)), denom, out=np.zeros(out_dim, dtype=np.float32), where=denom > 0).astype(np.float32)
+        std = np.ones(out_dim, dtype=np.float32)
+        for c in range(out_dim):
+            valid = channel_mask[..., c].astype(bool)
+            std[c] = float(vals[..., c][valid].std() + 1e-6) if valid.any() else 1.0
         super().__init__(model, model_key="imputeformer", dataset_key=dataset_key, normalizes_values=True, obs_mean=mean, obs_std=std)
         self.device_ref = device
         self.n_sensors, self.n_times = int(sensors_xy.shape[0]), int(t_grid.shape[0])
+        self.out_dim = out_dim
         self.sensors_xy = torch.from_numpy(sensors_xy.astype(np.float32)).to(device)
         self.t_grid = torch.from_numpy(t_grid.astype(np.float32)).to(device)
-        values = obs_vals_np.reshape(self.n_sensors, self.n_times).astype(np.float32)
-        train_mask = split_train_mask(train_idx, self.n_sensors, self.n_times)
-        self.pred_series = self._predict_series(values, train_mask, int(_get(cfg, "windows", min(128, self.n_times))), int(_get(cfg, "window_stride", 64)), mean, std)
+        values = vals
+        train_mask = train_mask_arr
+        self.pred_series = self._predict_series(values, masks, train_mask, int(_get(cfg, "windows", min(128, self.n_times))), int(_get(cfg, "window_stride", 64)), mean, std)
 
-    def _predict_series(self, values: np.ndarray, train_mask: np.ndarray, windows: int, stride: int, mean: float, std: float) -> torch.Tensor:
+    def _predict_series(self, values: np.ndarray, masks: np.ndarray, train_mask: np.ndarray, windows: int, stride: int, mean: np.ndarray, std: np.ndarray) -> torch.Tensor:
         windows = min(windows, self.n_times)
         starts = np.arange(0, max(1, self.n_times - windows + 1), max(1, stride), dtype=np.int64)
         if starts[-1] != self.n_times - windows:
             starts = np.append(starts, self.n_times - windows)
-        out_dim = 3 if self.dataset_key == "swe" else 1
+        out_dim = 3 if self.dataset_key == "swe" else self.out_dim
         acc = torch.zeros(self.n_sensors, self.n_times, out_dim, device=self.device_ref)
         cnt = torch.zeros(self.n_sensors, self.n_times, 1, device=self.device_ref)
         norm_values = ((values - mean) / std).astype(np.float32)
+        mean_t = torch.from_numpy(mean.astype(np.float32)).to(self.device_ref)
+        std_t = torch.from_numpy(std.astype(np.float32)).to(self.device_ref)
         with torch.no_grad():
             for st in starts:
                 sl = slice(int(st), int(st) + windows)
-                vals = torch.from_numpy(norm_values[:, sl][None, ..., None]).float().to(self.device_ref)
-                ctx = torch.from_numpy(train_mask[:, sl][None, ..., None].astype(np.float32)).float().to(self.device_ref)
-                pred = self.model(vals, ctx)[0] * std + mean
+                vals = torch.from_numpy(norm_values[:, sl][None]).float().to(self.device_ref)
+                ctx_np = train_mask[:, sl, None] * masks[:, sl]
+                ctx = torch.from_numpy(ctx_np[None].astype(np.float32)).float().to(self.device_ref)
+                pred = self.model(vals, ctx)[0] * std_t + mean_t
                 acc[:, sl, :] += pred
                 cnt[:, sl, :] += 1.0
         return acc / cnt.clamp_min(1.0)
@@ -383,6 +423,7 @@ def build_sparse_model(
     train_idx: np.ndarray | None = None,
     obs_coords_np: np.ndarray | None = None,
     obs_vals_np: np.ndarray | None = None,
+    obs_mask_np: np.ndarray | None = None,
 ) -> EvalAdapter:
     del data, nt_count
     cfg = cfg_obj(ckpt.get("config"))
@@ -394,28 +435,33 @@ def build_sparse_model(
     if model_key == "siren":
         from baselines.models.siren import SIREN, SIRENSWE
 
+        out_dim = output_dim_for(dataset_key, ckpt, cfg)
         if dataset_key == "swe":
             model = SIRENSWE(_get(cfg, "width", 256), _get(cfg, "depth", 6), _get(cfg, "w0", 30.0), _get(cfg, "w0_hidden", 1.0))
         else:
-            model = SIREN(3, _get(cfg, "width", 256), _get(cfg, "depth", 6), 1, _get(cfg, "w0", 30.0), _get(cfg, "w0_hidden", 1.0))
+            model = SIREN(3, _get(cfg, "width", 256), _get(cfg, "depth", 6), out_dim, _get(cfg, "w0", 30.0), _get(cfg, "w0_hidden", 1.0))
+            normalizes_coords = bool(_get(cfg, "normalize_coords", False))
     elif model_key == "fmlp":
         from baselines.models.fmlp import FourierMLP, FourierMLPSWE
 
+        out_dim = output_dim_for(dataset_key, ckpt, cfg)
         if dataset_key == "swe":
             model = FourierMLPSWE(_get(cfg, "width", 256), _get(cfg, "depth", 6), _get(cfg, "kx", 16), _get(cfg, "ky", 16), _get(cfg, "kt", 8))
         else:
-            model = FourierMLP(_get(cfg, "width", 256), _get(cfg, "depth", 6), _get(cfg, "kx", 16), _get(cfg, "ky", 16), _get(cfg, "kt", 8), 1)
+            model = FourierMLP(_get(cfg, "width", 256), _get(cfg, "depth", 6), _get(cfg, "kx", 16), _get(cfg, "ky", 16), _get(cfg, "kt", 8), out_dim)
     elif model_key == "svgp":
-        from baselines.models.svgp import MultitaskPeriodicSVGP, PeriodicSVGP, PollutionSVGP, make_likelihood
+        from baselines.models.svgp import MultitaskPeriodicSVGP, MultitaskPollutionSVGP, PeriodicSVGP, PollutionSVGP, make_likelihood
 
         z = infer_inducing_points(state).to(device)
-        if dataset_key == "pol":
+        if dataset_key == "govpol":
+            model = MultitaskPollutionSVGP(z, num_tasks=output_dim_for(dataset_key, ckpt, cfg, 2), ard_lengthscale_init=tuple(_get(cfg, "ard_lengthscale_init", (0.2, 0.2, 0.1))), outputscale_init=_get(cfg, "outputscale_init", 1.0))
+        elif dataset_key == "pol":
             model = PollutionSVGP(z, tuple(_get(cfg, "ard_lengthscale_init", (0.2, 0.2, 0.1))), _get(cfg, "outputscale_init", 1.0))
         elif dataset_key == "swe" and is_multitask_svgp_state(state, ckpt):
             model = MultitaskPeriodicSVGP(z, num_tasks=3)
         else:
             model = PeriodicSVGP(z)
-        if isinstance(model, MultitaskPeriodicSVGP):
+        if isinstance(model, (MultitaskPeriodicSVGP, MultitaskPollutionSVGP)):
             likelihood = None
         else:
             likelihood_key = "heat" if dataset_key == "swe" else dataset_key
@@ -428,7 +474,10 @@ def build_sparse_model(
         from fieldformer_core.models.ffag import class_for_dataset
 
         cls = class_for_dataset(dataset_key)
-        model = cls(_get(cfg, "d_model", 128), _get(cfg, "nhead", 4), _get(cfg, "layers", 3), _get(cfg, "d_ff", 256))
+        try:
+            model = cls(_get(cfg, "d_model", 128), _get(cfg, "nhead", 4), _get(cfg, "layers", 3), _get(cfg, "d_ff", 256), out_dim=output_dim_for(dataset_key, ckpt, cfg))
+        except TypeError:
+            model = cls(_get(cfg, "d_model", 128), _get(cfg, "nhead", 4), _get(cfg, "layers", 3), _get(cfg, "d_ff", 256))
     elif model_key == "recfno":
         from baselines.models.recfno import VoronoiFNO2d
 
@@ -436,14 +485,14 @@ def build_sparse_model(
             _get(cfg, "modes1", 12),
             _get(cfg, "modes2", 12),
             _get(cfg, "width", 32),
-            in_channels=4,
-            out_channels=3 if dataset_key == "swe" else 1,
+            in_channels=2 * output_dim_for(dataset_key, ckpt, cfg) + 2,
+            out_channels=3 if dataset_key == "swe" else output_dim_for(dataset_key, ckpt, cfg),
         )
     elif model_key == "senseiver":
         from baselines.models.senseiver import Senseiver
 
         model = Senseiver(
-            sensor_feature_dim=5,
+            sensor_feature_dim=3 + 2 * output_dim_for(dataset_key, ckpt, cfg),
             query_feature_dim=3,
             num_latents=_get(cfg, "num_latents", 16),
             latent_channels=_get(cfg, "latent_channels", 64),
@@ -452,7 +501,7 @@ def build_sparse_model(
             decoder_heads=_get(cfg, "decoder_heads", 1),
             self_heads=_get(cfg, "self_heads", 4),
             self_layers=_get(cfg, "self_layers", 2),
-            out_dim=3 if dataset_key == "swe" else 1,
+            out_dim=3 if dataset_key == "swe" else output_dim_for(dataset_key, ckpt, cfg),
             dropout=_get(cfg, "dropout", 0.0),
         )
     elif model_key == "imputeformer":
@@ -463,7 +512,8 @@ def build_sparse_model(
         model = FixedNodeImputeFormer(
             int(sensors_xy.shape[0]),
             min(_get(cfg, "windows", 128), int(t_grid.shape[0]) if t_grid is not None else 128),
-            output_dim=3 if dataset_key == "swe" else 1,
+            input_dim=2 * output_dim_for(dataset_key, ckpt, cfg),
+            output_dim=3 if dataset_key == "swe" else output_dim_for(dataset_key, ckpt, cfg),
             input_embedding_dim=_get(cfg, "input_embedding_dim", 32),
             learnable_embedding_dim=_get(cfg, "learnable_embedding_dim", 96),
             num_layers=_get(cfg, "num_layers", 3),
@@ -487,6 +537,7 @@ def build_sparse_model(
             t_grid=t_grid,
             sensors_xy=sensors_xy,
             obs_vals_np=obs_vals_np,
+            obs_mask_np=obs_mask_np,
             train_idx=train_idx,
             device=device,
         ).to(device)
@@ -500,6 +551,7 @@ def build_sparse_model(
             t_grid=t_grid,
             obs_coords_np=obs_coords_np,
             obs_vals_np=obs_vals_np,
+            obs_mask_np=obs_mask_np,
             train_idx=train_idx,
             device=device,
         ).to(device)
@@ -512,6 +564,7 @@ def build_sparse_model(
             t_grid=t_grid,
             sensors_xy=sensors_xy,
             obs_vals_np=obs_vals_np,
+            obs_mask_np=obs_mask_np,
             train_idx=train_idx,
             cfg=cfg,
             device=device,

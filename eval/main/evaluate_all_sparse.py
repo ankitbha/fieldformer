@@ -19,7 +19,7 @@ for path in (ROOT, THIS_DIR):
 from sparse_eval import Config, main as run_sparse_eval
 
 
-DEFAULT_DATASETS = ("heat", "pol", "swe")
+DEFAULT_DATASETS = ("heat", "pol", "swe", "govpol")
 DEFAULT_MODELS = ("ffag", "fmlp", "fmlp_pinn", "siren", "siren_pinn", "svgp", "recfno", "imputeformer", "senseiver")
 
 

@@ -39,6 +39,7 @@ class Config:
     output_path: str = ""
     device: str = "cuda"
     obs_key: str = ""
+    mask_key: str = ""
     max_sparse_test: int = 0
     max_full_field: int = 0
     senseiver_full_field_fraction: float = 0.10
@@ -50,6 +51,7 @@ DATASETS = {
     "heat": ROOT / "data" / "heat_periodic_dataset_sharp.npz",
     "swe": ROOT / "data" / "swe_periodic_dataset.npz",
     "pol": ROOT / "data" / "pollution_dataset.npz",
+    "govpol": ROOT / "data" / "gov_sensor_dataset.npz",
 }
 PINN_ALIASES = {
     "fmlp-pinn": "fmlp",
@@ -80,12 +82,13 @@ def load_checkpoint(path: Path, device: torch.device) -> Any:
 
 
 class ObservedIndexDataset(Dataset):
-    def __init__(self, n_obs: int, train_frac: float, val_frac: float, seed: int):
+    def __init__(self, n_obs: int, train_frac: float, val_frac: float, seed: int, valid_idx: np.ndarray | None = None):
         rng = np.random.default_rng(seed)
-        all_idx = np.arange(n_obs)
+        all_idx = np.asarray(valid_idx if valid_idx is not None else np.arange(n_obs), dtype=np.int64)
         rng.shuffle(all_idx)
-        n_train = int(train_frac * n_obs)
-        n_val = int(val_frac * n_obs)
+        n_split = int(all_idx.shape[0])
+        n_train = int(train_frac * n_split)
+        n_val = int(val_frac * n_split)
         self.train_idx = torch.from_numpy(all_idx[:n_train]).long()
         self.val_idx = torch.from_numpy(all_idx[n_train:n_train + n_val]).long()
         self.test_idx = torch.from_numpy(all_idx[n_train + n_val:]).long()
@@ -163,6 +166,8 @@ def parse_args() -> Config:
 
 def ckpt_path(model_key: str, dataset_key: str) -> Path:
     dataset_slug = {"pol": "pol"}.get(dataset_key, dataset_key)
+    if dataset_key == "govpol" and model_key == "ffag":
+        return ROOT / "ablations" / "architecture" / "checkpoints" / "ffag_govpolsparse_nophys_best.pt"
     if model_key == "ffag":
         return ROOT / "fieldformer_core" / "checkpoints" / f"ffag_{dataset_slug}sparse_best.pt"
     if model_key in PINN_ALIASES:
@@ -192,6 +197,7 @@ def choose_obs_key(pack: Any, dataset_key: str, override: str = "") -> str:
     candidates = {
         "swe": ("eta_sensor_noisy", "eta_sensor_clean"),
         "pol": ("U_sensor_noisy", "U_sensor_clean", "sensor_noisy", "sensor_clean"),
+        "govpol": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
         "heat": ("sensor_noisy", "sensor_clean"),
     }[dataset_key]
     for key in candidates:
@@ -200,8 +206,27 @@ def choose_obs_key(pack: Any, dataset_key: str, override: str = "") -> str:
     raise KeyError(f"Could not find a sensor observation key. Tried: {candidates}")
 
 
-def build_observed_tuples(sensors_xy: np.ndarray, t_grid: np.ndarray, sensor_values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    s_count, nt_count = sensor_values.shape
+def choose_mask_key(pack: Any, override: str = "") -> str:
+    if override:
+        if override not in pack:
+            raise KeyError(f"--mask_key {override!r} not found in dataset")
+        return override
+    for key in ("U_sensor_mask", "sensor_mask", "obs_mask"):
+        if key in pack:
+            return key
+    return ""
+
+
+def build_observed_tuples(
+    sensors_xy: np.ndarray,
+    t_grid: np.ndarray,
+    sensor_values: np.ndarray,
+    sensor_mask: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if sensor_values.ndim == 2:
+        s_count, nt_count = sensor_values.shape
+    else:
+        s_count, nt_count = sensor_values.shape[:2]
     coords = np.stack(
         [
             np.repeat(sensors_xy[:, 0], nt_count),
@@ -210,16 +235,25 @@ def build_observed_tuples(sensors_xy: np.ndarray, t_grid: np.ndarray, sensor_val
         ],
         axis=1,
     ).astype(np.float32)
-    vals = sensor_values.reshape(-1).astype(np.float32)
-    return coords, vals
+    vals = sensor_values.reshape(s_count * nt_count, *sensor_values.shape[2:]).astype(np.float32)
+    if sensor_mask is None:
+        return coords, vals
+    mask = sensor_mask.reshape(s_count * nt_count, *sensor_mask.shape[2:]).astype(np.float32)
+    return coords, vals, mask
 
 
-def sparse_observations(pack: Any, dataset_key: str, obs_key: str) -> tuple[np.ndarray, np.ndarray]:
+def sparse_observations(pack: Any, dataset_key: str, obs_key: str, mask_key: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
     sensors_xy = pack["sensors_xy"].astype(np.float32)
     t_np = pack["t"].astype(np.float32)
     sensor_values = pack[obs_key].astype(np.float32)
-    coords, vals = build_observed_tuples(sensors_xy, t_np, sensor_values)
-    return coords, vals
+    if mask_key:
+        coords, vals, mask = build_observed_tuples(sensors_xy, t_np, sensor_values, pack[mask_key].astype(np.float32))
+        valid_idx = np.flatnonzero(mask.reshape(mask.shape[0], -1).any(axis=1))
+    else:
+        coords, vals = build_observed_tuples(sensors_xy, t_np, sensor_values)
+        mask = np.ones_like(vals, dtype=np.float32)
+        valid_idx = None
+    return coords, vals, mask, valid_idx
 
 
 def full_field(pack: Any, dataset_key: str) -> tuple[np.ndarray, np.ndarray]:
@@ -287,11 +321,19 @@ def align_prediction(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     return pred
 
 
-def metric_sums(pred: torch.Tensor, target: torch.Tensor) -> tuple[float, float, int]:
+def metric_sums(pred: torch.Tensor, target: torch.Tensor, mask: torch.Tensor | None = None) -> tuple[float, float, int, np.ndarray, np.ndarray, np.ndarray]:
     pred = align_prediction(pred, target)
     target = align_prediction(target, pred)
+    if mask is None:
+        mask = torch.ones_like(target)
+    mask = align_prediction(mask, pred)
+    if mask.ndim == 1 and pred.ndim == 2:
+        mask = mask[:, None].expand_as(pred)
     diff = pred - target
-    return float((diff * diff).sum().item()), float(diff.abs().sum().item()), int(diff.numel())
+    se_chan = ((diff * diff) * mask).sum(dim=0).detach().cpu().numpy().reshape(-1)
+    ae_chan = (diff.abs() * mask).sum(dim=0).detach().cpu().numpy().reshape(-1)
+    n_chan = mask.sum(dim=0).detach().cpu().numpy().reshape(-1)
+    return float(se_chan.sum()), float(ae_chan.sum()), int(n_chan.sum()), se_chan, ae_chan, n_chan
 
 
 def bootstrap_metric_std(
@@ -325,10 +367,23 @@ def finish_metrics(
     batch_sums: list[tuple[float, float, int]],
     bootstrap_samples: int,
     bootstrap_seed: int,
+    channel_sums: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
+    channel_names: list[str] | None = None,
 ) -> dict[str, float]:
     n = max(1, n_sum)
     metrics = {"rmse": math.sqrt(se_sum / n), "mae": ae_sum / n}
     metrics.update(bootstrap_metric_std(batch_sums, bootstrap_samples, bootstrap_seed))
+    if channel_sums is not None:
+        se_c, ae_c, n_c = channel_sums
+        names = channel_names or [f"channel_{i}" for i in range(len(se_c))]
+        metrics["channels"] = {
+            str(name): {
+                "rmse": math.sqrt(float(se) / max(1.0, float(nn))),
+                "mae": float(ae) / max(1.0, float(nn)),
+                "count": int(nn),
+            }
+            for name, se, ae, nn in zip(names, se_c, ae_c, n_c)
+        }
     return metrics
 
 
@@ -338,15 +393,18 @@ def eval_sparse_test(
     indexer: FieldFormerNeighborIndexer | None,
     obs_coords: torch.Tensor,
     obs_vals: torch.Tensor,
+    obs_mask: torch.Tensor,
     test_idx: torch.Tensor,
     batch_size: int,
     device: torch.device,
     bootstrap_samples: int,
     bootstrap_seed: int,
+    channel_names: list[str] | None = None,
 ) -> dict[str, float]:
     adapter.eval()
     se_sum, ae_sum, n_sum = 0.0, 0.0, 0
     batch_sums: list[tuple[float, float, int]] = []
+    se_c = ae_c = n_c = None
     starts = range(0, test_idx.numel(), batch_size)
     with tqdm(total=int(test_idx.numel()), desc="sparse-test", unit="pts", leave=False) as pbar:
         for start in starts:
@@ -354,13 +412,16 @@ def eval_sparse_test(
             nb_idx = indexer.gather_observed_neighbors(q_lin, exclude_self=True) if adapter.needs_sensor_context else None
             pred = adapter.predict_observed(q_lin, obs_coords, obs_vals, nb_idx)
             tgt = obs_vals[q_lin]
-            se, ae, n = metric_sums(pred, tgt)
+            se, ae, n, bse_c, bae_c, bn_c = metric_sums(pred, tgt, obs_mask[q_lin])
+            se_c = bse_c if se_c is None else se_c + bse_c
+            ae_c = bae_c if ae_c is None else ae_c + bae_c
+            n_c = bn_c if n_c is None else n_c + bn_c
             se_sum += se
             ae_sum += ae
             n_sum += n
             batch_sums.append((se, ae, n))
             pbar.update(int(q_lin.numel()))
-    return finish_metrics(se_sum, ae_sum, n_sum, batch_sums, bootstrap_samples, bootstrap_seed)
+    return finish_metrics(se_sum, ae_sum, n_sum, batch_sums, bootstrap_samples, bootstrap_seed, (se_c, ae_c, n_c), channel_names)
 
 
 @torch.no_grad()
@@ -386,7 +447,7 @@ def eval_full_field(
             tgt = full_vals[start:start + batch_size].to(device)
             nb_idx = indexer.gather_continuous_neighbors(xyt) if adapter.needs_sensor_context else None
             pred = adapter.predict_continuous(xyt, obs_coords, obs_vals, nb_idx)
-            se, ae, n = metric_sums(pred, tgt)
+            se, ae, n, _, _, _ = metric_sums(pred, tgt)
             se_sum += se
             ae_sum += ae
             n_sum += n
@@ -406,11 +467,14 @@ def write_output(path: Path, result: dict[str, Any]) -> None:
             "sparse_test_mae": result["sparse_test"]["mae"],
             "sparse_test_rmse_bootstrap_std": result["sparse_test"]["rmse_bootstrap_std"],
             "sparse_test_mae_bootstrap_std": result["sparse_test"]["mae_bootstrap_std"],
-            "full_field_rmse": result["full_field"]["rmse"],
-            "full_field_mae": result["full_field"]["mae"],
-            "full_field_rmse_bootstrap_std": result["full_field"]["rmse_bootstrap_std"],
-            "full_field_mae_bootstrap_std": result["full_field"]["mae_bootstrap_std"],
         }
+        if "full_field" in result:
+            flat.update({
+                "full_field_rmse": result["full_field"]["rmse"],
+                "full_field_mae": result["full_field"]["mae"],
+                "full_field_rmse_bootstrap_std": result["full_field"]["rmse_bootstrap_std"],
+                "full_field_mae_bootstrap_std": result["full_field"]["mae_bootstrap_std"],
+            })
         with path.open("w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=list(flat))
             writer.writeheader()
@@ -439,13 +503,14 @@ def main(cfg: Config) -> None:
     sensors_xy = pack["sensors_xy"].astype(np.float32)
     t_np = pack["t"].astype(np.float32)
     obs_key = choose_obs_key(pack, dataset_key, cfg.obs_key)
+    obs_mask_key = choose_mask_key(pack, cfg.mask_key)
     impl_model_key = implementation_key(model_key)
-    obs_coords_np, obs_vals_np = sparse_observations(pack, dataset_key, obs_key)
+    obs_coords_np, obs_vals_np, obs_mask_np, valid_idx = sparse_observations(pack, dataset_key, obs_key, obs_mask_key)
 
     train_frac = float(ckpt_cfg.get("train_frac", 0.8))
     val_frac = float(ckpt_cfg.get("val_frac", 0.1))
     seed = int(ckpt_cfg.get("seed", 123))
-    split = ObservedIndexDataset(obs_coords_np.shape[0], train_frac, val_frac, seed)
+    split = ObservedIndexDataset(obs_coords_np.shape[0], train_frac, val_frac, seed, valid_idx=valid_idx)
     train_vals = obs_vals_np[split.train_idx.numpy()]
     obs_mean = train_vals.mean(axis=0) if train_vals.ndim == 2 else float(train_vals.mean())
     obs_std = train_vals.std(axis=0) + 1e-6 if train_vals.ndim == 2 else float(train_vals.std() + 1e-6)
@@ -466,26 +531,30 @@ def main(cfg: Config) -> None:
 
     obs_coords = torch.from_numpy(obs_coords_np).float().to(device)
     obs_vals = torch.from_numpy(obs_vals_np).float().to(device)
+    obs_mask = torch.from_numpy(obs_mask_np).float().to(device)
     sparse_test_idx = split.test_idx
     if cfg.max_sparse_test > 0:
         sparse_test_idx = sparse_test_idx[: cfg.max_sparse_test]
 
+    has_full_field = any(key in pack for key in ("u", "eta", "U"))
     full_field_total = None
-    if impl_model_key == "senseiver" and cfg.senseiver_full_field_fraction < 1.0:
-        full_coords_np, full_vals_np, full_field_total = sampled_full_field(
-            pack,
-            dataset_key,
-            cfg.senseiver_full_field_fraction,
-            cfg.bootstrap_seed + 2,
-            cfg.max_full_field,
-        )
-    else:
-        full_coords_np, full_vals_np = full_field(pack, dataset_key)
-    if cfg.max_full_field > 0 and not (impl_model_key == "senseiver" and cfg.senseiver_full_field_fraction < 1.0):
-        full_coords_np = full_coords_np[: cfg.max_full_field]
-        full_vals_np = full_vals_np[: cfg.max_full_field]
-    full_coords = torch.from_numpy(full_coords_np).float()
-    full_vals = torch.from_numpy(full_vals_np).float()
+    full_coords = full_vals = None
+    if has_full_field:
+        if impl_model_key == "senseiver" and cfg.senseiver_full_field_fraction < 1.0:
+            full_coords_np, full_vals_np, full_field_total = sampled_full_field(
+                pack,
+                dataset_key,
+                cfg.senseiver_full_field_fraction,
+                cfg.bootstrap_seed + 2,
+                cfg.max_full_field,
+            )
+        else:
+            full_coords_np, full_vals_np = full_field(pack, dataset_key)
+        if cfg.max_full_field > 0 and not (impl_model_key == "senseiver" and cfg.senseiver_full_field_fraction < 1.0):
+            full_coords_np = full_coords_np[: cfg.max_full_field]
+            full_vals_np = full_vals_np[: cfg.max_full_field]
+        full_coords = torch.from_numpy(full_coords_np).float()
+        full_vals = torch.from_numpy(full_vals_np).float()
 
     indexer = None
     if impl_model_key == "ffag":
@@ -519,6 +588,7 @@ def main(cfg: Config) -> None:
         train_idx=split.train_idx.numpy(),
         obs_coords_np=obs_coords_np,
         obs_vals_np=obs_vals_np,
+        obs_mask_np=obs_mask_np,
     )
 
     sparse_metrics = eval_sparse_test(
@@ -526,40 +596,50 @@ def main(cfg: Config) -> None:
         indexer,
         obs_coords,
         obs_vals,
+        obs_mask,
         sparse_test_idx,
         cfg.batch_size,
         device,
         cfg.bootstrap_samples,
         cfg.bootstrap_seed,
-    )
-    full_metrics = eval_full_field(
-        adapter,
-        indexer,
-        obs_coords,
-        obs_vals,
-        full_coords,
-        full_vals,
-        cfg.batch_size,
-        device,
-        cfg.bootstrap_samples,
-        cfg.bootstrap_seed + 1,
+        pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,
     )
     result = {
         "dataset": dataset_key,
         "model": model_key,
         "checkpoint": str(path),
         "obs_key": obs_key,
+        "mask_key": obs_mask_key,
         "num_sparse_test": int(sparse_test_idx.numel()),
-        "num_full_field": int(full_coords.shape[0]),
-        "num_full_field_total": int(full_field_total if full_field_total is not None else full_coords.shape[0]),
-        "full_field_sample_fraction": float(cfg.senseiver_full_field_fraction if impl_model_key == "senseiver" else 1.0),
         "bootstrap_samples": int(cfg.bootstrap_samples),
         "bootstrap_seed": int(cfg.bootstrap_seed),
         "sparse_test": sparse_metrics,
-        "full_field": full_metrics,
     }
+    if has_full_field and full_coords is not None and full_vals is not None:
+        full_metrics = eval_full_field(
+            adapter,
+            indexer,
+            obs_coords,
+            obs_vals,
+            full_coords,
+            full_vals,
+            cfg.batch_size,
+            device,
+            cfg.bootstrap_samples,
+            cfg.bootstrap_seed + 1,
+        )
+        result.update({
+            "num_full_field": int(full_coords.shape[0]),
+            "num_full_field_total": int(full_field_total if full_field_total is not None else full_coords.shape[0]),
+            "full_field_sample_fraction": float(cfg.senseiver_full_field_fraction if impl_model_key == "senseiver" else 1.0),
+            "full_field": full_metrics,
+        })
 
-    print(f"[eval] dataset={dataset_key} model={model_key} checkpoint={path.relative_to(ROOT)}")
+    try:
+        display_ckpt = path.relative_to(ROOT)
+    except ValueError:
+        display_ckpt = path
+    print(f"[eval] dataset={dataset_key} model={model_key} checkpoint={display_ckpt}")
     print("")
     print(f"{'metric':<18} {'rmse':>14} {'mae':>14} {'rmse_bs_std':>14} {'mae_bs_std':>14}")
     print(f"{'-' * 78}")
@@ -567,10 +647,12 @@ def main(cfg: Config) -> None:
         f"{'sparse_test':<18} {sparse_metrics['rmse']:>14.6g} {sparse_metrics['mae']:>14.6g} "
         f"{sparse_metrics['rmse_bootstrap_std']:>14.6g} {sparse_metrics['mae_bootstrap_std']:>14.6g}"
     )
-    print(
-        f"{'full_field':<18} {full_metrics['rmse']:>14.6g} {full_metrics['mae']:>14.6g} "
-        f"{full_metrics['rmse_bootstrap_std']:>14.6g} {full_metrics['mae_bootstrap_std']:>14.6g}"
-    )
+    if "full_field" in result:
+        full_metrics = result["full_field"]
+        print(
+            f"{'full_field':<18} {full_metrics['rmse']:>14.6g} {full_metrics['mae']:>14.6g} "
+            f"{full_metrics['rmse_bootstrap_std']:>14.6g} {full_metrics['mae_bootstrap_std']:>14.6g}"
+        )
 
     if cfg.output_path:
         out = Path(cfg.output_path)

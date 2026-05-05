@@ -20,10 +20,15 @@ from baselines.scripts.coordinate_sparse_train import train_coordinate_sparse
 @dataclass
 class Config:
     dataset: str = "swe"
-    data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset.npz"
+    data: str = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset_64.npz"
     obs_key: str = "eta_sensor_noisy"
     save: str = ""
-    pinn: bool = True
+    #  pinn: bool = True
+    # lambda_phys: float = 0.2
+    # lambda_bc: float = 0.2
+    pinn: bool = False
+    lambda_phys: float = 0.0
+    lambda_bc: float = 0.0
     train_frac: float = 0.8
     val_frac: float = 0.1
     seed: int = 123
@@ -36,8 +41,6 @@ class Config:
     depth: int = 6
     w0: float = 30.0
     w0_hidden: float = 1.0
-    lambda_phys: float = 0.2
-    lambda_bc: float = 0.2
     phys_samples: int = 1024
     bc_samples: int = 512
     phys_warmup: int = 0

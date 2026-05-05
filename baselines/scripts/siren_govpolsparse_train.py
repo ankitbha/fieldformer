@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SIREN sparse heat training without FieldFormer local context."""
+"""SIREN sparse real pollution training with vector pollutant targets."""
 
 from __future__ import annotations
 
@@ -9,17 +9,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from baselines.models.siren import SIREN
+from baselines.models.siren import SIRENPollution
 from baselines.scripts.coordinate_sparse_train import train_coordinate_sparse
 
 
 @dataclass
 class Config:
-    dataset: str = "heat"
-    data: str = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp_64.npz"
-    obs_key: str = "sensor_noisy"
+    dataset: str = "govpol"
+    data: str = "/scratch/ab9738/fieldformer/data/gov_sensor_dataset.npz"
+    obs_key: str = "U_sensor"
+    mask_key: str = "U_sensor_mask"
     save: str = ""
-    pinn: bool = True
+    pinn: bool = False
+    normalize_coords: bool = True
     train_frac: float = 0.8
     val_frac: float = 0.1
     seed: int = 123
@@ -32,10 +34,10 @@ class Config:
     depth: int = 6
     w0: float = 30.0
     w0_hidden: float = 1.0
-    lambda_phys: float = 0.2
-    lambda_bc: float = 0.2
-    phys_samples: int = 1024
-    bc_samples: int = 512
+    lambda_phys: float = 0.0
+    lambda_bc: float = 0.0
+    phys_samples: int = 0
+    bc_samples: int = 0
     phys_warmup: int = 0
     phys_ramp: int = 1
     bc_warmup: int = 0
@@ -43,28 +45,28 @@ class Config:
     match_grad_bc: bool = False
     lambda_sponge: float = 0.0
     lambda_rad: float = 0.0
-    sponge_samples: int = 512
-    rad_samples: int = 512
+    sponge_samples: int = 0
+    rad_samples: int = 0
     sponge_border_frac: float = 0.05
     sponge_warmup: int = 0
-    sponge_ramp: int = 10
-    rad_warmup: int = 5
-    rad_ramp: int = 20
+    sponge_ramp: int = 1
+    rad_warmup: int = 0
+    rad_ramp: int = 1
     c_cap: float = 2.0
     huber_delta: float = 1.0
     grad_clip: float = 1.0
-    patience: int = 12
+    patience: int = 10
 
 
 CFG = Config()
-MODEL_CLASS = SIREN
+MODEL_CLASS = SIRENPollution
 
 
 def main(cfg: Config = CFG) -> None:
     train_coordinate_sparse(
         cfg,
         "siren",
-        lambda c: SIREN(in_dim=3, width=c.width, depth=c.depth, out_dim=1, w0=c.w0, w0_hidden=c.w0_hidden),
+        lambda c: SIRENPollution(in_dim=3, width=c.width, depth=c.depth, out_dim=2, w0=c.w0, w0_hidden=c.w0_hidden),
     )
 
 

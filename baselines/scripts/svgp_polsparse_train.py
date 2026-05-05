@@ -16,7 +16,7 @@ from baselines.scripts.svgp_sparse_train import train_svgp_sparse
 @dataclass
 class Config:
     dataset: str = "pol"
-    data: str = "/scratch/ab9738/fieldformer/data/pollution_dataset.npz"
+    data: str = "/scratch/ab9738/fieldformer/data/pollution_dataset_60.npz"
     obs_key: str = "U_sensor_noisy"
     save: str = ""
     pinn: bool = False
