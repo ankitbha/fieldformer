@@ -123,4 +123,6 @@ def make_likelihood(dataset_key: str):
         return MultitaskGaussianLikelihood(num_tasks=3)
     if dataset_key == "govpol":
         return MultitaskGaussianLikelihood(num_tasks=2)
+    if dataset_key == "atm":
+        return MultitaskGaussianLikelihood(num_tasks=4)
     return GaussianLikelihood()

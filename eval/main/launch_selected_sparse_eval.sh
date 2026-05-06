@@ -18,7 +18,13 @@ EXTRA_ARGS=()
 
 EXPERIMENTS=(
   # "fmlp govpol"
-  "siren govpol"
+  "fmlp atm"
+  "siren atm"
+  "svgp atm"
+  "imputeformer atm"
+  "recfno atm"
+  "senseiver atm"
+  # "siren govpol"
   # "svgp govpol"
   # "imputeformer govpol"
   # "recfno govpol"
@@ -60,7 +66,12 @@ while [[ $# -gt 0 ]]; do
 Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--max_sparse_test N] [--max_full_field N] [--bootstrap_samples N] [--bootstrap_seed N] [-- extra args]
 
 Submits sparse eval jobs with an 8-hour limit:
-  ffag-pol
+  fmlp-atm
+  siren-atm
+  svgp-atm
+  imputeformer-atm
+  recfno-atm
+  senseiver-atm
 
 Senseiver full-field eval uses a fixed sample fraction of ${SENSEIVER_FULL_FIELD_FRACTION}.
 

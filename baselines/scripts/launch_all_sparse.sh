@@ -6,17 +6,13 @@ SCRIPT_DIR="${ROOT}/baselines/scripts"
 RUN_SH="${SCRIPT_DIR}/run.sh"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
-# MODELS=(
-#   fmlp
-#   siren
-#   imputeformer
-#   recfno
-#   senseiver
-#   svgp
-# )
-
 MODELS=(
-  imputeformer
+  # fmlp
+  # siren
+  # imputeformer
+  # recfno
+  senseiver
+  # svgp
 )
 
 DATASETS=(
@@ -24,6 +20,7 @@ DATASETS=(
   # pol
   # swe
   govpol
+  # atm
 )
 
 DRY_RUN=0
@@ -39,7 +36,7 @@ while [[ $# -gt 0 ]]; do
       cat <<EOF
 Usage: $0 [--dry-run] [-- script args...]
 
-Submits all 18 sparse baseline experiments using:
+Submits selected sparse baseline experiments using:
   sbatch ${RUN_SH} <train_script.py> [script args...]
 
 Models:   ${MODELS[*]}

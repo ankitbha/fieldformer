@@ -52,6 +52,8 @@ def _dataset_key(cfg: Any) -> str:
     if hasattr(cfg, "dataset"):
         return str(cfg.dataset)
     data = str(cfg.data).lower()
+    if "gov_atm" in data or "atmsparse" in data:
+        return "atm"
     if "pollution" in data:
         return "pol"
     if "gov_sensor" in data or "govdata" in data:
@@ -129,7 +131,6 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
     x_min, x_max, y_min, y_max, t_min, t_max, Lx, Ly, Tt = _ranges(pack, sensors_xy, t_np)
 
     obs_coords = torch.from_numpy(coords_np).float().to(device)
-    obs_vals = torch.from_numpy(vals_np).float().to(device)
     obs_mask = torch.from_numpy(mask_np).float().to(device)
     n_obs = int(obs_coords.shape[0])
 
@@ -137,6 +138,23 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
     train_ds.set_split("train")
     val_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
     val_ds.set_split("val")
+    out_dim = int(vals_np.shape[-1]) if vals_np.ndim == 2 else 1
+    normalize_values = bool(getattr(cfg, "normalize_values", False))
+    vals_mean = np.zeros(out_dim, dtype=np.float32)
+    vals_std = np.ones(out_dim, dtype=np.float32)
+    vals_train = vals_np.reshape(n_obs, out_dim)
+    mask_train = mask_np.reshape(n_obs, out_dim)
+    train_idx_np = train_ds.train_idx.numpy()
+    if normalize_values:
+        for c in range(out_dim):
+            valid = mask_train[train_idx_np, c].astype(bool)
+            if valid.any():
+                vals_mean[c] = float(vals_train[train_idx_np, c][valid].mean())
+                vals_std[c] = float(vals_train[train_idx_np, c][valid].std() + 1e-6)
+        vals_np = ((vals_train - vals_mean) / vals_std).reshape(vals_np.shape).astype(np.float32)
+    obs_vals = torch.from_numpy(vals_np).float().to(device)
+    vals_mean_t = torch.from_numpy(vals_mean).float().to(device)
+    vals_std_t = torch.from_numpy(vals_std).float().to(device)
     train_dl = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
     val_dl = DataLoader(val_ds, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
 
@@ -162,6 +180,13 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
         if pred.ndim == 2 and pred.shape[-1] == 1:
             pred = pred[:, 0]
         return pred
+
+    def denorm(pred: torch.Tensor) -> torch.Tensor:
+        if not normalize_values:
+            return pred
+        pred_m = pred.unsqueeze(-1) if pred.ndim == 1 else pred
+        out = pred_m * vals_std_t + vals_mean_t
+        return out[:, 0] if pred.ndim == 1 else out
 
     def masked_mse(pred: torch.Tensor, tgt: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         pred = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
@@ -270,7 +295,10 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
         for q_lin in val_dl:
             q_lin = q_lin.to(device)
             pred = predict(obs_coords[q_lin])
-            tgt = obs_vals[q_lin]
+            pred = denorm(pred)
+            tgt = torch.from_numpy(vals_train[q_lin.detach().cpu().numpy()]).float().to(device)
+            if out_dim == 1:
+                tgt = tgt[:, 0]
             mask = obs_mask[q_lin]
             pred_m = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
             tgt_m = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred_m.ndim == 2 else tgt
@@ -369,6 +397,10 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
                         "t_range": [t_min, t_max],
                         "mask_key": obs_mask_key,
                         "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,
+                        "val_mean": vals_mean.tolist() if normalize_values else None,
+                        "val_std": vals_std.tolist() if normalize_values else None,
+                        "normalizes_values": normalize_values,
+                        "output_dim": out_dim,
                         "physics_loss": False,
                         "swe_params": list(_swe_params(pack)) if dataset_key == "swe" else None,
                     },

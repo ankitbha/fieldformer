@@ -52,6 +52,7 @@ DATASETS = {
     "swe": ROOT / "data" / "swe_periodic_dataset.npz",
     "pol": ROOT / "data" / "pollution_dataset.npz",
     "govpol": ROOT / "data" / "gov_sensor_dataset.npz",
+    "atm": ROOT / "data" / "gov_atm_dataset.npz",
 }
 PINN_ALIASES = {
     "fmlp-pinn": "fmlp",
@@ -198,6 +199,7 @@ def choose_obs_key(pack: Any, dataset_key: str, override: str = "") -> str:
         "swe": ("eta_sensor_noisy", "eta_sensor_clean"),
         "pol": ("U_sensor_noisy", "U_sensor_clean", "sensor_noisy", "sensor_clean"),
         "govpol": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
+        "atm": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
         "heat": ("sensor_noisy", "sensor_clean"),
     }[dataset_key]
     for key in candidates:
@@ -360,6 +362,31 @@ def bootstrap_metric_std(
     }
 
 
+def bootstrap_channel_metric_std(
+    batch_channel_sums: list[tuple[np.ndarray, np.ndarray, np.ndarray]],
+    samples: int,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    if samples <= 1 or len(batch_channel_sums) <= 1:
+        width = int(batch_channel_sums[0][0].shape[0]) if batch_channel_sums else 0
+        return np.zeros(width, dtype=np.float64), np.zeros(width, dtype=np.float64)
+
+    se_batches = np.stack([x[0] for x in batch_channel_sums]).astype(np.float64)
+    ae_batches = np.stack([x[1] for x in batch_channel_sums]).astype(np.float64)
+    n_batches = np.stack([x[2] for x in batch_channel_sums]).astype(np.float64)
+    rng = np.random.default_rng(seed)
+    boot_rmse = np.empty((samples, se_batches.shape[1]), dtype=np.float64)
+    boot_mae = np.empty_like(boot_rmse)
+    for i in range(samples):
+        sample_idx = rng.integers(0, len(batch_channel_sums), size=len(batch_channel_sums))
+        se = se_batches[sample_idx].sum(axis=0)
+        ae = ae_batches[sample_idx].sum(axis=0)
+        nn = np.maximum(1.0, n_batches[sample_idx].sum(axis=0))
+        boot_rmse[i] = np.sqrt(se / nn)
+        boot_mae[i] = ae / nn
+    return boot_rmse.std(axis=0, ddof=1), boot_mae.std(axis=0, ddof=1)
+
+
 def finish_metrics(
     se_sum: float,
     ae_sum: float,
@@ -368,6 +395,7 @@ def finish_metrics(
     bootstrap_samples: int,
     bootstrap_seed: int,
     channel_sums: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
+    channel_batch_sums: list[tuple[np.ndarray, np.ndarray, np.ndarray]] | None = None,
     channel_names: list[str] | None = None,
 ) -> dict[str, float]:
     n = max(1, n_sum)
@@ -376,13 +404,20 @@ def finish_metrics(
     if channel_sums is not None:
         se_c, ae_c, n_c = channel_sums
         names = channel_names or [f"channel_{i}" for i in range(len(se_c))]
+        rmse_std_c, mae_std_c = bootstrap_channel_metric_std(
+            channel_batch_sums or [],
+            bootstrap_samples,
+            bootstrap_seed,
+        )
         metrics["channels"] = {
             str(name): {
                 "rmse": math.sqrt(float(se) / max(1.0, float(nn))),
                 "mae": float(ae) / max(1.0, float(nn)),
                 "count": int(nn),
+                "rmse_bootstrap_std": float(rmse_std),
+                "mae_bootstrap_std": float(mae_std),
             }
-            for name, se, ae, nn in zip(names, se_c, ae_c, n_c)
+            for name, se, ae, nn, rmse_std, mae_std in zip(names, se_c, ae_c, n_c, rmse_std_c, mae_std_c)
         }
     return metrics
 
@@ -404,6 +439,7 @@ def eval_sparse_test(
     adapter.eval()
     se_sum, ae_sum, n_sum = 0.0, 0.0, 0
     batch_sums: list[tuple[float, float, int]] = []
+    channel_batch_sums: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
     se_c = ae_c = n_c = None
     starts = range(0, test_idx.numel(), batch_size)
     with tqdm(total=int(test_idx.numel()), desc="sparse-test", unit="pts", leave=False) as pbar:
@@ -420,8 +456,9 @@ def eval_sparse_test(
             ae_sum += ae
             n_sum += n
             batch_sums.append((se, ae, n))
+            channel_batch_sums.append((bse_c, bae_c, bn_c))
             pbar.update(int(q_lin.numel()))
-    return finish_metrics(se_sum, ae_sum, n_sum, batch_sums, bootstrap_samples, bootstrap_seed, (se_c, ae_c, n_c), channel_names)
+    return finish_metrics(se_sum, ae_sum, n_sum, batch_sums, bootstrap_samples, bootstrap_seed, (se_c, ae_c, n_c), channel_batch_sums, channel_names)
 
 
 @torch.no_grad()
@@ -521,6 +558,9 @@ def main(cfg: Config) -> None:
     if impl_model_key == "svgp" and "obs_mean" in meta and "obs_std" in meta:
         obs_mean = meta["obs_mean"]
         obs_std = meta["obs_std"]
+    if "val_mean" in meta and "val_std" in meta and meta["val_mean"] is not None and meta["val_std"] is not None:
+        obs_mean = meta["val_mean"]
+        obs_std = meta["val_std"]
 
     x_np = pack["x"].astype(np.float32)
     y_np = pack["y"].astype(np.float32)

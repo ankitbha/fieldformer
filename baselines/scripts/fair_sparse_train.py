@@ -28,6 +28,8 @@ def dataset_key(cfg: Any) -> str:
     if hasattr(cfg, "dataset"):
         return str(cfg.dataset)
     data = str(cfg.data).lower()
+    if "gov_atm" in data or "atmsparse" in data:
+        return "atm"
     if "gov_sensor" in data or "govdata" in data:
         return "govpol"
     if "pollution" in data:
@@ -119,6 +121,22 @@ def train_recfno(cfg: Any) -> None:
     sensors_xy, t_np = data["sensors_xy"], data["t"]
     n_sensors, n_times = values.shape[:2]
     train_mask, val_mask, _ = split_masks(data["split"], n_sensors, n_times)
+    train_channel_mask = train_mask[..., None] * masks
+    normalize_values = bool(getattr(cfg, "normalize_values", False))
+    mean = np.zeros(out_dim, dtype=np.float32)
+    std = np.ones(out_dim, dtype=np.float32)
+    if normalize_values:
+        denom = train_channel_mask.sum(axis=(0, 1))
+        mean = np.divide(
+            (values * train_channel_mask).sum(axis=(0, 1)),
+            denom,
+            out=np.zeros(out_dim, dtype=np.float32),
+            where=denom > 0,
+        ).astype(np.float32)
+        for c in range(out_dim):
+            valid = train_channel_mask[..., c].astype(bool)
+            std[c] = float(values[..., c][valid].std() + 1e-6) if valid.any() else 1.0
+    model_values = ((values - mean) / std).astype(np.float32) if normalize_values else values
     ix, iy = sensor_grid_indices(pack, sensors_xy)
     x_np, y_np = pack["x"].astype(np.float32), pack["y"].astype(np.float32)
     nx, ny = len(x_np), len(y_np)
@@ -143,7 +161,7 @@ def train_recfno(cfg: Any) -> None:
                 q = drop_lin[(drop_lin % n_times) == int(k_t)].detach().cpu().numpy()
                 m[q // n_times] = False
             channel_mask = masks[m, k_t].astype(np.float32)
-            val_grid[b, :, ix[m], iy[m]] = torch.from_numpy(values[m, k_t].T).float().to(device)
+            val_grid[b, :, ix[m], iy[m]] = torch.from_numpy(model_values[m, k_t].T).float().to(device)
             mask_grid[b, :, ix[m], iy[m]] = torch.from_numpy(channel_mask.T).float().to(device)
         coords = coord_grid.unsqueeze(0).expand(bsz, -1, -1, -1)
         return torch.cat([val_grid, mask_grid, coords], dim=1)
@@ -163,6 +181,8 @@ def train_recfno(cfg: Any) -> None:
                 pred = torch.stack([pred_grid[time_to_b[int((q % n_times).item())], :, ix[int((q // n_times).item())], iy[int((q // n_times).item())]] for q in q_lin])
                 tgt = torch.from_numpy(values[(q_lin // n_times).cpu().numpy(), (q_lin % n_times).cpu().numpy()]).float().to(device)
                 m = torch.from_numpy(masks[(q_lin // n_times).cpu().numpy(), (q_lin % n_times).cpu().numpy()]).float().to(device)
+                if normalize_values:
+                    pred = pred * torch.from_numpy(std).float().to(device) + torch.from_numpy(mean).float().to(device)
                 se += ((((pred - tgt) ** 2) * m).sum()).item()
                 n += int(m.sum().item())
         model.train()
@@ -176,7 +196,7 @@ def train_recfno(cfg: Any) -> None:
             pred_grid = model(make_input(times, train_mask, drop_lin=q_lin))
             time_to_b = {int(k.item()): b for b, k in enumerate(times)}
             pred = torch.stack([pred_grid[time_to_b[int((q % n_times).item())], :, ix[int((q // n_times).item())], iy[int((q // n_times).item())]] for q in q_lin])
-            tgt = torch.from_numpy(values[(q_lin // n_times).cpu().numpy(), (q_lin % n_times).cpu().numpy()]).float().to(device)
+            tgt = torch.from_numpy(model_values[(q_lin // n_times).cpu().numpy(), (q_lin % n_times).cpu().numpy()]).float().to(device)
             m = torch.from_numpy(masks[(q_lin // n_times).cpu().numpy(), (q_lin % n_times).cpu().numpy()]).float().to(device)
             loss = (((pred - tgt) ** 2) * m).sum() / m.sum().clamp_min(1.0)
             opt.zero_grad(set_to_none=True)
@@ -189,7 +209,7 @@ def train_recfno(cfg: Any) -> None:
         print(f"[epoch {epoch:03d}] train_mse={total/max(1,batches):.4e} val_rmse={rmse:.6f}")
         if rmse < best:
             best, bad = rmse, 0
-            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"recfno_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim}}, path)
+            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"recfno_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "val_mean": mean.tolist() if normalize_values else None, "val_std": std.tolist() if normalize_values else None, "normalizes_values": normalize_values, "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None}}, path)
             print(f"[save] best checkpoint -> {path}")
         else:
             bad += 1
@@ -312,7 +332,7 @@ def train_senseiver(cfg: Any) -> None:
         print(f"[epoch {epoch:03d}] train_mse={total/max(1,batches):.4e} val_rmse={rmse:.6f}")
         if rmse < best:
             best, bad = rmse, 0
-            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"senseiver_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": vals_mean.tolist(), "val_std": vals_std.tolist(), "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim}}, path)
+            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"senseiver_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": vals_mean.tolist(), "val_std": vals_std.tolist(), "normalizes_values": True, "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "channel_names": data["pack"]["pollutant_names"].tolist() if "pollutant_names" in data["pack"] else None}}, path)
             print(f"[save] best checkpoint -> {path}")
         else:
             bad += 1
@@ -401,7 +421,7 @@ def train_imputeformer(cfg: Any) -> None:
         print(f"[epoch {epoch:03d}] train_mse={total/max(1,batches):.4e} val_rmse={rmse:.6f}")
         if rmse < best:
             best, bad = rmse, 0
-            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"imputeformer_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": mean.tolist(), "val_std": std.tolist(), "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim}}, path)
+            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"imputeformer_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": mean.tolist(), "val_std": std.tolist(), "normalizes_values": True, "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "channel_names": data["pack"]["pollutant_names"].tolist() if "pollutant_names" in data["pack"] else None}}, path)
             print(f"[save] best checkpoint -> {path}")
         else:
             bad += 1

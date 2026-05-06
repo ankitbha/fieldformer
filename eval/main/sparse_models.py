@@ -116,8 +116,8 @@ class EvalAdapter(nn.Module):
         if self.model_key == "svgp":
             return self._denorm(self.model(xyt).mean)
         if self.model_key == "fmlp":
-            return self.model(xyt, Lx=self.Lx, Ly=self.Ly, Tt=self.Tt)
-        return self.model(xyt)
+            return self._denorm(self.model(xyt, Lx=self.Lx, Ly=self.Ly, Tt=self.Tt))
+        return self._denorm(self.model(xyt))
 
     def predict_observed(
         self,
@@ -130,9 +130,9 @@ class EvalAdapter(nn.Module):
             return self._predict_points(obs_coords[q_lin])
         assert nb_idx is not None
         obs_vals_m = self._obs_values(obs_vals)
-        if self.dataset_key in {"pol", "govpol"}:
-            return self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx)
-        return self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly)
+        if self.dataset_key in {"pol", "govpol", "atm"}:
+            return self._denorm(self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx))
+        return self._denorm(self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly))
 
     def predict_continuous(
         self,
@@ -145,9 +145,9 @@ class EvalAdapter(nn.Module):
             return self._predict_points(xyt_q)
         assert nb_idx is not None
         obs_vals_m = self._obs_values(obs_vals)
-        if self.dataset_key in {"pol", "govpol"}:
-            return self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx)
-        return self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly)
+        if self.dataset_key in {"pol", "govpol", "atm"}:
+            return self._denorm(self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx))
+        return self._denorm(self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly))
 
     def eval(self) -> "EvalAdapter":
         super().eval()
@@ -183,8 +183,11 @@ class RecFNOEvalAdapter(EvalAdapter):
         obs_mask_np: np.ndarray | None,
         train_idx: np.ndarray,
         device: torch.device,
+        obs_mean: Any = 0.0,
+        obs_std: Any = 1.0,
+        normalizes_values: bool = False,
     ):
-        super().__init__(model, model_key="recfno", dataset_key=dataset_key)
+        super().__init__(model, model_key="recfno", dataset_key=dataset_key, normalizes_values=normalizes_values, obs_mean=obs_mean, obs_std=obs_std)
         self.device_ref = device
         self.n_sensors, self.n_times = int(sensors_xy.shape[0]), int(t_grid.shape[0])
         vals = obs_vals_np.reshape(self.n_sensors, self.n_times, -1).astype(np.float32)
@@ -195,6 +198,9 @@ class RecFNOEvalAdapter(EvalAdapter):
             if obs_mask_np is not None
             else np.ones_like(vals, dtype=np.float32)
         )
+        mean = np.asarray(obs_mean, dtype=np.float32).reshape(1, 1, -1)
+        std = np.asarray(obs_std, dtype=np.float32).reshape(1, 1, -1)
+        self.model_values = ((vals - mean) / std).astype(np.float32) if normalizes_values else vals
         self.train_mask = split_train_mask(train_idx, self.n_sensors, self.n_times)
         self.ix_np, self.iy_np = sensor_grid_indices(x_grid, y_grid, sensors_xy)
         self.ix = torch.from_numpy(self.ix_np).long().to(device)
@@ -218,7 +224,7 @@ class RecFNOEvalAdapter(EvalAdapter):
             m = self.train_mask[:, int(k_t)]
             ix = torch.from_numpy(self.ix_np[m]).long().to(self.device_ref)
             iy = torch.from_numpy(self.iy_np[m]).long().to(self.device_ref)
-            val_grid[b, :, ix, iy] = torch.from_numpy(self.values[m, int(k_t)].T).float().to(self.device_ref)
+            val_grid[b, :, ix, iy] = torch.from_numpy(self.model_values[m, int(k_t)].T).float().to(self.device_ref)
             mask_grid[b, :, ix, iy] = torch.from_numpy(self.masks[m, int(k_t)].T).float().to(self.device_ref)
         coords = self.coord_grid.unsqueeze(0).expand(bsz, -1, -1, -1)
         return torch.cat([val_grid, mask_grid, coords], dim=1)
@@ -233,7 +239,9 @@ class RecFNOEvalAdapter(EvalAdapter):
         s_q = q_lin // self.n_times
         k_q = q_lin % self.n_times
         pred_grid, time_to_b = self._grid_for_times(k_q)
-        return torch.stack([pred_grid[time_to_b[int(k.item())], :, self.ix[int(s.item())], self.iy[int(s.item())]] for s, k in zip(s_q, k_q)])
+        pred = torch.stack([pred_grid[time_to_b[int(k.item())], :, self.ix[int(s.item())], self.iy[int(s.item())]] for s, k in zip(s_q, k_q)])
+        pred = self._denorm(pred)
+        return pred[:, 0] if pred.shape[-1] == 1 else pred
 
     def predict_continuous(self, xyt_q: torch.Tensor, obs_coords: torch.Tensor, obs_vals: torch.Tensor, nb_idx: torch.Tensor | None = None) -> torch.Tensor:
         del obs_coords, obs_vals, nb_idx
@@ -241,7 +249,9 @@ class RecFNOEvalAdapter(EvalAdapter):
         iy = torch.argmin(torch.abs(xyt_q[:, 1:2] - self.y_grid[None, :]), dim=1)
         kt = torch.argmin(torch.abs(xyt_q[:, 2:3] - self.t_grid[None, :]), dim=1)
         pred_grid, time_to_b = self._grid_for_times(kt)
-        return torch.stack([pred_grid[time_to_b[int(k.item())], :, i, j] for i, j, k in zip(ix, iy, kt)])
+        pred = torch.stack([pred_grid[time_to_b[int(k.item())], :, i, j] for i, j, k in zip(ix, iy, kt)])
+        pred = self._denorm(pred)
+        return pred[:, 0] if pred.shape[-1] == 1 else pred
 
 
 class SenseiverEvalAdapter(EvalAdapter):
@@ -431,6 +441,8 @@ def build_sparse_model(
     likelihood = None
     normalizes_values = False
     normalizes_coords = False
+    if bool(ckpt.get("meta", {}).get("normalizes_values", False)):
+        normalizes_values = True
 
     if model_key == "siren":
         from baselines.models.siren import SIREN, SIRENSWE
@@ -453,7 +465,7 @@ def build_sparse_model(
         from baselines.models.svgp import MultitaskPeriodicSVGP, MultitaskPollutionSVGP, PeriodicSVGP, PollutionSVGP, make_likelihood
 
         z = infer_inducing_points(state).to(device)
-        if dataset_key == "govpol":
+        if dataset_key in {"govpol", "atm"}:
             model = MultitaskPollutionSVGP(z, num_tasks=output_dim_for(dataset_key, ckpt, cfg, 2), ard_lengthscale_init=tuple(_get(cfg, "ard_lengthscale_init", (0.2, 0.2, 0.1))), outputscale_init=_get(cfg, "outputscale_init", 1.0))
         elif dataset_key == "pol":
             model = PollutionSVGP(z, tuple(_get(cfg, "ard_lengthscale_init", (0.2, 0.2, 0.1))), _get(cfg, "outputscale_init", 1.0))
@@ -540,6 +552,9 @@ def build_sparse_model(
             obs_mask_np=obs_mask_np,
             train_idx=train_idx,
             device=device,
+            obs_mean=ckpt.get("meta", {}).get("val_mean", obs_mean),
+            obs_std=ckpt.get("meta", {}).get("val_std", obs_std),
+            normalizes_values=bool(ckpt.get("meta", {}).get("normalizes_values", False)),
         ).to(device)
     if model_key == "senseiver":
         if any(v is None for v in (sensors_xy, t_grid, train_idx, obs_coords_np, obs_vals_np)):
@@ -576,8 +591,8 @@ def build_sparse_model(
         likelihood=likelihood,
         normalizes_values=normalizes_values,
         normalizes_coords=normalizes_coords,
-        obs_mean=obs_mean,
-        obs_std=obs_std,
+        obs_mean=ckpt.get("meta", {}).get("val_mean", obs_mean),
+        obs_std=ckpt.get("meta", {}).get("val_std", obs_std),
         x_min=x_min,
         y_min=y_min,
         t_min=t_min,

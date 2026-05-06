@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 HEAT_DATA = "/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"
 SWE_DATA = "/scratch/ab9738/fieldformer/data/swe_periodic_dataset.npz"
 POLLUTION_DATA = "/scratch/ab9738/fieldformer/data/pollution_dataset.npz"
+ATM_DATA = "/scratch/ab9738/fieldformer/data/gov_atm_dataset.npz"
 
 
 class ObservedIndexDataset(Dataset):
@@ -78,6 +79,7 @@ def sensor_key(pack: np.lib.npyio.NpzFile, dataset: str, override: str = "") -> 
         "swe": ("eta_sensor_noisy", "eta_sensor_clean"),
         "pol": ("U_sensor_noisy", "U_sensor_clean", "sensor_noisy", "sensor_clean"),
         "govpol": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
+        "atm": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
     }[dataset]
     for key in candidates:
         if key in pack:

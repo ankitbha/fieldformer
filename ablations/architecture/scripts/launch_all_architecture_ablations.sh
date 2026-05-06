@@ -11,7 +11,8 @@ EXTRA_ARGS=()
 
 EXPERIMENTS=(
   # "ffag-nophys-heatsparse ffag_heatsparse_nophys_train.py"
-  "ffag-nophys-govpolsparse ffag_govpolsparse_nophys_train.py"
+  "ffag-nophys-atmsparse ffag_atmsparse_nophys_train.py"
+  # "ffag-nophys-govpolsparse ffag_govpolsparse_nophys_train.py"
   # "ffag-nophys-swesparse ffag_swesparse_nophys_train.py"
 )
 
@@ -32,6 +33,7 @@ Experiments:
   ffag-nophys-heatsparse
   ffag-nophys-swesparse
   ffag-nophys-polsparse
+  ffag-nophys-atmsparse
   ffag-mlp-heatsparse
   ffag-mlp-swesparse
   ffag-mlp-polsparse

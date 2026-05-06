@@ -19,6 +19,8 @@ def _dataset_key(cfg: Any) -> str:
     if hasattr(cfg, "dataset"):
         return str(cfg.dataset)
     data = str(cfg.data).lower()
+    if "gov_atm" in data or "atmsparse" in data:
+        return "atm"
     if "pollution" in data:
         return "pol"
     if "gov_sensor" in data or "govdata" in data:
@@ -84,6 +86,8 @@ def train_svgp_sparse(cfg: Any) -> None:
     inducing = obs_coords[inducing_idx].detach().clone()
     if dataset_key == "govpol":
         model = MultitaskPollutionSVGP(inducing, num_tasks=2, ard_lengthscale_init=tuple(cfg.ard_lengthscale_init), outputscale_init=cfg.outputscale_init).to(device)
+    elif dataset_key == "atm":
+        model = MultitaskPollutionSVGP(inducing, num_tasks=4, ard_lengthscale_init=tuple(cfg.ard_lengthscale_init), outputscale_init=cfg.outputscale_init).to(device)
     elif dataset_key == "pol":
         model = PollutionSVGP(inducing, tuple(cfg.ard_lengthscale_init), cfg.outputscale_init).to(device)
     elif dataset_key == "swe":
@@ -128,12 +132,15 @@ def train_svgp_sparse(cfg: Any) -> None:
                 output = output[..., 0]
             pred = likelihood(output).mean
             tgt = obs_vals[q_lin]
+            mean_t = torch.as_tensor(obs_mean, dtype=pred.dtype, device=pred.device)
+            std_t = torch.as_tensor(obs_std, dtype=pred.dtype, device=pred.device)
+            pred = pred * std_t + mean_t
+            tgt = tgt * std_t + mean_t
             se_sum += torch.sum((pred - tgt) ** 2).item()
             n_sum += int(tgt.numel())
         model.train()
         likelihood.train()
-        scale = float(np.sqrt(np.mean(np.square(obs_std)))) if np.ndim(obs_std) else float(obs_std)
-        return math.sqrt(se_sum / max(1, n_sum)) * scale
+        return math.sqrt(se_sum / max(1, n_sum))
 
     for epoch in range(start_epoch, cfg.epochs + 1):
         running = 0.0
@@ -173,6 +180,9 @@ def train_svgp_sparse(cfg: Any) -> None:
                         "obs_key": obs_key,
                         "obs_mean": [float(obs_mean), 0.0, 0.0] if dataset_key == "swe" else np.asarray(obs_mean).tolist(),
                         "obs_std": [float(obs_std), 1.0, 1.0] if dataset_key == "swe" else np.asarray(obs_std).tolist(),
+                        "val_mean": [float(obs_mean), 0.0, 0.0] if dataset_key == "swe" else np.asarray(obs_mean).tolist(),
+                        "val_std": [float(obs_std), 1.0, 1.0] if dataset_key == "swe" else np.asarray(obs_std).tolist(),
+                        "normalizes_values": True,
                         "output_dim": 3 if dataset_key == "swe" else (int(vals_np.shape[-1]) if vals_np.ndim == 2 else 1),
                         "mask_key": obs_mask_key,
                         "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,

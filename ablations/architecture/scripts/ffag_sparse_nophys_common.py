@@ -68,6 +68,7 @@ def _load_observations(pack: np.lib.npyio.NpzFile, dataset_key: str, obs_key: st
         "swe": ("eta_sensor_noisy", "eta_sensor_clean"),
         "pol": ("U_sensor_noisy", "U_sensor_clean", "sensor_noisy", "sensor_clean"),
         "govpol": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
+        "atm": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
     }[dataset_key]
     for key in (obs_key, *fallbacks):
         if key in pack:
@@ -173,7 +174,6 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
 
     _debug("moving observed tensors to device")
     obs_coords = torch.from_numpy(coords_np).float().to(device)
-    obs_vals = torch.from_numpy(vals_np).float().to(device)
     obs_mask = torch.from_numpy(mask_np).float().to(device)
     sensors_xy_t = torch.from_numpy(sensors_xy).float().to(device)
     t_grid_t = torch.from_numpy(t_np).float().to(device)
@@ -183,6 +183,23 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     _debug("constructing train split and DataLoader")
     ds = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed, valid_idx=valid_idx)
     ds.set_split("train")
+    out_dim = int(sensor_values.shape[2]) if sensor_values.ndim == 3 else 1
+    normalize_values = bool(getattr(cfg, "normalize_values", False))
+    vals_mean = np.zeros(out_dim, dtype=np.float32)
+    vals_std = np.ones(out_dim, dtype=np.float32)
+    vals_raw = vals_np.reshape(n_obs, out_dim)
+    mask_raw = mask_np.reshape(n_obs, out_dim)
+    train_idx_np = ds.train_idx.detach().cpu().numpy()
+    if normalize_values:
+        for c in range(out_dim):
+            valid = mask_raw[train_idx_np, c].astype(bool)
+            if valid.any():
+                vals_mean[c] = float(vals_raw[train_idx_np, c][valid].mean())
+                vals_std[c] = float(vals_raw[train_idx_np, c][valid].std() + 1e-6)
+        vals_np = ((vals_raw - vals_mean) / vals_std).reshape(vals_np.shape).astype(np.float32)
+    obs_vals = torch.from_numpy(vals_np).float().to(device)
+    vals_mean_t = torch.from_numpy(vals_mean).float().to(device)
+    vals_std_t = torch.from_numpy(vals_std).float().to(device)
     dl = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
     _debug(f"train split size={len(ds)}, train batches={len(dl)}")
 
@@ -197,17 +214,16 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     _debug("constructed sparse neighbor indexer")
     _debug("loading model class")
     model_cls = class_for_dataset(dataset_key)
-    out_dim = int(sensor_values.shape[2]) if sensor_values.ndim == 3 else 1
     _debug(f"constructing model class={model_cls.__name__}, out_dim={out_dim}")
     try:
         model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff, out_dim=out_dim).to(device)
     except TypeError:
         model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
     _debug("constructed model on device")
-    if dataset_key in {"pol", "govpol"}:
+    if dataset_key in {"pol", "govpol", "atm"}:
         with torch.no_grad():
             model.log_gammas[:] = torch.log(torch.tensor([1.0, 1.0, 0.5], device=device))
-        _debug("initialized pollution log_gammas")
+        _debug("initialized pollution/atm log_gammas")
 
     _debug("constructing optimizer/scheduler/early stopper")
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
@@ -217,7 +233,7 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
 
     def predict_observed(q_lin: torch.Tensor) -> torch.Tensor:
         nb_idx = indexer.gather_observed_neighbors(q_lin, exclude_self=True)
-        if dataset_key in {"pol", "govpol"}:
+        if dataset_key in {"pol", "govpol", "atm"}:
             return model.forward_observed(q_lin, obs_coords, obs_vals, nb_idx)
         return model.forward_observed(q_lin, obs_coords, obs_vals, nb_idx, Lx=domain["Lx"], Ly=domain["Ly"])
 
@@ -238,9 +254,16 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
         for q_lin in dl_val:
             q_lin = q_lin.to(device)
             pred = predict_observed(q_lin)
-            tgt = obs_vals[q_lin]
+            tgt = torch.from_numpy(vals_raw[q_lin.detach().cpu().numpy()]).float().to(device)
+            if out_dim == 1:
+                tgt = tgt[:, 0]
             mask = obs_mask[q_lin]
             pred = observed_channel(pred)
+            if normalize_values:
+                pred_m = pred.unsqueeze(-1) if pred.ndim == 1 else pred
+                pred = pred_m * vals_std_t + vals_mean_t
+                if out_dim == 1:
+                    pred = pred[:, 0]
             pred = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
             tgt = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred.ndim == 2 else tgt
             mask = mask.unsqueeze(-1) if mask.ndim == 1 and pred.ndim == 2 else mask
@@ -303,6 +326,9 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
                         "num_sensors": int(n_sensors),
                         "num_times": int(n_times),
                         "output_dim": int(out_dim),
+                        "val_mean": vals_mean.tolist() if normalize_values else None,
+                        "val_std": vals_std.tolist() if normalize_values else None,
+                        "normalizes_values": normalize_values,
                         "num_observations": int(n_obs),
                         "num_valid_observations": int(valid_idx.shape[0]) if valid_idx is not None else int(n_obs),
                         "x_range": [domain["x_min"], domain["x_max"]],

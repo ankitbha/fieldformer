@@ -27,17 +27,22 @@ def apply_cli_overrides(cfg: Any) -> Any:
             name = field.name
             known_names.add(name)
             default = getattr(cfg, name)
-            arg = f"--{name.replace('_', '-')}"
+            arg_names = [f"--{name.replace('_', '-')}"]
+            underscore_arg = f"--{name}"
+            if underscore_arg not in arg_names:
+                arg_names.append(underscore_arg)
             if isinstance(default, bool):
-                parser.add_argument(arg, dest=name, nargs="?", const=True, type=_str_to_bool)
+                parser.add_argument(*arg_names, dest=name, nargs="?", const=True, type=_str_to_bool)
                 parser.add_argument(f"--no-{name.replace('_', '-')}", dest=name, action="store_false")
+                if "_" in name:
+                    parser.add_argument(f"--no-{name}", dest=name, action="store_false")
             elif isinstance(default, tuple):
-                parser.add_argument(arg, dest=name, type=lambda value: tuple(ast.literal_eval(value)))
+                parser.add_argument(*arg_names, dest=name, type=lambda value: tuple(ast.literal_eval(value)))
             else:
-                parser.add_argument(arg, dest=name, type=type(default))
+                parser.add_argument(*arg_names, dest=name, type=type(default))
 
     if "load_checkpoint" not in known_names:
-        parser.add_argument("--load-checkpoint", dest="load_checkpoint", action="store_true")
+        parser.add_argument("--load-checkpoint", "--load_checkpoint", dest="load_checkpoint", action="store_true")
     if "checkpoint" not in known_names:
         parser.add_argument("--checkpoint", dest="checkpoint", default="")
 
