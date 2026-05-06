@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from baselines.models.data import ObservedIndexDataset, build_observed_tuples, mask_key, sensor_key
+from baselines.models.data import build_observed_index_dataset, build_observed_tuples, mask_key, sensor_key
 from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
@@ -134,10 +134,37 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
     obs_mask = torch.from_numpy(mask_np).float().to(device)
     n_obs = int(obs_coords.shape[0])
 
-    train_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
+    train_ds = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+    )
     train_ds.set_split("train")
-    val_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
+    val_ds = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+    )
     val_ds.set_split("val")
+    split_meta = getattr(train_ds, "meta", {})
     out_dim = int(vals_np.shape[-1]) if vals_np.ndim == 2 else 1
     normalize_values = bool(getattr(cfg, "normalize_values", False))
     vals_mean = np.zeros(out_dim, dtype=np.float32)
@@ -401,6 +428,7 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
                         "val_std": vals_std.tolist() if normalize_values else None,
                         "normalizes_values": normalize_values,
                         "output_dim": out_dim,
+                        "split": split_meta or None,
                         "physics_loss": False,
                         "swe_params": list(_swe_params(pack)) if dataset_key == "swe" else None,
                     },

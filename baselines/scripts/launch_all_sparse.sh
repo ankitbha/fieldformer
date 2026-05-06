@@ -7,20 +7,22 @@ RUN_SH="${SCRIPT_DIR}/run.sh"
 LOG_DIR="${SCRIPT_DIR}/logs"
 
 MODELS=(
-  # fmlp
-  # siren
-  # imputeformer
-  # recfno
+  fmlp
+  siren
+  imputeformer
+  recfno
   senseiver
-  # svgp
+  svgp
 )
 
 DATASETS=(
   # heat
   # pol
   # swe
-  govpol
+  # govpol
   # atm
+  govpolsplit
+  atmsplit
 )
 
 DRY_RUN=0

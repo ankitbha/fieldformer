@@ -17,18 +17,24 @@ BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
-  # "fmlp govpol"
-  "fmlp atm"
-  "siren atm"
-  "svgp atm"
-  "imputeformer atm"
-  "recfno atm"
-  "senseiver atm"
-  # "siren govpol"
-  # "svgp govpol"
-  # "imputeformer govpol"
-  # "recfno govpol"
-  # "senseiver govpol"
+  # "fmlp atm"
+  # "siren atm"
+  # "svgp atm"
+  # "imputeformer atm"
+  # "recfno atm"
+  # "senseiver atm"
+  # "fmlp govpolsplit"
+  # "siren govpolsplit"
+  # "svgp govpolsplit"
+  # "imputeformer govpolsplit"
+  # "recfno govpolsplit"
+  # "senseiver govpolsplit"
+  # "fmlp atmsplit"
+  # "siren atmsplit"
+  # "svgp atmsplit"
+  # "imputeformer atmsplit"
+  # "recfno atmsplit"
+  # "senseiver atmsplit"
 )
 
 while [[ $# -gt 0 ]]; do
@@ -72,6 +78,18 @@ Submits sparse eval jobs with an 8-hour limit:
   imputeformer-atm
   recfno-atm
   senseiver-atm
+  fmlp-govpolsplit
+  siren-govpolsplit
+  svgp-govpolsplit
+  imputeformer-govpolsplit
+  recfno-govpolsplit
+  senseiver-govpolsplit
+  fmlp-atmsplit
+  siren-atmsplit
+  svgp-atmsplit
+  imputeformer-atmsplit
+  recfno-atmsplit
+  senseiver-atmsplit
 
 Senseiver full-field eval uses a fixed sample fraction of ${SENSEIVER_FULL_FIELD_FRACTION}.
 

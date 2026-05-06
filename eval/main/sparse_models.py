@@ -130,7 +130,7 @@ class EvalAdapter(nn.Module):
             return self._predict_points(obs_coords[q_lin])
         assert nb_idx is not None
         obs_vals_m = self._obs_values(obs_vals)
-        if self.dataset_key in {"pol", "govpol", "atm"}:
+        if self.dataset_key in {"pol", "govpol", "atm", "govpolsplit", "atmsplit"}:
             return self._denorm(self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx))
         return self._denorm(self.model.forward_observed(q_lin, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly))
 
@@ -145,7 +145,7 @@ class EvalAdapter(nn.Module):
             return self._predict_points(xyt_q)
         assert nb_idx is not None
         obs_vals_m = self._obs_values(obs_vals)
-        if self.dataset_key in {"pol", "govpol", "atm"}:
+        if self.dataset_key in {"pol", "govpol", "atm", "govpolsplit", "atmsplit"}:
             return self._denorm(self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx))
         return self._denorm(self.model.forward_continuous(xyt_q, obs_coords, obs_vals_m, nb_idx, Lx=self.Lx, Ly=self.Ly))
 
@@ -465,7 +465,7 @@ def build_sparse_model(
         from baselines.models.svgp import MultitaskPeriodicSVGP, MultitaskPollutionSVGP, PeriodicSVGP, PollutionSVGP, make_likelihood
 
         z = infer_inducing_points(state).to(device)
-        if dataset_key in {"govpol", "atm"}:
+        if dataset_key in {"govpol", "atm", "govpolsplit", "atmsplit"}:
             model = MultitaskPollutionSVGP(z, num_tasks=output_dim_for(dataset_key, ckpt, cfg, 2), ard_lengthscale_init=tuple(_get(cfg, "ard_lengthscale_init", (0.2, 0.2, 0.1))), outputscale_init=_get(cfg, "outputscale_init", 1.0))
         elif dataset_key == "pol":
             model = PollutionSVGP(z, tuple(_get(cfg, "ard_lengthscale_init", (0.2, 0.2, 0.1))), _get(cfg, "outputscale_init", 1.0))

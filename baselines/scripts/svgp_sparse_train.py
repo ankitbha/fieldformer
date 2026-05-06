@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from baselines.models.data import ObservedIndexDataset, build_observed_tuples, mask_key, sensor_key
+from baselines.models.data import base_dataset_key, build_observed_index_dataset, build_observed_tuples, mask_key, sensor_key
 from baselines.models.svgp import MultitaskPeriodicSVGP, MultitaskPollutionSVGP, PeriodicSVGP, PollutionSVGP, gpytorch, make_likelihood
 from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
@@ -66,35 +66,66 @@ def train_svgp_sparse(cfg: Any) -> None:
     x_max, y_max, t_max = coords_np.max(axis=0)
     span = np.maximum(np.array([x_max - x_min, y_max - y_min, t_max - t_min], dtype=np.float32), 1e-6)
     coords_np = (coords_np - np.array([x_min, y_min, t_min], dtype=np.float32)) / span
-    obs_mean = vals_np.mean(axis=0).astype(np.float32) if vals_np.ndim == 2 else np.float32(vals_np.mean())
-    obs_std = (vals_np.std(axis=0) + 1e-6).astype(np.float32) if vals_np.ndim == 2 else np.float32(vals_np.std() + 1e-6)
-    vals_np = (vals_np - obs_mean) / obs_std
+    n_obs = int(coords_np.shape[0])
 
-    obs_coords = torch.from_numpy(coords_np).float().to(device)
-    obs_vals = torch.from_numpy(vals_np).float().to(device)
-    n_obs = int(obs_coords.shape[0])
-
-    ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
+    ds = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+        require_all_channels=True,
+    )
     ds.set_split("train")
     dl = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
-    val_ds = ObservedIndexDataset(n_obs, cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
+    val_ds = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+        require_all_channels=True,
+    )
     val_ds.set_split("val")
+    split_meta = getattr(ds, "meta", {})
     val_dl = DataLoader(val_ds, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
+
+    train_raw = vals_np[ds.train_idx.numpy()]
+    obs_mean = train_raw.mean(axis=0).astype(np.float32) if vals_np.ndim == 2 else np.float32(train_raw.mean())
+    obs_std = (train_raw.std(axis=0) + 1e-6).astype(np.float32) if vals_np.ndim == 2 else np.float32(train_raw.std() + 1e-6)
+    vals_np = (vals_np - obs_mean) / obs_std
+    obs_coords = torch.from_numpy(coords_np).float().to(device)
+    obs_vals = torch.from_numpy(vals_np).float().to(device)
 
     m = min(int(cfg.inducing_points), n_obs)
     inducing_idx = torch.randperm(n_obs, device=device)[:m]
     inducing = obs_coords[inducing_idx].detach().clone()
-    if dataset_key == "govpol":
+    base_key = base_dataset_key(dataset_key)
+    if base_key == "govpol":
         model = MultitaskPollutionSVGP(inducing, num_tasks=2, ard_lengthscale_init=tuple(cfg.ard_lengthscale_init), outputscale_init=cfg.outputscale_init).to(device)
-    elif dataset_key == "atm":
+    elif base_key == "atm":
         model = MultitaskPollutionSVGP(inducing, num_tasks=4, ard_lengthscale_init=tuple(cfg.ard_lengthscale_init), outputscale_init=cfg.outputscale_init).to(device)
-    elif dataset_key == "pol":
+    elif base_key == "pol":
         model = PollutionSVGP(inducing, tuple(cfg.ard_lengthscale_init), cfg.outputscale_init).to(device)
-    elif dataset_key == "swe":
+    elif base_key == "swe":
         model = MultitaskPeriodicSVGP(inducing, num_tasks=3).to(device)
     else:
         model = PeriodicSVGP(inducing).to(device)
-    likelihood_key = "heat" if dataset_key == "swe" else dataset_key
+    likelihood_key = "heat" if base_key == "swe" else base_key
     likelihood = make_likelihood(likelihood_key).to(device)
     if hasattr(likelihood, "noise"):
         likelihood.noise = torch.tensor(float(cfg.noise), device=device)
@@ -186,6 +217,7 @@ def train_svgp_sparse(cfg: Any) -> None:
                         "output_dim": 3 if dataset_key == "swe" else (int(vals_np.shape[-1]) if vals_np.ndim == 2 else 1),
                         "mask_key": obs_mask_key,
                         "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,
+                        "split": split_meta or None,
                         "supervised_channels": ["eta"] if dataset_key == "swe" else None,
                     },
                 },

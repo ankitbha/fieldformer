@@ -10,10 +10,9 @@ DRY_RUN=0
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
-  # "ffag-nophys-heatsparse ffag_heatsparse_nophys_train.py"
-  "ffag-nophys-atmsparse ffag_atmsparse_nophys_train.py"
-  # "ffag-nophys-govpolsparse ffag_govpolsparse_nophys_train.py"
-  # "ffag-nophys-swesparse ffag_swesparse_nophys_train.py"
+  # "ffag-nophys-atmsparse ffag_atmsparse_nophys_train.py"
+  "ffag-nophys-govpolsplitsparse ffag_govpolsplitsparse_nophys_train.py"
+  "ffag-nophys-atmsplitsparse ffag_atmsplitsparse_nophys_train.py"
 )
 
 while [[ $# -gt 0 ]]; do
@@ -34,6 +33,8 @@ Experiments:
   ffag-nophys-swesparse
   ffag-nophys-polsparse
   ffag-nophys-atmsparse
+  ffag-nophys-govpolsplitsparse
+  ffag-nophys-atmsplitsparse
   ffag-mlp-heatsparse
   ffag-mlp-swesparse
   ffag-mlp-polsparse

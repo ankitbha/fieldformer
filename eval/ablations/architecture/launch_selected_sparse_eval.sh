@@ -17,8 +17,10 @@ EXTRA_ARGS=()
 
 EXPERIMENTS=(
 #   "ffag_nophys heat"
-  "ffag_nophys atm"
-  # "ffag_nophys govpol"
+  # "ffag_nophys atm"
+  # "ffag_nophys atmsplit"
+  # "ffag_nophys govpolsplit"
+  "ffag_nophys govpol"
 #   "ffag_nophys swe"
 #   "ffag_mlp heat"
 #   "ffag_mlp pol"
@@ -64,6 +66,8 @@ Submits sparse architecture-ablation eval jobs with an 8-hour limit:
   ffag_nophys-pol
   ffag_nophys-swe
   ffag_nophys-atm
+  ffag_nophys-govpolsplit
+  ffag_nophys-atmsplit
   ffag_mlp-heat
   ffag_mlp-pol
   ffag_mlp-swe

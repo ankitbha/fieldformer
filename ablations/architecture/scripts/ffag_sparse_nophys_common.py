@@ -44,7 +44,7 @@ _debug("importing FieldFormer dataset dispatch")
 from fieldformer_core.models.ffag import class_for_dataset, module_for_dataset
 _debug("imported FieldFormer dataset dispatch")
 _debug("importing baseline mask_key helper")
-from baselines.models.data import mask_key
+from baselines.models.data import build_observed_index_dataset, mask_key
 _debug("imported baseline mask_key helper")
 from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
@@ -69,6 +69,8 @@ def _load_observations(pack: np.lib.npyio.NpzFile, dataset_key: str, obs_key: st
         "pol": ("U_sensor_noisy", "U_sensor_clean", "sensor_noisy", "sensor_clean"),
         "govpol": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
         "atm": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
+        "govpolsplit": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
+        "atmsplit": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
     }[dataset_key]
     for key in (obs_key, *fallbacks):
         if key in pack:
@@ -179,10 +181,23 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     t_grid_t = torch.from_numpy(t_np).float().to(device)
     _debug("moved observed tensors to device")
 
-    dataset_cls = core["ObservedIndexDataset"]
     _debug("constructing train split and DataLoader")
-    ds = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed, valid_idx=valid_idx)
+    ds = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+    )
     ds.set_split("train")
+    split_meta = getattr(ds, "meta", {})
     out_dim = int(sensor_values.shape[2]) if sensor_values.ndim == 3 else 1
     normalize_values = bool(getattr(cfg, "normalize_values", False))
     vals_mean = np.zeros(out_dim, dtype=np.float32)
@@ -204,7 +219,20 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     _debug(f"train split size={len(ds)}, train batches={len(dl)}")
 
     _debug("constructing val split and DataLoader")
-    ds_val = dataset_cls(n_obs=n_obs, train_frac=cfg.train_frac, val_frac=cfg.val_frac, seed=cfg.seed, valid_idx=valid_idx)
+    ds_val = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+    )
     ds_val.set_split("val")
     dl_val = DataLoader(ds_val, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
     _debug(f"val split size={len(ds_val)}, val batches={len(dl_val)}")
@@ -220,7 +248,7 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
     except TypeError:
         model = model_cls(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
     _debug("constructed model on device")
-    if dataset_key in {"pol", "govpol", "atm"}:
+    if dataset_key in {"pol", "govpol", "atm", "govpolsplit", "atmsplit"}:
         with torch.no_grad():
             model.log_gammas[:] = torch.log(torch.tensor([1.0, 1.0, 0.5], device=device))
         _debug("initialized pollution/atm log_gammas")
@@ -233,7 +261,7 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
 
     def predict_observed(q_lin: torch.Tensor) -> torch.Tensor:
         nb_idx = indexer.gather_observed_neighbors(q_lin, exclude_self=True)
-        if dataset_key in {"pol", "govpol", "atm"}:
+        if dataset_key in {"pol", "govpol", "atm", "govpolsplit", "atmsplit"}:
             return model.forward_observed(q_lin, obs_coords, obs_vals, nb_idx)
         return model.forward_observed(q_lin, obs_coords, obs_vals, nb_idx, Lx=domain["Lx"], Ly=domain["Ly"])
 
@@ -329,6 +357,7 @@ def train_sparse_nophys(dataset_key: str, cfg: Any) -> None:
                         "val_mean": vals_mean.tolist() if normalize_values else None,
                         "val_std": vals_std.tolist() if normalize_values else None,
                         "normalizes_values": normalize_values,
+                        "split": split_meta or None,
                         "num_observations": int(n_obs),
                         "num_valid_observations": int(valid_idx.shape[0]) if valid_idx is not None else int(n_obs),
                         "x_range": [domain["x_min"], domain["x_max"]],

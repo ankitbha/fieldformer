@@ -29,6 +29,7 @@ for path in (ROOT, THIS_DIR, CORE_SCRIPT_DIR):
 
 from sparse_models import build_sparse_model
 from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
+from baselines.models.data import build_observed_index_dataset, base_dataset_key, is_sensor_split_dataset
 
 
 @dataclass
@@ -53,6 +54,8 @@ DATASETS = {
     "pol": ROOT / "data" / "pollution_dataset.npz",
     "govpol": ROOT / "data" / "gov_sensor_dataset.npz",
     "atm": ROOT / "data" / "gov_atm_dataset.npz",
+    "govpolsplit": ROOT / "data" / "gov_sensor_dataset.npz",
+    "atmsplit": ROOT / "data" / "gov_atm_dataset.npz",
 }
 PINN_ALIASES = {
     "fmlp-pinn": "fmlp",
@@ -169,6 +172,8 @@ def ckpt_path(model_key: str, dataset_key: str) -> Path:
     dataset_slug = {"pol": "pol"}.get(dataset_key, dataset_key)
     if dataset_key == "govpol" and model_key == "ffag":
         return ROOT / "ablations" / "architecture" / "checkpoints" / "ffag_govpolsparse_nophys_best.pt"
+    if dataset_key in {"govpolsplit", "atmsplit"} and model_key == "ffag":
+        return ROOT / "ablations" / "architecture" / "checkpoints" / f"ffag_{dataset_key}sparse_nophys_best.pt"
     if model_key == "ffag":
         return ROOT / "fieldformer_core" / "checkpoints" / f"ffag_{dataset_slug}sparse_best.pt"
     if model_key in PINN_ALIASES:
@@ -201,7 +206,7 @@ def choose_obs_key(pack: Any, dataset_key: str, override: str = "") -> str:
         "govpol": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
         "atm": ("U_sensor", "U_sensor_noisy", "U_sensor_clean"),
         "heat": ("sensor_noisy", "sensor_clean"),
-    }[dataset_key]
+    }[base_dataset_key(dataset_key)]
     for key in candidates:
         if key in pack:
             return key
@@ -505,6 +510,13 @@ def write_output(path: Path, result: dict[str, Any]) -> None:
             "sparse_test_rmse_bootstrap_std": result["sparse_test"]["rmse_bootstrap_std"],
             "sparse_test_mae_bootstrap_std": result["sparse_test"]["mae_bootstrap_std"],
         }
+        for name, metrics in result["sparse_test"].get("channels", {}).items():
+            prefix = f"sparse_test_{name}"
+            flat[f"{prefix}_rmse"] = metrics["rmse"]
+            flat[f"{prefix}_mae"] = metrics["mae"]
+            flat[f"{prefix}_count"] = metrics["count"]
+            flat[f"{prefix}_rmse_bootstrap_std"] = metrics["rmse_bootstrap_std"]
+            flat[f"{prefix}_mae_bootstrap_std"] = metrics["mae_bootstrap_std"]
         if "full_field" in result:
             flat.update({
                 "full_field_rmse": result["full_field"]["rmse"],
@@ -547,7 +559,22 @@ def main(cfg: Config) -> None:
     train_frac = float(ckpt_cfg.get("train_frac", 0.8))
     val_frac = float(ckpt_cfg.get("val_frac", 0.1))
     seed = int(ckpt_cfg.get("seed", 123))
-    split = ObservedIndexDataset(obs_coords_np.shape[0], train_frac, val_frac, seed, valid_idx=valid_idx)
+    sensor_mask_np = pack[obs_mask_key].astype(np.float32) if obs_mask_key else None
+    split = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=obs_coords_np.shape[0],
+        train_frac=train_frac,
+        val_frac=val_frac,
+        seed=seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask_np,
+        sensor_split_seed=ckpt_cfg.get("sensor_split_seed", ckpt.get("meta", {}).get("split", {}).get("sensor_split_seed")),
+        val_sensors=int(ckpt_cfg.get("val_sensors", ckpt.get("meta", {}).get("split", {}).get("val_sensors", 3))),
+        test_sensors=int(ckpt_cfg.get("test_sensors", ckpt.get("meta", {}).get("split", {}).get("test_sensors", 3))),
+        min_valid_frac=float(ckpt_cfg.get("sensor_min_valid_frac", ckpt.get("meta", {}).get("split", {}).get("min_valid_frac", 0.10))),
+    )
+    split_meta = getattr(split, "meta", {})
     train_vals = obs_vals_np[split.train_idx.numpy()]
     obs_mean = train_vals.mean(axis=0) if train_vals.ndim == 2 else float(train_vals.mean())
     obs_std = train_vals.std(axis=0) + 1e-6 if train_vals.ndim == 2 else float(train_vals.std() + 1e-6)
@@ -597,14 +624,16 @@ def main(cfg: Config) -> None:
         full_vals = torch.from_numpy(full_vals_np).float()
 
     indexer = None
+    context_idx = split.train_idx
+    if is_sensor_split_dataset(dataset_key) or impl_model_key == "ffag":
+        context_idx = torch.cat([split.train_idx, split.val_idx])
     if impl_model_key == "ffag":
-        visible_idx = torch.cat([split.train_idx, split.val_idx]).to(device)
         indexer = SplitAwareSparseNeighborIndexer(
             torch.from_numpy(sensors_xy).float().to(device),
             torch.from_numpy(t_np).float().to(device),
             int(ckpt_cfg.get("time_radius", 3)),
             int(ckpt_cfg.get("k_neighbors", 128)),
-            allowed_indices=visible_idx,
+            allowed_indices=context_idx.to(device),
         )
     adapter = build_sparse_model(
         model_key=impl_model_key,
@@ -625,7 +654,7 @@ def main(cfg: Config) -> None:
         x_grid=x_np,
         y_grid=y_np,
         t_grid=t_np,
-        train_idx=split.train_idx.numpy(),
+        train_idx=context_idx.numpy(),
         obs_coords_np=obs_coords_np,
         obs_vals_np=obs_vals_np,
         obs_mask_np=obs_mask_np,
@@ -655,6 +684,9 @@ def main(cfg: Config) -> None:
         "bootstrap_seed": int(cfg.bootstrap_seed),
         "sparse_test": sparse_metrics,
     }
+    if split_meta:
+        result["split"] = split_meta
+        result["context_sensor_ids"] = split_meta.get("train_sensor_ids", []) + split_meta.get("val_sensor_ids", [])
     if has_full_field and full_coords is not None and full_vals is not None:
         full_metrics = eval_full_field(
             adapter,
@@ -687,6 +719,11 @@ def main(cfg: Config) -> None:
         f"{'sparse_test':<18} {sparse_metrics['rmse']:>14.6g} {sparse_metrics['mae']:>14.6g} "
         f"{sparse_metrics['rmse_bootstrap_std']:>14.6g} {sparse_metrics['mae_bootstrap_std']:>14.6g}"
     )
+    for name, metrics in sparse_metrics.get("channels", {}).items():
+        print(
+            f"{'  ' + str(name):<18} {metrics['rmse']:>14.6g} {metrics['mae']:>14.6g} "
+            f"{metrics['rmse_bootstrap_std']:>14.6g} {metrics['mae_bootstrap_std']:>14.6g}"
+        )
     if "full_field" in result:
         full_metrics = result["full_field"]
         print(

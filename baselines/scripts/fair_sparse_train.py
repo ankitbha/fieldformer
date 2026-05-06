@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
-from baselines.models.data import ObservedIndexDataset, build_observed_tuples, mask_key, sensor_key
+from baselines.models.data import ObservedIndexDataset, build_observed_index_dataset, build_observed_tuples, mask_key, sensor_key
 from baselines.models.imputeformer import FixedNodeImputeFormer
 from baselines.models.recfno import VoronoiFNO2d
 from baselines.models.senseiver import Senseiver
@@ -61,7 +61,20 @@ def load_sparse_arrays(cfg: Any) -> dict[str, Any]:
         coords, vals = build_observed_tuples(sensors_xy, t_np, values)
         masks = np.ones_like(vals, dtype=np.float32)
         valid_idx = None
-    split = ObservedIndexDataset(coords.shape[0], cfg.train_frac, cfg.val_frac, cfg.seed, valid_idx=valid_idx)
+    split = build_observed_index_dataset(
+        dataset_key=key,
+        pack=pack,
+        n_obs=coords.shape[0],
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+    )
     return {
         "key": key,
         "pack": pack,
@@ -75,6 +88,7 @@ def load_sparse_arrays(cfg: Any) -> dict[str, Any]:
         "vals": vals,
         "flat_masks": masks,
         "split": split,
+        "split_meta": getattr(split, "meta", {}),
     }
 
 
@@ -209,7 +223,7 @@ def train_recfno(cfg: Any) -> None:
         print(f"[epoch {epoch:03d}] train_mse={total/max(1,batches):.4e} val_rmse={rmse:.6f}")
         if rmse < best:
             best, bad = rmse, 0
-            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"recfno_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "val_mean": mean.tolist() if normalize_values else None, "val_std": std.tolist() if normalize_values else None, "normalizes_values": normalize_values, "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None}}, path)
+            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"recfno_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "val_mean": mean.tolist() if normalize_values else None, "val_std": std.tolist() if normalize_values else None, "normalizes_values": normalize_values, "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None, "split": data["split_meta"] or None}}, path)
             print(f"[save] best checkpoint -> {path}")
         else:
             bad += 1
@@ -234,12 +248,17 @@ def train_senseiver(cfg: Any) -> None:
     train_mask, _, _ = split_masks(data["split"], n_sensors, n_times)
     x_min, y_min, t_min = data["coords"].min(axis=0)
     span = np.maximum(data["coords"].max(axis=0) - data["coords"].min(axis=0), 1e-6)
-    vals_mean = values.reshape(-1, out_dim)[masks.reshape(-1, out_dim).astype(bool)].mean() if out_dim == 1 else np.nan_to_num(
-        np.divide((values * masks).sum(axis=(0, 1)), masks.sum(axis=(0, 1)), out=np.zeros(out_dim, dtype=np.float32), where=masks.sum(axis=(0, 1)) > 0)
+    train_channel_mask = train_mask[..., None] * masks
+    denom = train_channel_mask.sum(axis=(0, 1))
+    vals_mean = np.divide(
+        (values * train_channel_mask).sum(axis=(0, 1)),
+        denom,
+        out=np.zeros(out_dim, dtype=np.float32),
+        where=denom > 0,
     ).astype(np.float32)
     vals_std = np.ones(out_dim, dtype=np.float32)
     for c in range(out_dim):
-        valid = masks[..., c].astype(bool)
+        valid = train_channel_mask[..., c].astype(bool)
         vals_std[c] = float(values[..., c][valid].std() + 1e-6) if valid.any() else 1.0
     vals_mean = np.asarray(vals_mean, dtype=np.float32).reshape(out_dim)
     coords_t = torch.from_numpy(((data["coords"] - np.array([x_min, y_min, t_min], dtype=np.float32)) / span).astype(np.float32)).to(device)
@@ -332,7 +351,7 @@ def train_senseiver(cfg: Any) -> None:
         print(f"[epoch {epoch:03d}] train_mse={total/max(1,batches):.4e} val_rmse={rmse:.6f}")
         if rmse < best:
             best, bad = rmse, 0
-            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"senseiver_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": vals_mean.tolist(), "val_std": vals_std.tolist(), "normalizes_values": True, "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "channel_names": data["pack"]["pollutant_names"].tolist() if "pollutant_names" in data["pack"] else None}}, path)
+            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"senseiver_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": vals_mean.tolist(), "val_std": vals_std.tolist(), "normalizes_values": True, "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "channel_names": data["pack"]["pollutant_names"].tolist() if "pollutant_names" in data["pack"] else None, "split": data["split_meta"] or None}}, path)
             print(f"[save] best checkpoint -> {path}")
         else:
             bad += 1
@@ -421,7 +440,7 @@ def train_imputeformer(cfg: Any) -> None:
         print(f"[epoch {epoch:03d}] train_mse={total/max(1,batches):.4e} val_rmse={rmse:.6f}")
         if rmse < best:
             best, bad = rmse, 0
-            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"imputeformer_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": mean.tolist(), "val_std": std.tolist(), "normalizes_values": True, "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "channel_names": data["pack"]["pollutant_names"].tolist() if "pollutant_names" in data["pack"] else None}}, path)
+            torch.save({"epoch": epoch, "model_state_dict": model.state_dict(), "best_val_rmse": best, "config": asdict(cfg), "meta": {"variant": f"imputeformer_{key}_sparse", "obs_key": data["obs_key"], "mask_key": data["mask_key"], "val_mean": mean.tolist(), "val_std": std.tolist(), "normalizes_values": True, "out_dim": 3 if key == "swe" else out_dim, "output_dim": 3 if key == "swe" else out_dim, "channel_names": data["pack"]["pollutant_names"].tolist() if "pollutant_names" in data["pack"] else None, "split": data["split_meta"] or None}}, path)
             print(f"[save] best checkpoint -> {path}")
         else:
             bad += 1
