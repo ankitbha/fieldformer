@@ -1,0 +1,46 @@
+{
+  "dataset": "atm",
+  "model": "siren",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_atmsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 53161,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 8.668716679536624,
+    "mae": 4.54107136430563,
+    "rmse_bootstrap_std": 0.018581622652990775,
+    "mae_bootstrap_std": 0.008838621619178817,
+    "channels": {
+      "AT": {
+        "rmse": 4.124580138102453,
+        "mae": 3.333111227225891,
+        "count": 42702,
+        "rmse_bootstrap_std": 0.012491331847002615,
+        "mae_bootstrap_std": 0.009026933295444203
+      },
+      "RH": {
+        "rmse": 16.278061660113725,
+        "mae": 13.029884897581953,
+        "count": 53018,
+        "rmse_bootstrap_std": 0.03884560720768571,
+        "mae_bootstrap_std": 0.03152277890336299
+      },
+      "U_x": {
+        "rmse": 1.0413545783144225,
+        "mae": 0.7020232371794872,
+        "count": 51129,
+        "rmse_bootstrap_std": 0.005132091569217599,
+        "mae_bootstrap_std": 0.002924677458922823
+      },
+      "V_y": {
+        "rmse": 0.959018933229818,
+        "mae": 0.5865460633275636,
+        "count": 51129,
+        "rmse_bootstrap_std": 0.0077082010306664195,
+        "mae_bootstrap_std": 0.002529701178545742
+      }
+    }
+  }
+}

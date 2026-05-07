@@ -11,8 +11,15 @@ EXTRA_ARGS=()
 
 EXPERIMENTS=(
   # "ffag-nophys-atmsparse ffag_atmsparse_nophys_train.py"
-  "ffag-nophys-govpolsplitsparse ffag_govpolsplitsparse_nophys_train.py"
-  "ffag-nophys-atmsplitsparse ffag_atmsplitsparse_nophys_train.py"
+  # "ffag-nophys-govpolsplitsparse ffag_govpolsplitsparse_nophys_train.py"
+  # "ffag-nophys-atmsplitsparse ffag_atmsplitsparse_nophys_train.py"
+  "ffag-npgf-heatsparse ffag_heatsparse_npgf_train.py"
+  "ffag-npgf-swesparse ffag_swesparse_npgf_train.py"
+  "ffag-npgf-polsparse ffag_polsparse_npgf_train.py"
+  "ffag-npgf-govpolsparse ffag_govpolsparse_npgf_train.py"
+  "ffag-npgf-atmsparse ffag_atmsparse_npgf_train.py"
+  "ffag-npgf-govpolsplitsparse ffag_govpolsplitsparse_npgf_train.py"
+  "ffag-npgf-atmsplitsparse ffag_atmsplitsparse_npgf_train.py"
 )
 
 while [[ $# -gt 0 ]]; do
@@ -25,7 +32,7 @@ while [[ $# -gt 0 ]]; do
       cat <<EOF
 Usage: $0 [--dry-run] [-- script args...]
 
-Submits all 6 sparse FieldFormer architecture ablation experiments using:
+Submits sparse FieldFormer architecture ablation experiments using:
   sbatch ${RUN_SH} <train_script.py> [script args...]
 
 Experiments:
@@ -35,6 +42,13 @@ Experiments:
   ffag-nophys-atmsparse
   ffag-nophys-govpolsplitsparse
   ffag-nophys-atmsplitsparse
+  ffag-npgf-heatsparse
+  ffag-npgf-swesparse
+  ffag-npgf-polsparse
+  ffag-npgf-govpolsparse
+  ffag-npgf-atmsparse
+  ffag-npgf-govpolsplitsparse
+  ffag-npgf-atmsplitsparse
   ffag-mlp-heatsparse
   ffag-mlp-swesparse
   ffag-mlp-polsparse

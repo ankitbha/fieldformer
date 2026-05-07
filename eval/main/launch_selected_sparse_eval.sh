@@ -22,19 +22,20 @@ EXPERIMENTS=(
   # "svgp atm"
   # "imputeformer atm"
   # "recfno atm"
-  # "senseiver atm"
+  "senseiver atm"
+  "senseiver govpol"
   # "fmlp govpolsplit"
   # "siren govpolsplit"
   # "svgp govpolsplit"
   # "imputeformer govpolsplit"
   # "recfno govpolsplit"
-  # "senseiver govpolsplit"
+  "senseiver govpolsplit"
   # "fmlp atmsplit"
   # "siren atmsplit"
   # "svgp atmsplit"
   # "imputeformer atmsplit"
   # "recfno atmsplit"
-  # "senseiver atmsplit"
+  "senseiver atmsplit"
 )
 
 while [[ $# -gt 0 ]]; do

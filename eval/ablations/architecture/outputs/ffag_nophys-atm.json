@@ -1,0 +1,46 @@
+{
+  "dataset": "atm",
+  "model": "ffag_nophys",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_atmsparse_nophys_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 53161,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 2.3427524020380273,
+    "mae": 0.8660284825286775,
+    "rmse_bootstrap_std": 0.02780438815973344,
+    "mae_bootstrap_std": 0.003489327070514946,
+    "channels": {
+      "AT": {
+        "rmse": 0.9965851424989187,
+        "mae": 0.5197620921590324,
+        "count": 42702,
+        "rmse_bootstrap_std": 0.026922278676688907,
+        "mae_bootstrap_std": 0.00400820198898304
+      },
+      "RH": {
+        "rmse": 4.332909669007791,
+        "mae": 2.170996171111698,
+        "count": 53018,
+        "rmse_bootstrap_std": 0.05440481623720622,
+        "mae_bootstrap_std": 0.010991511183720545
+      },
+      "U_x": {
+        "rmse": 0.6806997832659368,
+        "mae": 0.32125030865555754,
+        "count": 51129,
+        "rmse_bootstrap_std": 0.013395711644723007,
+        "mae_bootstrap_std": 0.0028753381150363392
+      },
+      "V_y": {
+        "rmse": 0.7011121668478328,
+        "mae": 0.3468210463973479,
+        "count": 51129,
+        "rmse_bootstrap_std": 0.010453982978908661,
+        "mae_bootstrap_std": 0.002512243174494671
+      }
+    }
+  }
+}

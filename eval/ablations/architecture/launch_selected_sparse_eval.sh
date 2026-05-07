@@ -20,11 +20,14 @@ EXPERIMENTS=(
   # "ffag_nophys atm"
   # "ffag_nophys atmsplit"
   # "ffag_nophys govpolsplit"
-  "ffag_nophys govpol"
-#   "ffag_nophys swe"
-#   "ffag_mlp heat"
-#   "ffag_mlp pol"
-#   "ffag_mlp swe"
+  # "ffag_nophys govpol"
+  "ffag_npgf atm"
+  "ffag_npgf govpolsplit"
+  "ffag_npgf atmsplit"
+  "ffag_npgf swe"
+  "ffag_npgf heat"
+  "ffag_npgf pol"
+  "ffag_npgf govpol"
 )
 
 while [[ $# -gt 0 ]]; do
@@ -68,6 +71,12 @@ Submits sparse architecture-ablation eval jobs with an 8-hour limit:
   ffag_nophys-atm
   ffag_nophys-govpolsplit
   ffag_nophys-atmsplit
+  ffag_npgf-heat
+  ffag_npgf-pol
+  ffag_npgf-swe
+  ffag_npgf-atm
+  ffag_npgf-govpolsplit
+  ffag_npgf-atmsplit
   ffag_mlp-heat
   ffag_mlp-pol
   ffag_mlp-swe

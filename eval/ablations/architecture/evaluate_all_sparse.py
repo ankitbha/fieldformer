@@ -32,7 +32,7 @@ build_ablation_sparse_model = _ABLATION_SPARSE_MODELS.build_ablation_sparse_mode
 
 
 DEFAULT_DATASETS = ("heat", "pol", "swe")
-DEFAULT_MODELS = ("ffag_nophys", "ffag_mlp")
+DEFAULT_MODELS = ("ffag_nophys", "ffag_mlp", "ffag_npgf")
 CHECKPOINT_DIR = ROOT / "ablations" / "architecture" / "checkpoints"
 
 
@@ -58,6 +58,8 @@ def ckpt_path(model_key: str, dataset_key: str) -> Path:
         return CHECKPOINT_DIR / f"ffag_{dataset_key}sparse_nophys_best.pt"
     if model_key == "ffag_mlp":
         return CHECKPOINT_DIR / f"ffag_mlp_{dataset_key}sparse_best.pt"
+    if model_key == "ffag_npgf":
+        return CHECKPOINT_DIR / f"ffag_npgf_{dataset_key}sparse_best.pt"
     raise KeyError(model_key)
 
 
