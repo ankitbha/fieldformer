@@ -37,7 +37,11 @@ if [[ ! -f "$TARGET" ]]; then
 fi
 
 echo "[info] job ${SLURM_JOB_ID:-N/A} on node(s):"
-scontrol show hostname "$SLURM_JOB_NODELIST" || true
+if [[ -n "${SLURM_JOB_NODELIST:-}" ]]; then
+  scontrol show hostname "$SLURM_JOB_NODELIST" || true
+else
+  hostname || true
+fi
 
 echo "[info] target: ${TARGET}"
 

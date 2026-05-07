@@ -8,24 +8,24 @@
   "bootstrap_samples": 1000,
   "bootstrap_seed": 123,
   "sparse_test": {
-    "rmse": 51.90945674181922,
-    "mae": 29.53633746040887,
-    "rmse_bootstrap_std": 0.46782990015235604,
-    "mae_bootstrap_std": 0.09324447574462405,
+    "rmse": 49.041398046844485,
+    "mae": 28.06290863703673,
+    "rmse_bootstrap_std": 0.4683874438593964,
+    "mae_bootstrap_std": 0.08554952453661523,
     "channels": {
       "pm10": {
-        "rmse": 63.799554067211005,
-        "mae": 38.81226483482343,
+        "rmse": 60.05020509916624,
+        "mae": 36.93997894300804,
         "count": 57938,
-        "rmse_bootstrap_std": 0.6023827287576803,
-        "mae_bootstrap_std": 0.186006856062424
+        "rmse_bootstrap_std": 0.5948379253883498,
+        "mae_bootstrap_std": 0.1757920122079881
       },
       "pm25": {
-        "rmse": 37.96860597921696,
-        "mae": 21.088457094801704,
+        "rmse": 36.21185998783913,
+        "mae": 19.978282141565934,
         "count": 63617,
-        "rmse_bootstrap_std": 0.6667943607861808,
-        "mae_bootstrap_std": 0.08633373282804842
+        "rmse_bootstrap_std": 0.6968257652870871,
+        "mae_bootstrap_std": 0.08917257740626325
       }
     }
   }

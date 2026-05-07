@@ -1,0 +1,34 @@
+{
+  "dataset": "swe",
+  "model": "ffag_npgf",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_npgf_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "mask_key": "",
+  "num_sparse_test": 20000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.04695686261983203,
+    "mae": 0.03738348007202148,
+    "rmse_bootstrap_std": 0.00026752446495710146,
+    "mae_bootstrap_std": 0.00019596836065637028,
+    "channels": {
+      "channel_0": {
+        "rmse": 0.04695686414305075,
+        "mae": 0.037383477783203126,
+        "count": 20000,
+        "rmse_bootstrap_std": 0.00026752446495710146,
+        "mae_bootstrap_std": 0.00019596836065637028
+      }
+    }
+  },
+  "num_full_field": 40960000,
+  "num_full_field_total": 40960000,
+  "full_field_sample_fraction": 1.0,
+  "full_field": {
+    "rmse": 0.18737601753253263,
+    "mae": 0.1362037791142861,
+    "rmse_bootstrap_std": 0.00019856196820889935,
+    "mae_bootstrap_std": 0.0001916341782569001
+  }
+}

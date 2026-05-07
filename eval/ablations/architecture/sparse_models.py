@@ -20,7 +20,7 @@ for path in (ROOT, MAIN_EVAL_DIR, ABLATION_SCRIPT_DIR):
     if path_str not in sys.path:
         sys.path.insert(0, path_str)
 
-from eval.main.sparse_models import EvalAdapter, build_sparse_model as build_main_sparse_model, cfg_obj, output_dim_for, _get
+from eval.main.sparse_models import EvalAdapter, build_sparse_model as build_main_sparse_model, checkpoint_meta, cfg_obj, output_dim_for, _get
 
 
 ABLATION_MODELS = {
@@ -70,7 +70,8 @@ def build_ablation_sparse_model(
     obs_mask_np: np.ndarray | None = None,
 ) -> EvalAdapter:
     model_key = canonical_model_key(model_key)
-    architecture = str(ckpt.get("meta", {}).get("architecture", "")).lower()
+    meta = checkpoint_meta(ckpt)
+    architecture = str(meta.get("architecture", "")).lower()
     if model_key == "ffag" and architecture == "mlp_token_mixer":
         model_key = "ffag_mlp"
     if model_key == "ffag" and architecture == "ffag_npgf":
@@ -105,7 +106,9 @@ def build_ablation_sparse_model(
 
         cfg = cfg_obj(ckpt.get("config"))
         state = ckpt.get("ema_model_state_dict") or ckpt.get("model_state_dict", ckpt)
-        meta_gamma = ckpt.get("meta", {}).get("gamma_field", {})
+        meta_gamma = meta.get("gamma_field", {})
+        if not isinstance(meta_gamma, dict):
+            meta_gamma = {}
         base_gammas = meta_gamma.get("base_gammas", _get(cfg, "base_gammas", (1.0, 1.0, 0.5 if dataset_key in {"pol", "govpol", "atm", "govpolsplit", "atmsplit"} else 1.0)))
         model_cls = class_for_dataset(dataset_key)
         kwargs = {

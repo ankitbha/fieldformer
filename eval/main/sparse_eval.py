@@ -85,6 +85,11 @@ def load_checkpoint(path: Path, device: torch.device) -> Any:
         return torch.load(path, map_location=device)
 
 
+def checkpoint_meta(ckpt: dict[str, Any]) -> dict[str, Any]:
+    meta = ckpt.get("meta", {})
+    return meta if isinstance(meta, dict) else {}
+
+
 class ObservedIndexDataset(Dataset):
     def __init__(self, n_obs: int, train_frac: float, val_frac: float, seed: int, valid_idx: np.ndarray | None = None):
         rng = np.random.default_rng(seed)
@@ -548,6 +553,10 @@ def main(cfg: Config) -> None:
     pack = np.load(DATASETS[dataset_key])
     ckpt = load_checkpoint(path, device)
     ckpt_cfg = ckpt.get("config", {})
+    meta = checkpoint_meta(ckpt)
+    split_ckpt_meta = meta.get("split", {})
+    if not isinstance(split_ckpt_meta, dict):
+        split_ckpt_meta = {}
 
     sensors_xy = pack["sensors_xy"].astype(np.float32)
     t_np = pack["t"].astype(np.float32)
@@ -569,10 +578,10 @@ def main(cfg: Config) -> None:
         seed=seed,
         valid_idx=valid_idx,
         sensor_mask=sensor_mask_np,
-        sensor_split_seed=ckpt_cfg.get("sensor_split_seed", ckpt.get("meta", {}).get("split", {}).get("sensor_split_seed")),
-        val_sensors=int(ckpt_cfg.get("val_sensors", ckpt.get("meta", {}).get("split", {}).get("val_sensors", 3))),
-        test_sensors=int(ckpt_cfg.get("test_sensors", ckpt.get("meta", {}).get("split", {}).get("test_sensors", 3))),
-        min_valid_frac=float(ckpt_cfg.get("sensor_min_valid_frac", ckpt.get("meta", {}).get("split", {}).get("min_valid_frac", 0.10))),
+        sensor_split_seed=ckpt_cfg.get("sensor_split_seed", split_ckpt_meta.get("sensor_split_seed")),
+        val_sensors=int(ckpt_cfg.get("val_sensors", split_ckpt_meta.get("val_sensors", 3))),
+        test_sensors=int(ckpt_cfg.get("test_sensors", split_ckpt_meta.get("test_sensors", 3))),
+        min_valid_frac=float(ckpt_cfg.get("sensor_min_valid_frac", split_ckpt_meta.get("min_valid_frac", 0.10))),
     )
     split_meta = getattr(split, "meta", {})
     train_vals = obs_vals_np[split.train_idx.numpy()]
@@ -581,7 +590,6 @@ def main(cfg: Config) -> None:
     if impl_model_key == "svgp" and dataset_key in {"heat", "swe"}:
         obs_mean = obs_vals_np.mean(axis=0) if obs_vals_np.ndim == 2 else float(obs_vals_np.mean())
         obs_std = obs_vals_np.std(axis=0) + 1e-8 if obs_vals_np.ndim == 2 else float(obs_vals_np.std() + 1e-8)
-    meta = ckpt.get("meta", {})
     if impl_model_key == "svgp" and "obs_mean" in meta and "obs_std" in meta:
         obs_mean = meta["obs_mean"]
         obs_std = meta["obs_std"]

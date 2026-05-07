@@ -20,10 +20,15 @@ def _get(cfg: SimpleNamespace, name: str, default: Any) -> Any:
     return getattr(cfg, name, default)
 
 
+def checkpoint_meta(ckpt: dict[str, Any]) -> dict[str, Any]:
+    meta = ckpt.get("meta", {})
+    return meta if isinstance(meta, dict) else {}
+
+
 def output_dim_for(dataset_key: str, ckpt: dict[str, Any], cfg: SimpleNamespace, default: int = 1) -> int:
     if dataset_key == "swe":
         return 3
-    meta = ckpt.get("meta", {})
+    meta = checkpoint_meta(ckpt)
     return int(meta.get("output_dim", meta.get("out_dim", _get(cfg, "out_dim", default))))
 
 
@@ -36,7 +41,7 @@ def infer_inducing_points(state: dict[str, torch.Tensor]) -> torch.Tensor:
 
 
 def is_multitask_svgp_state(state: dict[str, torch.Tensor], ckpt: dict[str, Any]) -> bool:
-    meta = ckpt.get("meta", {})
+    meta = checkpoint_meta(ckpt)
     if int(meta.get("output_dim", 1)) > 1:
         return True
     for key, value in state.items():
@@ -438,10 +443,11 @@ def build_sparse_model(
     del data, nt_count
     cfg = cfg_obj(ckpt.get("config"))
     state = ckpt.get("model_state_dict", ckpt)
+    meta = checkpoint_meta(ckpt)
     likelihood = None
     normalizes_values = False
     normalizes_coords = False
-    if bool(ckpt.get("meta", {}).get("normalizes_values", False)):
+    if bool(meta.get("normalizes_values", False)):
         normalizes_values = True
 
     if model_key == "siren":
@@ -552,9 +558,9 @@ def build_sparse_model(
             obs_mask_np=obs_mask_np,
             train_idx=train_idx,
             device=device,
-            obs_mean=ckpt.get("meta", {}).get("val_mean", obs_mean),
-            obs_std=ckpt.get("meta", {}).get("val_std", obs_std),
-            normalizes_values=bool(ckpt.get("meta", {}).get("normalizes_values", False)),
+            obs_mean=meta.get("val_mean", obs_mean),
+            obs_std=meta.get("val_std", obs_std),
+            normalizes_values=bool(meta.get("normalizes_values", False)),
         ).to(device)
     if model_key == "senseiver":
         if any(v is None for v in (sensors_xy, t_grid, train_idx, obs_coords_np, obs_vals_np)):
@@ -591,8 +597,8 @@ def build_sparse_model(
         likelihood=likelihood,
         normalizes_values=normalizes_values,
         normalizes_coords=normalizes_coords,
-        obs_mean=ckpt.get("meta", {}).get("val_mean", obs_mean),
-        obs_std=ckpt.get("meta", {}).get("val_std", obs_std),
+        obs_mean=meta.get("val_mean", obs_mean),
+        obs_std=meta.get("val_std", obs_std),
         x_min=x_min,
         y_min=y_min,
         t_min=t_min,

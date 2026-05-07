@@ -1,31 +1,31 @@
 {
   "dataset": "govpolsplit",
-  "model": "senseiver",
-  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_govpolsplitsparse_best.pt",
+  "model": "ffag_npgf",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_npgf_govpolsplitsparse_best.pt",
   "obs_key": "U_sensor",
   "mask_key": "U_sensor_mask",
   "num_sparse_test": 64667,
   "bootstrap_samples": 1000,
   "bootstrap_seed": 123,
   "sparse_test": {
-    "rmse": 67.05624436317648,
-    "mae": 36.500057626124175,
-    "rmse_bootstrap_std": 8.254735987261531,
-    "mae_bootstrap_std": 4.447951774416721,
+    "rmse": 73.32301641715199,
+    "mae": 41.73844001459451,
+    "rmse_bootstrap_std": 7.255870471532867,
+    "mae_bootstrap_std": 4.727336790211681,
     "channels": {
       "pm10": {
-        "rmse": 86.51188198355429,
-        "mae": 50.59572673488967,
+        "rmse": 92.62766935164196,
+        "mae": 56.7318915893828,
         "count": 62540,
-        "rmse_bootstrap_std": 11.828295887712416,
-        "mae_bootstrap_std": 7.263971189757504
+        "rmse_bootstrap_std": 9.511741158626574,
+        "mae_bootstrap_std": 6.764125116802219
       },
       "pm25": {
-        "rmse": 39.83635319421681,
-        "mae": 22.77313336966677,
+        "rmse": 47.50210996969207,
+        "mae": 27.137219713484896,
         "count": 64220,
-        "rmse_bootstrap_std": 4.63179507646513,
-        "mae_bootstrap_std": 2.6872902200671986
+        "rmse_bootstrap_std": 4.8471507712309245,
+        "mae_bootstrap_std": 3.161114257873108
       }
     }
   },
