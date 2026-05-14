@@ -49,7 +49,7 @@ Some baseline scripts also import code under `original_baseline/`; run commands 
 
 ## Data
 
-The current repository includes the data files expected by the training and evaluation scripts:
+The current repository includes the code to generate data files expected by the training and evaluation scripts:
 
 ```text
 data/heat_periodic_dataset_sharp.npz
