@@ -1,229 +1,228 @@
-# FieldFormer
+# FieldFormer: Locality-Aware Transformers for Spatio-Temporal Modeling on Sparse Sensor Networks
 
-Physics-informed transformers for spatio-temporal field reconstruction from sparse sensors, with synthetic PDE datasets (heat, shallow-water) and a real-world air-pollution case. Includes strong baselines (SIREN, Fourier-MLP, SVGP) and evaluation scripts.
+This repository contains the code and experiment artifacts for FieldFormer, a locality-aware transformer for reconstructing spatio-temporal fields from sparse sensor networks. The repository is anonymized for review and includes the model implementation, baseline training scripts, evaluation scripts, generated datasets, checkpoints, and summary table utilities.
 
-> **Core idea.** FieldFormer uses local transformer inference with learnable anisotropic neighborhoods and differentiable physics regularization to reconstruct full fields from sparse, irregular observations.
+FieldFormer is trained only from sparse sensor observations. Evaluation reports held-out sparse sensor metrics and, for datasets with gridded ground truth, full-field reconstruction metrics.
 
----
+## Repository Layout
 
-## Contents
-
+```text
+.
+├── data/                         # Dataset generators and generated NPZ/CSV/NPY data
+│   ├── heat_periodic.py          # Synthetic periodic heat generator
+│   ├── swe_periodic.py           # Synthetic periodic shallow-water generator
+│   ├── pollution.py              # Synthetic pollution utilities
+│   ├── pollution_60.py
+│   ├── build_gov_sensor_dataset.py
+│   ├── build_gov_atm_dataset.py
+│   └── *.npz, *.csv, *.npy       # Experiment data used by the scripts
+├── fieldformer_core/
+│   ├── models/                   # FieldFormer model code
+│   ├── scripts/                  # FieldFormer sparse training scripts
+│   └── checkpoints/              # FieldFormer checkpoints used by evaluation
+├── baselines/
+│   ├── models/                   # Baseline model implementations
+│   ├── scripts/                  # Baseline sparse training scripts and launchers
+│   └── checkpoints/              # Baseline checkpoints used by evaluation
+├── original_baseline/            # Reference baseline code adapted by wrappers
+├── eval/
+│   ├── main/                     # Main evaluation runner and JSON outputs
+│   ├── ablations/architecture/   # Ablation evaluation runner and outputs
+│   └── make_sparse_summary_tables.py
+├── ablations/architecture/       # FieldFormer architecture ablation training scripts
+└── run_gpu_shell.sh              # Local cluster helper
 ```
-fieldformer-main/
-├─ README.md                      ← (this file)
-├─ data/
-│  ├─ heat_periodic.py            # synthetic heat dataset generator (periodic BC)
-│  ├─ swe_periodic.py             # synthetic shallow-water generator (periodic BC)
-│  ├─ pollution.py                # Delhi pollution case utilities (kriging, drivers)
-│  ├─ *.ipynb                     # notebook variants of the above
-│  ├─ *.npy / *.csv               # example pollution drivers (intensity grids, wind)
-│  └─ heat_periodic.ipynb, swe_periodic.ipynb, pollution.ipynb
-├─ model/
-│  ├─ ff_fd_heat_train.py         # FieldFormer (FD residuals) – heat
-│  ├─ ffag_heat_train.py          # FieldFormer-Autograd – heat
-│  ├─ ffag_swe_train.py           # FieldFormer-Autograd – shallow-water (η,u,v)
-│  ├─ fmlp_*_train.py             # Fourier-MLP baselines (heat/pol/swe)
-│  ├─ siren_*_train.py            # SIREN baselines (heat/pol/swe)
-│  ├─ svgp_*_train.py             # SVGP (GPyTorch) baselines (heat/pol/swe)
-│  ├─ heat_eval.py                # evaluation—heat (sensor vs full-field, residuals)
-│  ├─ swe_eval.py                 # evaluation—SWE (joint metrics)
-│  └─ pol_eval.py                 # evaluation—pollution
-├─ run_cpu_jupyter.sh             # example cluster launcher (Singularity)
-├─ run_gpu_jupyter.sh             # example cluster launcher (GPU + overlay)
-└─ torch_jupyter.sh               # example convenience script
-```
 
----
+## Environment
 
-## Setup
+Python 3.10 or newer is recommended. The experiments use PyTorch and run most comfortably on a CUDA GPU.
 
-### 1) Python & CUDA
-
-* Python ≥ 3.9 (3.10–3.12 tested)
-* PyTorch with CUDA if you have a GPU (CPU also works)
-
-### 2) Dependencies
-
-Install with `pip`:
+Install the core dependencies with the PyTorch wheel that matches your system:
 
 ```bash
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  # pick wheel for your CUDA
-pip install gpytorch numpy pandas matplotlib tqdm pykrige pytz
+python -m pip install --upgrade pip
+python -m pip install torch torchvision torchaudio
+python -m pip install numpy pandas scipy scikit-learn matplotlib tqdm gpytorch pykrige
 ```
 
-> If you’re on CPU only, install the CPU PyTorch wheels; if you’re on a cluster, load the appropriate CUDA module or Singularity image first.
-
-### 3) (Optional) Conda environment
-
-```bash
-conda create -n fieldformer python=3.11 -y
-conda activate fieldformer
-# then run the pip commands above
-```
-
----
+Some baseline scripts also import code under `original_baseline/`; run commands from the repository root so local imports resolve correctly.
 
 ## Data
 
-### Synthetic PDE datasets
+The current repository includes the data files expected by the training and evaluation scripts:
 
-Two generators live in `data/`:
-
-* **Heat (periodic)**: `data/heat_periodic.py`
-
-  * Solves (u_t = \alpha_x u_{xx} + \alpha_y u_{yy} + f(x,y,t)) on a periodic grid.
-* **Shallow-Water (periodic)**: `data/swe_periodic.py`
-
-  * Solves the 2D linearized shallow-water system for ((\eta, u, v)) on a periodic grid.
-
-Run either to generate arrays and parameters (grids, spacings, PDE constants). The training scripts expect a **single NPZ** named like:
-
-* `heat_periodic_dataset_sharp.npz` for heat
-* `swe_periodic_dataset.npz` for SWE
-
-Each NPZ should contain (by convention used in the training scripts):
-
-* **Heat**: `u`, `x`, `y`, `t`, `params` (with names `["alpha_x","alpha_y","dx","dy","dt",...]`)
-* **SWE**: `eta`, `u`, `v`, `x`, `y`, `t`, `params` (with names `["g","H","dx","dy","dt",...]`)
-
-> The code currently **hard-codes absolute paths** to `/scratch/ab9738/fieldformer/data/*.npz` inside some scripts. See **Path configuration** below to point them to your data.
-
-### Pollution (Delhi case)
-
-`data/pollution.py` and companions (`*.csv`, `*_intensity_80x80.npy`) provide utilities and example drivers (traffic/industry/brick-kiln intensity maps, wind). These are used by the `*_pol_*` training/eval scripts.
-
----
-
-## Path configuration (important)
-
-Several training/eval scripts load datasets or save checkpoints via absolute paths under `/scratch/ab9738/fieldformer/...`.
-
-You have three easy options:
-
-1. **Edit the path constants** near the top of each script (search for `Config` or `np.load("...")`).
-   Examples (actual lines exist in your repo):
-
-   * `model/ffag_heat_train.py`: loads `"/scratch/ab9738/fieldformer/data/heat_periodic_dataset_sharp.npz"`
-   * `model/ff_fd_heat_train.py`: same as above
-   * `model/fmlp_heat_train.py`, `model/siren_heat_train.py`: same as above
-   * `model/ffag_swe_train.py`, `model/fmlp_swe_train.py`, `model/siren_swe_train.py`: load `swe_periodic_dataset.npz`
-   * `model/heat_eval.py`: checkpoint paths like `"/scratch/ab9738/fieldformer/model/ffag_heat_best.pt"`
-
-2. **Symlink** your data/model directories to those paths:
-
-```bash
-mkdir -p /scratch/$USER/fieldformer/data /scratch/$USER/fieldformer/model
-ln -s /your/local/path/heat_periodic_dataset_sharp.npz /scratch/$USER/fieldformer/data/heat_periodic_dataset_sharp.npz
+```text
+data/heat_periodic_dataset_sharp.npz
+data/heat_periodic_dataset_sharp_64.npz
+data/swe_periodic_dataset.npz
+data/swe_periodic_dataset_64.npz
+data/pollution_dataset.npz
+data/pollution_dataset_60.npz
+data/gov_sensor_dataset.npz
+data/gov_atm_dataset.npz
 ```
 
-3. **Export environment variables** and quickly replace in files:
+If the generated government sensor datasets need to be rebuilt, use:
 
 ```bash
-export FF_BASE=/your/local/path/fieldformer
-# then do a quick sed across the scripts if you want to template paths
+python data/build_gov_sensor_dataset.py
+python data/build_gov_atm_dataset.py
 ```
 
----
+The synthetic heat and shallow-water generators are also in `data/`. They are script-style generator files with configuration constants near the top, including grid size, number of sensors, noise settings, and save path:
+
+```bash
+python data/heat_periodic.py
+python data/swe_periodic.py
+```
 
 ## Training
 
-All scripts are pure-Python (no CLI flags); edit the `Config` section at the top to change hyper-params, paths, seeds, etc. Splits default to **80/10/10** via a simple linear-index shuffler.
+Training scripts use dataclass configs and accept simple CLI overrides through flags such as `--data`, `--save`, `--epochs`, `--batch_size`, `--val_batch_size`, `--lr`, and `--load_checkpoint`.
 
-> **Tip:** the local transformer uses PyTorch’s scaled-dot-product attention. On some GPUs you may want to toggle `torch.backends.cuda.sdp_kernel` for stability/perf (many scripts already do this).
+Several defaults were used on the original scratch path. For review, the most reliable pattern is to pass explicit local paths from the repository root.
 
-### Heat (periodic)
-
-**FieldFormer-Autograd (physics residual via autograd)**
+### FieldFormer
 
 ```bash
-python model/ffag_heat_train.py
-# checkpoint saved to .../model/ffag_heat_best.pt (path in script)
+python fieldformer_core/scripts/ffag_heatsparse_train.py \
+  --data data/heat_periodic_dataset_sharp.npz \
+  --save fieldformer_core/checkpoints/ffag_heatsparse_best.pt
+
+python fieldformer_core/scripts/ffag_swesparse_train.py \
+  --data data/swe_periodic_dataset.npz \
+  --save fieldformer_core/checkpoints/ffag_swesparse_best.pt
+
+python fieldformer_core/scripts/ffag_polsparse_train.py \
+  --data data/pollution_dataset.npz \
+  --save fieldformer_core/checkpoints/ffag_polsparse_best.pt
 ```
 
-**FieldFormer (finite-difference residual)**
+For quick smoke tests, reduce the budget, for example:
 
 ```bash
-python model/ff_fd_heat_train.py
+python fieldformer_core/scripts/ffag_heatsparse_train.py \
+  --data data/heat_periodic_dataset_sharp.npz \
+  --save /tmp/ffag_heatsparse_smoke.pt \
+  --epochs 1 --batch_size 16 --val_batch_size 64
 ```
 
-**Baselines**
+### Baselines
+
+Baseline scripts are named as:
+
+```text
+baselines/scripts/<model>_<dataset>sparse_train.py
+```
+
+where model is one of `fmlp`, `siren`, `svgp`, `recfno`, `imputeformer`, or `senseiver`, and dataset includes `heat`, `pol`, `swe`, `govpol`, `atm`, `govpolsplit`, and `atmsplit` where supported.
+
+Examples:
 
 ```bash
-python model/siren_heat_train.py
-python model/fmlp_heat_train.py
-python model/svgp_heat_train.py   # requires gpytorch; uses mini-batch ELBO
+python baselines/scripts/fmlp_heatsparse_train.py \
+  --data data/heat_periodic_dataset_sharp_64.npz \
+  --save baselines/checkpoints/fmlp_heatsparse_best.pt
+
+python baselines/scripts/siren_swesparse_train.py \
+  --data data/swe_periodic_dataset_64.npz \
+  --save baselines/checkpoints/siren_swesparse_best.pt
+
+python baselines/scripts/svgp_polsparse_train.py \
+  --data data/pollution_dataset_60.npz \
+  --save baselines/checkpoints/svgp_polsparse_best.pt
 ```
 
-### Shallow-Water (periodic, joint 3-output)
-
-```bash
-python model/ffag_swe_train.py    # FieldFormer-AG for (η,u,v)
-python model/siren_swe_train.py
-python model/fmlp_swe_train.py
-python model/svgp_swe_train.py
-```
-
-### Pollution
-
-```bash
-python model/ffag_pol_trainv2.py  # FieldFormer-AG variant for pollution
-python model/fmlp_pol_train.py
-python model/siren_pol_train.py
-python model/svgp_pol_train.py
-```
-
----
+The launcher `baselines/scripts/launch_all_sparse.sh` is a Slurm helper for selected baseline sweeps. Inspect it before use because the active dataset list is intentionally editable.
 
 ## Evaluation
 
-Each evaluation script loads the dataset **exactly** like its training counterpart and reports:
+The main evaluator loads datasets from `data/` and checkpoints from:
 
-* **RMSE / MAE on sensor test set** (the held-out indices)
-* **Full-field RMSE / MAE** (all grid points)
-* **Physics residual metrics** (optional), e.g.
-  Heat: ( R = u_t - (\alpha_x u_{xx} + \alpha_y u_{yy}) - f ) via autograd
-  SWE: residuals for ((\eta,u,v)) system
-
-### Heat
-
-```bash
-python model/heat_eval.py
+```text
+fieldformer_core/checkpoints/
+baselines/checkpoints/
+ablations/architecture/checkpoints/
 ```
 
-Edit in-file config to point to the best checkpoints:
-
-* `ckpt_fieldformer`, `ckpt_svgp`, `ckpt_siren`, `ckpt_fmlp`
-
-### Shallow-Water
+Run one dataset/model pair:
 
 ```bash
-python model/swe_eval.py
+python eval/main/evaluate_all_sparse.py \
+  --datasets heat \
+  --models ffag fmlp siren svgp recfno imputeformer senseiver \
+  --device cuda \
+  --output_dir eval/main/outputs
 ```
 
-Reports joint metrics across the three outputs, plus (optionally) relative residuals if enabled in the code section.
-
-### Pollution
+Useful options:
 
 ```bash
-python model/pol_eval.py
+--device cpu
+--max_sparse_test 10000
+--max_full_field 10000
+--bootstrap_samples 0
 ```
 
----
+For a fast CPU check:
 
-## Results (what to expect)
+```bash
+python eval/main/evaluate_all_sparse.py \
+  --datasets heat \
+  --models ffag \
+  --device cpu \
+  --max_sparse_test 256 \
+  --max_full_field 256 \
+  --bootstrap_samples 0 \
+  --output_dir /tmp/fieldformer_eval_smoke
+```
 
-On the provided synthetic tasks, FieldFormer variants should match or exceed the baselines on both **sensor-set** and **full-field** errors, with **lower physics residuals** when the residual loss is enabled. SWE scripts evaluate **joint metrics** for ((\eta,u,v)).
+Main evaluation outputs are JSON files named `<model>-<dataset>.json`.
 
-(Exact numbers depend on seeds, grid sizes, residual weights, and sensor fractions; start with the defaults in each script.)
+## Ablations
 
----
+Architecture ablations live under `ablations/architecture/scripts/`, with evaluation support under `eval/ablations/architecture/`. The included ablation checkpoints cover variants such as no physics loss, no position-guided filtering, and MLP-only variants.
 
-## Cluster notes (Singularity/Slurm)
+To evaluate selected ablation outputs directly:
 
-The repo includes sample launchers (`run_cpu_jupyter.sh`, `run_gpu_jupyter.sh`, `torch_jupyter.sh`) illustrating:
+```bash
+python eval/ablations/architecture/evaluate_all_sparse.py \
+  --datasets heat pol swe \
+  --models ffag_nophys ffag_npgf ffag_mlp \
+  --device cuda \
+  --output_dir eval/ablations/architecture/outputs
+```
 
-* Using an overlay for a writeable conda/pip env
-* Exposing a Jupyter port via reverse SSH
-* Enabling `--nv` for GPU
+## Summary Tables
 
-Adapt the image path, overlay, and port for your cluster.
+After running evaluation, regenerate the LaTeX summary tables with:
+
+```bash
+python eval/make_sparse_summary_tables.py
+```
+
+The default output is:
+
+```text
+eval/sparse_summary_tables.tex
+```
+
+## Cluster Notes
+
+The repository includes Slurm/Apptainer helper scripts:
+
+```text
+fieldformer_core/scripts/run.sh
+baselines/scripts/run.sh
+eval/main/launch_all_sparse_eval.sh
+eval/main/launch_selected_sparse_eval.sh
+```
+
+These scripts contain site-specific settings for partition, account, Singularity image, overlay path, and scratch directory. Reviewers should either edit those values for their cluster or run the Python commands above directly.
+
+## Reproducibility Notes
+
+- Default train/validation/test splits use fixed seeds in each script, usually `seed=123`.
+- Sparse sensor observations are selected from the dataset NPZ files; full-field targets are used for evaluation, not for FieldFormer sparse training.
+- Checkpoint metadata stores the config and observation key used for the run.
+- Existing JSON outputs in `eval/main/outputs/` and `eval/ablations/architecture/outputs/` can be inspected without retraining.
