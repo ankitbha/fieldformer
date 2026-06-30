@@ -1,0 +1,53 @@
+\section{Introduction}
+
+Many real-world systems in environmental monitoring, atmospheric science, urban infrastructure, and geophysical sensing evolve over space and time according to underlying physical processes, often described through partial differential equations (PDEs). A general form of such systems is
+\begin{align}
+\partial_t \mathbf{u}(\mathbf{x}, t)
+&=
+\mathcal{F}\big(
+\mathbf{u}(\mathbf{x}, t),
+\nabla \mathbf{u}(\mathbf{x}, t),
+\Delta \mathbf{u}(\mathbf{x}, t),
+\ldots;
+\boldsymbol{\theta}
+\big),
+\end{align}
+where $\mathbf{u}(\mathbf{x}, t) \in \mathbb{R}^C$ denotes the evolving latent state and $\boldsymbol{\theta}$ represents unknown or partially known physical parameters such as diffusivity, transport velocity, or source terms. In practice, however, these systems are rarely fully observed. Instead, measurements are obtained from a sparse set of sensors distributed over space, producing noisy and incomplete observations of the underlying process.
+
+This mismatch between continuous physical dynamics and sparse sensing creates a fundamental challenge for spatio-temporal field reconstruction. Under realistic sensing constraints, large portions of the spatial domain remain unobserved, while sensors provide dense longitudinal traces only at a small number of fixed locations. As a result, reconstructing a globally consistent latent field from sparse measurements becomes fundamentally underconstrained. Multiple physically plausible latent fields may remain consistent with the same observations, particularly under extreme spatial sparsity, requiring reconstruction models to rely heavily on inductive biases regarding locality, transport structure, and spatial regularity.
+
+To formalize this setting, we consider the discrete-time dynamical system induced by numerical integration of the PDE:
+\[
+\mathbf{u}_{t+1} = \Phi_\theta(\mathbf{u}_t),
+\]
+with sparse observations given by a measurement operator
+\[
+\mathbf{y}_t = \mathcal{O}(\mathbf{u}_t),
+\]
+where $\mathbf{y}_t$ corresponds to sensor measurements collected at a finite set of spatial locations. This induces a fundamental observability mismatch: the latent process evolves in a high-dimensional continuous state space, while observations lie in a much lower-dimensional sensor space determined by the sensing topology. Consequently, the mapping from latent states and physical parameters to observations becomes many-to-one under sparse sensing.
+
+Recent results on identifiability under sparse observations \citep{norden2025importancestructuralidentifiabilitymachine,wieland2021structural} further imply that distinct physical parameterizations may produce observationally equivalent sensor trajectories over finite horizons. That is, there may exist
+\[
+\theta_1 \neq \theta_2
+\]
+such that
+\[
+\mathcal{O}(\Phi_{\theta_1}^t(\mathbf{u}_0))
+=
+\mathcal{O}(\Phi_{\theta_2}^t(\mathbf{u}_0)),
+\]
+despite inducing globally different latent fields. As a consequence, sparse sensing fundamentally limits the identifiability of the latent spatio-temporal field itself: multiple globally distinct reconstructions may remain fully consistent with the same sensor observations. Under such regimes, globally accurate reconstruction away from observed support cannot be guaranteed without introducing additional structural assumptions or inductive priors regarding the underlying data-generating process.
+
+In this work, we argue that under extreme sparse sensing, reliable reconstruction becomes concentrated around the observational support induced by the sensor network, making \emph{sensor-space modeling} a more identifiable objective than unconstrained global field recovery. Sensor-space modeling refers to reconstruction objectives concentrated around the persistent sensing topology induced by deployed sensors. Rather than interpreting reconstruction as exact recovery of the latent physical state, we instead view it as the construction of a physically plausible surrogate field that remains consistent with sparse observations and local transport structure.
+
+Motivated by this perspective, we introduce \textbf{FieldFormer}, a mesh-free transformer architecture designed for locality-aware sensor-space modeling in persistent sparse sensor networks. FieldFormer is built around the observation that many physical processes exhibit localized domains of dependence, where the evolution at a query location is primarily influenced by nearby spatial-temporal interactions. Instead of relying on global attention or fixed graph connectivity, FieldFormer performs reconstruction through adaptive local neighborhoods that dynamically organize sparse observations according to learned spatio-temporal geometry.
+
+For each query location, FieldFormer aggregates local evidence using a learnable velocity-scaled distance metric that adapts neighborhood geometry to heterogeneous spatio-temporal relationships. Neighborhoods are constructed as fixed maximal sparse contexts over nearby sensors and bounded temporal windows, while learned velocity-scaled offsets modulate token geometry within this context, enabling stable and scalable inference under extreme sparsity. A local transformer encoder models relational structure over irregularly sampled observations, while global consistency is represented through a coordinate-based neural field formulation. When partial physical knowledge is available, additional structural consistency can be incorporated through differentiable PDE-based regularization.
+
+Our formulation differs fundamentally from prior approaches to spatio-temporal reconstruction. Classical interpolation methods such as kriging and Gaussian processes rely on restrictive smoothness assumptions and scale poorly under large irregular datasets. Graph-based methods and GNN-PINN hybrids require fixed connectivity structures that do not adapt to evolving spatial dependencies, and can be replicated by transformer based approaches \citep{joshi2025transformers}. On the other hand, transformer-based imputation models and coordinate-based neural field methods often rely on globally regularized latent representations. Such approaches generalize to unseen sensors only when their implicit priors align with the underlying data-generating process, while failing to efficiently exploit localized domains of dependence under persistent sparse sensing. In contrast, FieldFormer explicitly aligns its inductive bias with the localized observability structure induced by sparse sensor networks.
+
+We evaluate FieldFormer across five benchmarks spanning both synthetic and real-world spatio-temporal systems, including anisotropic heat diffusion, shallow-water dynamics, pollution dispersion simulation, atmospheric transport fields, and pollution monitoring datasets. Our experiments show that FieldFormer achieves strong performance for sparse sensor network imputation, where the goal is to reconstruct or forecast measurements over persistent sensing topologies from incomplete and noisy observations. At the same time, we observe that globally unconstrained field reconstruction under extreme sparsity exhibits highly variable behavior across datasets and reconstruction methods, with no single modeling paradigm consistently outperforming others. Different architectures succeed or fail depending on how their implicit inductive priors align with the underlying data-generating process, highlighting the fundamentally underconstrained nature of global latent field recovery under sparse sensing.
+
+These findings suggest that sparse physical field reconstruction should be interpreted not as exact latent state recovery, but as the construction of observationally grounded surrogate fields under severe observability limitations. While extreme sparsity fundamentally limits reliable global reconstruction, accurate sensor-space imputation remains achievable and practically useful across a broad range of applications, including environmental monitoring, atmospheric sensing, pollution tracking, urban infrastructure management, industrial IoT systems, climate observation networks, and scientific sensor deployments where measurements are spatially sparse but temporally dense.
+
+Overall, our work contributes both a practical framework for sparse spatio-temporal reconstruction and a conceptual perspective on the limits of inference under sparse sensing. By connecting locality-aware modeling with observability structure, we argue that reconstruction quality in physical AI systems is fundamentally shaped not only by model architecture, but also by the information geometry induced by the sensing process itself.

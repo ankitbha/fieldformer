@@ -1,0 +1,91 @@
+
+\documentclass[10pt]{article} % For LaTeX2e
+\usepackage[preprint]{tmlr}
+% If accepted, instead use the following line for the camera-ready submission:
+%\usepackage[accepted]{tmlr}
+% To de-anonymize and remove mentions to TMLR (for example for posting to preprint servers), instead use the following:
+%\usepackage[preprint]{tmlr}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands}
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{multirow}
+
+
+\title{FieldFormer: Locality-Aware Transformers for\\ Spatio-Temporal Modeling on Sparse Sensor Networks}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the tmlr package is used without the [accepted] or [preprint] options.
+% Non-anonymous submissions will be rejected without review.
+
+\author{\name Ankit Bhardwaj \email bhardwaj.ankit@nyu.edu \\
+      \addr Department of Computer Science\\
+      New York University
+      \AND
+      \name Ananth Balashankar \email ananth@google.com \\
+      \addr Google DeepMind
+      \AND
+      \name Lakshmi Subramanian \email lakshmi@nyu.edu\\
+      \addr Department of Computer Science\\
+      New York University}
+
+% The \author macro works with any number of authors. Use \AND 
+% to separate the names and addresses of multiple authors.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\def\month{MM}  % Insert correct month for camera-ready version
+\def\year{YYYY} % Insert correct year for camera-ready version
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}} % Insert correct link to OpenReview for camera-ready version
+
+\usepackage{amsthm}
+% Theorem styles
+\theoremstyle{plain} % bold heading, italic body
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{claim}[theorem]{Claim}
+
+\theoremstyle{definition} % bold heading, upright body
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark} % italic heading, upright body
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{note}[theorem]{Note}
+
+\begin{document}
+
+
+\maketitle
+
+\input{abstract}
+
+\input{intro}
+\input{related}
+\input{formulation}
+\input{method}
+\input{theory}
+\input{evaluation}
+\input{discussion}
+
+
+\bibliography{refs}
+\bibliographystyle{tmlr}
+
+\appendix
+\input{appendix}
+
+\end{document}

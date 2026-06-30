@@ -1,0 +1,109 @@
+\section{Problem Formulation}
+
+\textbf{Global Field Recovery.}
+The most general reconstruction objective is to estimate the latent field over a global spatio-temporal query domain
+\[
+\mathcal{Q} \subset \Omega \times [0,T],
+\]
+where $\Omega$ denotes the full spatial domain. In this setting, a model seeks to learn a function
+\[
+\hat{\mathbf{u}}:
+\mathcal{Q} \rightarrow \mathbb{R}^q
+\]
+such that
+\[
+\hat{\mathbf{u}}(\mathbf{x},t) \approx \mathbf{u}(\mathbf{x},t),
+\qquad
+(\mathbf{x},t)\in\mathcal{Q}.
+\]
+The corresponding global reconstruction objective can be written as
+\[
+\min_{\phi}
+\sum_{(\mathbf{x},t)\in\mathcal{Q}}
+\left\|
+f_{\phi}(\mathbf{x},t;\mathcal{D}_{\mathcal{S}})
+-
+\mathbf{u}(\mathbf{x},t)
+\right\|_2^2
++
+\lambda \mathcal{R}_{\mathrm{phys}}(f_{\phi}),
+\]
+where $f_{\phi}$ is the learned field estimator and $\mathcal{R}_{\mathrm{phys}}$ denotes optional physical regularization. This formulation is natural when dense ground-truth fields are available, as in simulations, and when the sensing process provides sufficient spatial coverage to constrain the latent state.
+
+However, in real sparse sensor networks, $\mathbf{u}(\mathbf{x},t)$ is generally unobserved for most $\mathbf{x}\in\Omega$. The only directly observed quantities are the projections of the latent field onto the deployed sensor locations. Consequently, multiple globally distinct fields may induce identical or nearly identical sensor trajectories, making the global objective underdetermined without additional assumptions on smoothness, locality, transport, or the data-generating process. Thus, global field recovery should be interpreted as prior-guided surrogate reconstruction rather than identifiable recovery of the true latent field under extreme sparse sensing. \\
+
+
+\textbf{Sensor-Space Modeling.} Under extreme spatial sparsity, estimating the latent field over an arbitrary query set
+$\mathcal{Q} \subset \Omega \times [0,T]$ may be fundamentally underconstrained. We therefore distinguish global field reconstruction from a more identifiable objective: \emph{sensor-space modeling}. Let the deployed sensor network be denoted by
+\[
+\mathcal{S} = \{\mathbf{s}_j\}_{j=1}^{M}, \qquad \mathbf{s}_j \in \Omega ,
+\]
+where $M$ is small relative to the spatial resolution of the underlying domain. The sensor-space observation operator is
+\[
+\mathcal{O}_{\mathcal{S}}(\mathbf{u})(t)
+=
+\big[
+\mathbf{u}(\mathbf{s}_1,t),
+\mathbf{u}(\mathbf{s}_2,t),
+\dots,
+\mathbf{u}(\mathbf{s}_M,t)
+\big]
+\in \mathbb{R}^{M \times q}.
+\]
+The observed sensor trajectory is therefore
+\[
+\mathbf{y}_t
+=
+\mathcal{O}_{\mathcal{S}}(\mathbf{u})(t)
++
+\boldsymbol{\epsilon}_t .
+\]
+
+In the longitudinal sensing regime, observations are dense in time but restricted to the spatial support of the sensor network:
+\[
+\mathcal{D}_{\mathcal{S}}
+=
+\left\{
+(\mathbf{s}_j,t_k,\mathbf{y}_{j,k})
+:
+j=1,\dots,M,\;
+k=1,\dots,T_j
+\right\}.
+\]
+Rather than estimating $\mathbf{u}(\mathbf{x},t)$ for arbitrary $\mathbf{x}\in\Omega$, sensor-space modeling aims to learn a predictor
+\[
+\hat{\mathbf{u}}_{\mathcal{S}}:
+\mathcal{S}\times[0,T]\rightarrow \mathbb{R}^q
+\]
+that reconstructs or forecasts the physical state only on the observational support induced by the deployed sensors:
+\[
+\hat{\mathbf{y}}_{j,k}
+=
+\hat{\mathbf{u}}_{\mathcal{S}}(\mathbf{s}_j,t_k).
+\]
+
+The corresponding learning objective is
+\[
+\min_{\phi}
+\sum_{(\mathbf{s}_j,t_k,\mathbf{y}_{j,k})\in\mathcal{D}_{\mathcal{S}}}
+\left\|
+f_{\phi}(\mathbf{s}_j,t_k;\mathcal{D}_{\mathcal{S}})
+-
+\mathbf{y}_{j,k}
+\right\|_2^2
++
+\lambda \mathcal{R}_{\mathrm{phys}}(f_{\phi}),
+\]
+where $f_{\phi}$ is the learned reconstruction model and $\mathcal{R}_{\mathrm{phys}}$ denotes optional physical regularization, such as PDE residuals or boundary constraints when such information is available.
+
+Under severe sparse sensing, the most identifiable prediction target is not the unconstrained global field
+\[
+\mathbf{u}:\Omega\times[0,T]\rightarrow\mathbb{R}^q,
+\]
+but its restriction to the sensor support:
+\[
+\mathbf{u}_{\mathcal{S}}
+=
+\mathbf{u}\big|_{\mathcal{S}\times[0,T]}.
+\]
+Thus, sensor-space modeling evaluates whether a method can produce accurate, observationally grounded predictions over a persistent sensor topology, rather than claiming exact recovery of the full latent field away from observed support.
