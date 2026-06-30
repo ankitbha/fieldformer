@@ -1,0 +1,43 @@
+{
+  "latex-workshop.latex.rootFile.useSubFile": false,
+  "latex-workshop.latex.tools": [
+    {
+      "name": "pdflatex-fieldformer-overlay",
+      "command": "/share/apps/apptainer/bin/apptainer",
+      "args": [
+        "exec",
+        "--overlay",
+        "/scratch/ab9738/fieldformer/overlay-25GB-500K.ext3:ro",
+        "/scratch/ab9738/fieldformer/cuda11.8.86-cudnn8.7-devel-ubuntu22.04.2.sif",
+        "bash",
+        "-lc",
+        "cd '%DIR%' && export TEXINPUTS=.:./: && pdflatex -synctex=1 -interaction=nonstopmode -file-line-error '%DOCFILE%.tex'"
+      ]
+    },
+    {
+      "name": "bibtex-fieldformer-overlay",
+      "command": "/share/apps/apptainer/bin/apptainer",
+      "args": [
+        "exec",
+        "--overlay",
+        "/scratch/ab9738/fieldformer/overlay-25GB-500K.ext3:ro",
+        "/scratch/ab9738/fieldformer/cuda11.8.86-cudnn8.7-devel-ubuntu22.04.2.sif",
+        "bash",
+        "-lc",
+        "cd '%DIR%' && export TEXINPUTS=.:./: && bibtex '%DOCFILE%'"
+      ]
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "apptainer: pdflatex -> bibtex -> pdflatex -> pdflatex",
+      "tools": [
+        "pdflatex-fieldformer-overlay",
+        "bibtex-fieldformer-overlay",
+        "pdflatex-fieldformer-overlay",
+        "pdflatex-fieldformer-overlay"
+      ]
+    }
+  ],
+  "latex-workshop.latex.recipe.default": "apptainer: pdflatex -> bibtex -> pdflatex -> pdflatex"
+}
