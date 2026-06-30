@@ -1,88 +1,7 @@
-% \section{Theoretical Insights}
-% \label{sec:analysis}
-
-% In this section, we develop a theoretical analysis of when neighborhood-based field reconstruction is feasible under sparse sensing. We show that spatio-temporal processes governed by localized interactions can be reliably recovered from longitudinal data that is sparse in space but dense in time, while processes with broader spatial coupling are fundamentally harder to reconstruct under the same sensing budget.
-
-% \subsection{Local Structure in Spatio-Temporal Dynamics}
-% We characterize the class of spatio-temporal processes that FieldFormer is designed to represent. At a high level, a process is \emph{local} if the state at a given location and time is primarily determined by nearby conditions in space and recent history in time, rather than by distant regions of the domain. This notion of locality is a structural property of many real-world systems and is not imposed by the model. A formal definition in terms of finite-order differential operators is provided in Appendix~\ref{sec:definitions} (Definition~\ref{def:local_operator}).
-
-% In practice, locality commonly appears in two complementary forms:
-% \begin{enumerate}[leftmargin=*,topsep=0pt]
-% \item processes in which influence spreads gradually through space over time, and
-% \item processes in which influence propagates along paths with finite speed.
-% \end{enumerate}
-
-% \noindent\textbf{Diffusion-like processes:}
-% In diffusion-dominated systems, information spreads smoothly through repeated local interactions. Each location evolves based on nearby spatial context, and the effect of distant regions emerges only after many incremental updates. Examples include heat conduction or pollutant dispersion in the absence of strong advection. In such systems, accurate reconstruction depends on access to a sufficiently broad local neighborhood: missing nearby sensors can substantially degrade performance, even when temporal observations are dense.
-
-% \noindent\textbf{Propagation-like processes:}
-% In propagation-dominated systems, changes travel along preferred directions and reach downstream locations after a delay, rather than diffusing uniformly. Examples include fluid transport, traffic congestion waves, and wind-driven pollutant plumes. Here, the state at a location is influenced by a small number of upstream points, making compact and anisotropic neighborhoods sufficient when their geometry is captured correctly. Learning which spatial and temporal neighbors matter is therefore more important than simply increasing neighborhood size.
-
-% In classical PDE theory, diffusion-like processes are typically modeled by parabolic equations, while propagation-dominated processes are described by hyperbolic equations. Many real-world systems combine both behaviors at different scales. Together, these locality structures explain why neighborhood-based models can recover coherent global behavior from sparse observations: global patterns emerge from repeated local interactions. FieldFormer explicitly aligns with this principle by constructing adaptive local neighborhoods and learning how information should be aggregated across space and time. In the following sections, we formalize this intuition by analyzing the expressivity of such models and the interaction between sensing sparsity and underlying locality.
-
-% \begin{theorem}[Expressivity for Locally Structured Spatio-Temporal Dynamics]
-% \label{prop:universal_pde}
-% Let $u:\mathbb{R}^{d}\times\mathbb{R}\to\mathbb{R}^q$ solve a parabolic or hyperbolic PDE
-% \[
-% F\bigl(z,u(z),\nabla u(z),\ldots,D^r u(z)\bigr)=0,\qquad z=(x,t),
-% \]
-% with a finite-order, local operator. Assume a consistent \emph{explicit} finite-difference scheme
-% with compact stencil $\mathcal{S}\subset\{-s_{\max},\ldots,s_{\max}\}^d\times\{0,\ldots,k\}$ and a
-% CFL-admissible time step $\Delta t$. Then for any $\varepsilon>0$ and compact $K\subset\mathbb{R}^{d+1}$,
-% there exists a FieldFormer with neighborhood size $m\ge|\mathcal{S}|$, hidden width $d'$, and depth $L$ such that
-% \[
-% \sup_{z\in K}\|u(z)-\hat u(z)\|_2<\varepsilon.
-% \]
-% \end{theorem}
-
-% A detailed proof of the theorem is presented in Appendix \ref{sec:proofs}.
-
-% \begin{remark}[Implication: Alignment with Local Dynamics]
-% FieldFormer mirrors the local dependency structure of many spatio-temporal processes: discrete updates depend only on a bounded set of nearby spatial locations and recent time steps. By encoding predictions through adaptive local neighborhoods, FieldFormer is structurally aligned with the domains of influence that govern a wide class of real-world dynamics.
-% \end{remark}
-
-% \subsection{Approximation Error}
-% Even when the underlying dynamics are representable by the model class, reconstruction accuracy is fundamentally limited by what the sensing process reveals. In sparse sensing regimes, errors arise not only from model mismatch or optimization, but from \emph{missed spatial dependencies}: components of the local dynamics that are never observed by any sensor. In this subsection, we analyze how such miss-coverage errors depend on the locality of the process and the spatial distribution of sensors. Our focus is on longitudinal settings, where observations are dense in time but sparse in space, and we study how neighborhood size and sensor placement jointly determine the best achievable reconstruction accuracy.
-
-% \noindent\textbf{Locality Assumption:}
-% We assume that the spatio-temporal process is governed by local interactions, as defined in Appendix~\ref{sec:definitions} (Assumption~\ref{ass:locality}). This ensures that the state update at any location depends only on a finite neighborhood in space and time.
-
-% \noindent\textbf{Sampling Assumption:}
-% We consider a longitudinal sensing regime in which sensors are fixed at a subset of spatial locations and provide measurements across consecutive time steps. As a result, whether a local dependency is observed or missed depends entirely on spatial sensor placement, not on temporal sampling density. We model sensor placement as selecting spatial locations uniformly at random from the set of locations influencing local dynamics. This assumption reflects common deployments such as environmental monitoring networks and is formalized in Appendix~\ref{sec:definitions} (Assumption~\ref{ass:sampling}).
-
-% \noindent\textbf{Influence Assumption:}
-% We assume that each element of the local spatio-temporal neighborhood contributes a non-negligible amount to the state update. To capture this, we associate an \emph{influence weight} with each neighborhood element, with weights summing to one and reflecting relative importance. In longitudinal settings, missing a spatial location removes all of its associated temporal information, and the total influence of a spatial location is given by the aggregate of its temporal components. This assumption rules out degenerate cases and allows reconstruction error to be directly related to which spatial dependencies are observed or missed. The formal statement appears in Appendix~\ref{sec:definitions} (Assumption~\ref{ass:influence}).
-
-
-% Together, these assumptions allow us to quantify how many spatial dependencies are inevitably missed under sparse sensing, and how this miss-coverage translates into an irreducible reconstruction error.
-
-% \begin{theorem}[Average-Case Lower Bound Under Longitudinal Sampling]
-% \label{prop:avg_long}
-% Sample $m_x$ spatial locations uniformly without replacement from $\mathcal{S}_x$, let $I\subseteq\mathcal{S}_x$ be the sensed set and $I^c$ the missed set.
-% Under equation \eqref{eq:avg_inf}, FieldFormer $\hat u$, using all sensed data, satisfies
-% \[
-% \inf_{\hat u}\;\mathbb{E}\bigl[\|\hat u-u^{n+1}(\mathbf{i})\|_2\bigr]
-% \;\;\ge\;\;
-% c\;\mathbb{E}\bigl[\,A(I^c)\,\bigr]
-% \;=\;
-% c\,\Bigl(1-\frac{m_x}{N_x}\Bigr),
-% \]
-% where the expectation is over the random sampling of $I$ and the data distribution $\mathcal{D}$.
-% \end{theorem}
-
-% A detailed proof of the theorem is presented in Appendix \ref{sec:proofs}.
-
-% % \end{remark}
-% \begin{remark}[Implication: Effect of Spatial Dependency Width]
-% The lower bound depends only on the number of essential spatial offsets $N_x$, since once a spatial location is sensed, all of its temporal information is observed. As $N_x$ increases, a fixed sensing budget covers a smaller fraction of the relevant neighborhood, leading to higher miss-coverage error. Consequently, processes whose local updates depend on wider spatial neighborhoods are inherently harder to reconstruct under sparse sensing, while processes governed by compact, directional dependencies are easier to recover. This explains why propagation-dominated systems exhibit lower reconstruction error than diffusion-dominated systems under the same sensing budget, consistent with the empirical trends observed across Heat, SWE, and Pollution and with Theorem~\ref{prop:avg_long}.
-% \end{remark}
-
-
-
 \section{Theoretical Insights}
 \label{sec:analysis}
 
-In this section, we analyze how locality and sensor placement shape what can be recovered under sparse sensing. Our goal is to characterize when locality-aware reconstruction is well aligned with the underlying dynamics, and how missed spatial dependencies induce irreducible error under longitudinal sensing.
+In this section, we analyze how locality and sensor placement shape what can be recovered under sparse sensing. Our goal is to characterize when locality-aware reconstruction is well aligned with the underlying dynamics, and how missed spatial dependencies create non-identifiability under longitudinal sensing.
 \subsection{Local Structure in Spatio-Temporal Dynamics}
 
 We begin by characterizing the class of spatio-temporal processes that FieldFormer is designed to represent effectively. At a high level, a process is \emph{local} if the state at a given location and time is primarily determined by nearby conditions in space and recent history in time, rather than by distant regions of the domain or by the entire global state. This notion of locality is a structural property of many physical systems, not an assumption introduced by FieldFormer. A formal definition in terms of finite-order differential operators is provided in Appendix~\ref{sec:definitions} (Definition~\ref{def:local_operator}).
@@ -105,7 +24,7 @@ In classical PDE theory, diffusion-like processes are typically modeled by parab
 
 We first establish that FieldFormer has sufficient representational capacity to approximate locally governed spatio-temporal dynamics when the relevant local stencil information is available. This result should be interpreted as an architectural compatibility statement. It shows that local transformer aggregation can represent finite-stencil PDE dynamics, although this setting is different from extreme sparse observations we later consider during empirical evaluation.
 
-\begin{theorem}[Expressivity for Locally Structured Spatio-Temporal Dynamics]
+\begin{theorem}[Expressivity for Finite-Stencil Local Dynamics]
 \label{prop:universal_pde}
 Let $u:\mathbb{R}^{d}\times\mathbb{R}\to\mathbb{R}^q$ solve a parabolic or hyperbolic PDE
 \[
@@ -113,20 +32,49 @@ F\bigl(z,u(z),\nabla u(z),\ldots,D^r u(z)\bigr)=0,\qquad z=(x,t),
 \]
 with a finite-order, local operator. Assume a consistent \emph{explicit} finite-difference scheme
 with compact stencil $\mathcal{S}\subset\{-s_{\max},\ldots,s_{\max}\}^d\times\{0,\ldots,k\}$ and a
-CFL-admissible time step $\Delta t$. Then for any $\varepsilon>0$ and compact $K\subset\mathbb{R}^{d+1}$,
-there exists a FieldFormer with neighborhood size $m\ge|\mathcal{S}|$, hidden width $d'$, and depth $L$ such that
+CFL-admissible time step $\Delta t$. Let $U_h$ denote the numerical solution generated by this scheme, and write its local update as
 \[
-\sup_{z\in K}\|u(z)-\hat u(z)\|_2<\varepsilon.
+U_h^{n+1}(\mathbf{i})=\psi(v_{\mathbf{i},n}),\qquad
+v_{\mathbf{i},n}
+=
+\bigl(U_h^{n-\ell_j}(\mathbf{i}+\mathbf{s}_j)\bigr)_{j=1}^{N},
 \]
+where $\{(\mathbf{s}_j,\ell_j)\}_{j=1}^{N}$ is an ordering of $\mathcal{S}$ and $N=|\mathcal{S}|$. For any compact $K\subset\mathbb{R}^{d+1}$, define the compact set of stencil-value tuples
+\[
+\mathcal{V}_K
+:=
+\left\{
+v_{\mathbf{i},n}\in(\mathbb{R}^{q})^{N}
+:
+(x_{\mathbf{i}},t_{n+1})\in K
+\right\}.
+\]
+Then for any $\varepsilon>0$ there exists a FieldFormer with neighborhood size $m\ge|\mathcal{S}|$, hidden width $d'$, and depth $L$ such that
+\[
+\sup_{v\in\mathcal{V}_K}
+\left\|
+\psi(v)-\mathrm{FF}_{\theta}(E(v))
+\right\|_2
+<\varepsilon,
+\]
+where $E(v)$ denotes the FieldFormer tokenization of the ordered stencil tuple $v$.
 \end{theorem}
 
 A detailed proof of the theorem is presented in Appendix~\ref{sec:proofs}.
 
 \begin{remark}[Implication: Alignment with Local Dynamics]
-Theorem~\ref{prop:universal_pde} shows that FieldFormer can represent the local update structure induced by finite-stencil discretizations of parabolic and hyperbolic PDEs. Since such updates depend only on a bounded set of nearby spatial locations and recent time steps, FieldFormer is structurally aligned with the local domains of dependence that govern many physical systems. However, this expressivity result assumes that the relevant local information is available to the model; it does not remove the ambiguity introduced when sparse sensing fails to observe important local dependencies.
+Theorem~\ref{prop:universal_pde} shows that FieldFormer can represent the local update structure induced by finite-stencil discretizations of parabolic and hyperbolic PDEs. It controls approximation of the discrete update map $\psi$, not convergence to the continuous PDE solution $u$. A continuous-solution statement would require an additional numerical-analysis argument, for example
+\[
+\|u-\hat u\|
+\le
+\|u-U_h\|
++
+\|U_h-\hat u\|,
+\]
+where $\|u-U_h\|$ is a discretization error controlled by assumptions such as consistency, stability, regularity, and grid refinement. The intended claim here is architectural compatibility with local finite-stencil dynamics when the relevant stencil information is available; it does not remove the ambiguity introduced when sparse sensing fails to observe important local dependencies.
 \end{remark}
 
-\subsection{Miss-Coverage Error under Longitudinal Sensing}
+\subsection{Missed-Support Non-Identifiability under Longitudinal Sensing}
 
 Even when the underlying dynamics are representable by the model class, reconstruction accuracy is limited by what the sensor network reveals. In sparse sensing regimes, errors arise not only from model mismatch or optimization, but also from \emph{missed spatial dependencies}: components of the local dynamics that are never observed by any sensor. This is the key distinction between expressivity and recoverability. A model may be capable of representing the correct update rule, while the observations may still be insufficient to determine which local dependencies are active.
 
@@ -139,32 +87,53 @@ We assume that the spatio-temporal process is governed by local interactions, as
 We consider a longitudinal sensing regime in which sensors are fixed at a subset of spatial locations and provide measurements across consecutive time steps. As a result, whether a local dependency is observed or missed depends on spatial sensor placement, not on temporal sampling density. We model sensor placement as selecting spatial locations uniformly at random from the set of locations influencing local dynamics. This assumption reflects common deployments such as environmental monitoring networks and is formalized in Appendix~\ref{sec:definitions} (Assumption~\ref{ass:sampling}).
 
 \noindent\textbf{Influence Assumption.}
-We assume that each element of the local spatio-temporal neighborhood contributes a non-negligible amount to the state update. To capture this, we associate an \emph{influence weight} with each neighborhood element, with weights summing to one and reflecting relative importance. In longitudinal settings, missing a spatial location removes all of its associated temporal information, and the total influence of a spatial location is given by the aggregate of its temporal components. This assumption rules out degenerate cases and allows reconstruction error to be related directly to which spatial dependencies are observed or missed. The formal statement appears in Appendix~\ref{sec:definitions} (Assumption~\ref{ass:influence}).
+We assume that missed spatial support can create a genuine ambiguity in the local update. To capture this, we associate an \emph{influence weight} with each neighborhood element, with weights summing to one and reflecting relative importance. In longitudinal settings, missing a spatial location removes all of its associated temporal information, so the total influence of a spatial location is the aggregate of its temporal components. The formal set-level assumption states that, for any missed spatial set, there can be an observationally indistinguishable stencil completion whose output differs by an amount proportional to the missed influence mass. The formal statement appears in Appendix~\ref{sec:definitions} (Assumption~\ref{ass:influence}).
 
-Together, these assumptions formalize the central limitation of sparse sensing: even if the model class is expressive enough, unobserved spatial dependencies can induce irreducible error. Thus, failures of global reconstruction under extreme sparsity are not merely optimization failures, but consequences of the information geometry imposed by the sensor network.
+Together, these assumptions formalize the central limitation of sparse sensing: even if the model class is expressive enough, unobserved spatial dependencies can leave multiple plausible local completions that agree with all measurements. Thus, failures of global reconstruction under extreme sparsity are not merely optimization failures, but consequences of the information geometry imposed by the sensor network.
 
-\begin{theorem}[Average-Case Lower Bound Under Longitudinal Sampling]
+\begin{theorem}[Missed-Support Non-Identifiability Under Longitudinal Sampling]
 \label{prop:avg_long}
 Sample $m_x$ spatial locations uniformly without replacement from $\mathcal{S}_x$, let $I\subseteq\mathcal{S}_x$ be the sensed set and $I^c$ the missed set.
-Under ~\eqref{eq:avg_inf} (in Appendix~\ref{sec:definitions}, Assumption~\ref{ass:influence}), any estimator $\hat u$ using all sensed data satisfies
+Under ~\eqref{eq:set_inf} (in Appendix~\ref{sec:definitions}, Assumption~\ref{ass:influence}), let $\hat u$ be any estimator using only the observed stencil block $V_{I\times\mathcal{T}}$. For fixed $I$, define the two completion risks
 \[
-\inf_{\hat u}\;\mathbb{E}\bigl[\|\hat u-u^{n+1}(\mathbf{i})\|_2\bigr]
-\;\;\ge\;\;
-c\;\mathbb{E}\bigl[\,A(I^c)\,\bigr]
-\;=\;
-c\,\Bigl(1-\frac{m_x}{N_x}\Bigr),
+\mathrm{risk}_I(V)
+:=
+\mathbb{E}\!\left[
+\|\hat u(V_{I\times\mathcal{T}})-\psi(V)\|_2
+\mid I
+\right],
 \]
-where the expectation is over the random sampling of $I$ and the data distribution $\mathcal{D}$.
+and
+\[
+\mathrm{risk}_I(T_{I^c}V)
+:=
+\mathbb{E}\!\left[
+\|\hat u(V_{I\times\mathcal{T}})-\psi(T_{I^c}V)\|_2
+\mid I
+\right],
+\]
+where $T_{I^c}V$ agrees with $V$ on the observed coordinates and differs only on the missed spatial support. Then there exists a constant $c>0$ such that
+\[
+\inf_{\hat u}\;
+\mathbb{E}_I
+\left[
+\max\{\mathrm{risk}_I(V),\mathrm{risk}_I(T_{I^c}V)\}
+\right]
+\;\ge\;
+c\,\mathbb{E}_I\bigl[\,A(I^c)\,\bigr]
+\;=\;
+c\,\Bigl(1-\frac{m_x}{N_x}\Bigr).
+\]
 \end{theorem}
 
 A detailed proof of the theorem is presented in Appendix~\ref{sec:proofs}.
 
 \begin{remark}[Implication: Sensor Coverage and Recoverability]
-The lower bound depends on the fraction of influential spatial dependencies missed by the sensor network. Since longitudinal sensors provide dense time traces at fixed locations, observing a spatial site reveals all of its associated temporal information, while missing a spatial site removes all of it. As the number of essential spatial offsets $N_x$ increases, a fixed sensing budget covers a smaller fraction of the relevant local neighborhood, leading to higher miss-coverage error. This suggests that, all else equal, processes with compact directional dependencies may be easier to model under sparse sensing than processes with broad spatial coupling. In practice, recoverability also depends on sensor placement, noise, forcing, boundary conditions, and the inductive bias of the reconstruction model.
+The theorem is a non-identifiability statement, not a universal error law for every data distribution. It says that sparse sensing can leave two plausible stencil completions that are indistinguishable from the observed data; if their updates differ by the missed influence mass, no estimator can be accurate on both. Since longitudinal sensors provide dense time traces at fixed locations, observing a spatial site reveals all of its associated temporal information, while missing a spatial site removes all of it. The identity $\mathbb{E}_I[A(I^c)]=1-m_x/N_x$ captures how much influential spatial support is missed under random placement. In practice, recoverability also depends on sensor placement, noise, forcing, boundary conditions, and the inductive bias of the reconstruction model.
 \end{remark}
 
 \subsection{Connection to Sensor-Space Modeling}
 
-The above results clarify why sensor-space modeling is a more identifiable objective under extreme sparsity. The expressivity result shows that FieldFormer is well matched to locally structured dynamics when the relevant local context is available. The miss-coverage lower bound shows that sparse sensing can remove important spatial dependencies, inducing irreducible error for global reconstruction. Together, these results imply that global field recovery away from observational support is inherently prior-dependent: different models may produce different globally plausible reconstructions while remaining consistent with the same sparse sensor trajectories.
+The above results clarify why sensor-space modeling is a more identifiable objective under extreme sparsity. The expressivity result shows that FieldFormer is well matched to locally structured dynamics when the relevant local context is available. The missed-support non-identifiability result shows that sparse sensing can remove important spatial dependencies, leaving multiple globally plausible completions consistent with the same observations. Together, these results imply that global field recovery away from observational support is inherently prior-dependent: different models may produce different globally plausible reconstructions while remaining consistent with the same sparse sensor trajectories.
 
 Sensor-space modeling avoids overinterpreting these globally underconstrained regions. Instead of claiming exact recovery of the full latent field, it evaluates whether a method can accurately reconstruct or forecast measurements over the persistent sensor topology. FieldFormer is designed for this setting: its adaptive local neighborhoods exploit the local domains of dependence that remain observed, while its mesh-free coordinate representation allows the same model to operate over evolving sensor networks and irregular observation layouts.

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2023.2.18)  30 JUN 2026 12:03
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2023.2.18)  30 JUN 2026 16:08
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -500,40 +500,36 @@ File: concept.png Graphic file (type png)
 Package pdftex.def Info: concept.png  used on input line 21.
 (pdftex.def)             Requested size: 446.2658pt x 215.31381pt.
  [7 <./concept.png>] [8] [9]) (./theory.tex [10] [11]) (./evaluation.tex [12]
-Underfull \vbox (badness 10000) has occurred while \output is active []
+Underfull \vbox (badness 3364) has occurred while \output is active []
 
- [13] [14] [15] [16]
-Underfull \vbox (badness 1019) has occurred while \output is active []
+ [13] [14] [15]
+Underfull \vbox (badness 1924) has occurred while \output is active []
 
- [17]
-Underfull \vbox (badness 3746) has occurred while \output is active []
+ [16] [17]
+Underfull \vbox (badness 1990) has occurred while \output is active []
 
- [18]) (./discussion.tex [19] [20]) (./main.bbl [21] [22]) (./appendix.tex
+ [18] [19]) (./discussion.tex [20]) (./main.bbl [21] [22]) (./appendix.tex [23]
 Underfull \hbox (badness 10000) in paragraph at lines 11--13
 
  []
 
-[23] [24] [25] [26pdfTeX warning (ext4): destination with the same identifier (name{equation.C.4}) has been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.287 \]
-        ]) [27] (./main.aux)
+[24] [25] [26]) [27] (./main.aux)
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 6C747FE7363C1015F20203D4DFCE2A85;5027.
+(rerunfilecheck)             Checksum: DCB8C07834E305676CE70A1B0B857CD7;5102.
  ) 
 Here is how much of TeX's memory you used:
- 13279 strings out of 480247
- 205996 string characters out of 5896151
- 518839 words of memory out of 5000000
+ 13275 strings out of 480247
+ 205961 string characters out of 5896151
+ 523955 words of memory out of 5000000
  30846 multiletter control sequences out of 15000+600000
  540541 words of font info for 71 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 61i,13n,75p,1370b,537s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 61i,13n,75p,1370b,481s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texmf/fonts/enc/dvips/lm/lm-ec.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-ts1.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathit.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-rm.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathex.enc}</usr/share/texmf/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf/fonts/type1/public/lm/lmbx7.pfb></usr/share/texmf/fonts/type1/public/lm/lmex10.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi10.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi5.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi7.pfb></usr/share/texmf/fonts/type1/public/lm/lmmib10.pfb></usr/share/texmf/fonts/type1/public/lm/lmr10.pfb></usr/share/texmf/fonts/type1/public/lm/lmr5.pfb></usr/share/texmf/fonts/type1/public/lm/lmr7.pfb></usr/share/texmf/fonts/type1/public/lm/lmr9.pfb></usr/share/texmf/fonts/type1/public/lm/lmri10.pfb></usr/share/texmf/fonts/type1/public/lm/lmri9.pfb></usr/share/texmf/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy5.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy7.pfb></usr/share/texmf/fonts/type1/public/lm/lmtt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on main.pdf (27 pages, 612996 bytes).
+Output written on main.pdf (27 pages, 613958 bytes).
 PDF statistics:
- 608 PDF objects out of 1000 (max. 8388607)
- 529 compressed objects within 6 object streams
- 136 named destinations out of 1000 (max. 500000)
+ 605 PDF objects out of 1000 (max. 8388607)
+ 526 compressed objects within 6 object streams
+ 132 named destinations out of 1000 (max. 500000)
  246 words of extra memory for PDF output out of 10000 (max. 10000000)
 
