@@ -20,6 +20,8 @@ EXPERIMENTS=(
   "ffag-npgf-atmsparse ffag_atmsparse_npgf_train.py"
   "ffag-npgf-govpolsplitsparse ffag_govpolsplitsparse_npgf_train.py"
   "ffag-npgf-atmsplitsparse ffag_atmsplitsparse_npgf_train.py"
+  "ffag-mlp-atmsparse ffag_mlp_atmsparse_train.py"
+  "ffag-mlp-govpolsparse ffag_mlp_govpolsparse_train.py"
 )
 
 while [[ $# -gt 0 ]]; do
@@ -52,6 +54,8 @@ Experiments:
   ffag-mlp-heatsparse
   ffag-mlp-swesparse
   ffag-mlp-polsparse
+  ffag-mlp-atmsparse
+  ffag-mlp-govpolsparse
 
 Examples:
   $0 --dry-run

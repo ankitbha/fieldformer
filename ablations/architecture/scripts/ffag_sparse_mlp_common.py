@@ -17,6 +17,7 @@ from tqdm.auto import tqdm
 
 from ffag_sparse_mlp_model import class_for_dataset
 from ffag_sparse_nophys_common import _core_symbols, _domain_extents, _load_observations, _sensors_are_aligned
+from baselines.models.data import build_observed_index_dataset, mask_key
 from baselines.scripts.training_cli import apply_cli_overrides, maybe_load_checkpoint
 
 
@@ -103,9 +104,12 @@ def _load_sparse_context(dataset_key: str, cfg: Any) -> dict[str, Any]:
     }
 
 
-def _new_model(dataset_key: str, cfg: Any, device: torch.device) -> nn.Module:
-    model = class_for_dataset(dataset_key)(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
-    if dataset_key == "pol":
+def _new_model(dataset_key: str, cfg: Any, device: torch.device, out_dim: int | None = None) -> nn.Module:
+    if out_dim is None:
+        model = class_for_dataset(dataset_key)(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff).to(device)
+    else:
+        model = class_for_dataset(dataset_key)(cfg.d_model, cfg.nhead, cfg.layers, cfg.d_ff, out_dim=out_dim).to(device)
+    if dataset_key in {"pol", "govpol", "atm", "govpolsplit", "atmsplit"}:
         with torch.no_grad():
             model.log_gammas[:] = torch.log(torch.tensor([1.0, 1.0, 0.5], device=device))
     return model
@@ -114,6 +118,229 @@ def _new_model(dataset_key: str, cfg: Any, device: torch.device) -> nn.Module:
 def _save_checkpoint(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(payload, path)
+
+
+def train_sparse_mlp_nophys(dataset_key: str, cfg: Any) -> None:
+    cfg = apply_cli_overrides(cfg)
+    assert dataset_key in {"atm", "govpol"}
+
+    import numpy as np
+
+    core = _core_symbols(dataset_key)
+    core["set_seed"](cfg.seed)
+    torch.set_float32_matmul_precision("high")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    pack = np.load(cfg.data)
+    sensors_xy = pack["sensors_xy"].astype(np.float32)
+    t_np = pack["t"].astype(np.float32)
+    sensor_values = _load_observations(pack, dataset_key, cfg.obs_key)
+    obs_mask_key = mask_key(pack, getattr(cfg, "mask_key", ""))
+    sensor_mask = pack[obs_mask_key].astype(np.float32) if obs_mask_key else None
+
+    assert sensors_xy.ndim == 2 and sensors_xy.shape[1] == 2, "sensors_xy must be (S,2)"
+    assert sensor_values.ndim in {2, 3}, "sensor values must be (S,Nt) or (S,Nt,C)"
+    n_sensors, n_times = sensor_values.shape[:2]
+    assert t_np.shape[0] == n_times, "time grid length must match sensor series"
+    _sensors_are_aligned(pack, sensors_xy, dataset_key)
+
+    if sensor_mask is not None:
+        coords_np, vals_np, mask_np = core["build_observed_tuples"](sensors_xy, t_np, sensor_values, sensor_mask)
+        valid_idx = np.flatnonzero(mask_np.reshape(mask_np.shape[0], -1).any(axis=1))
+    else:
+        coords_np, vals_np = core["build_observed_tuples"](sensors_xy, t_np, sensor_values)
+        mask_np = np.ones_like(vals_np, dtype=np.float32)
+        valid_idx = None
+
+    n_obs = coords_np.shape[0]
+    domain = _domain_extents(pack, sensors_xy, t_np)
+    obs_coords = torch.from_numpy(coords_np).float().to(device)
+    obs_mask = torch.from_numpy(mask_np).float().to(device)
+    sensors_xy_t = torch.from_numpy(sensors_xy).float().to(device)
+    t_grid_t = torch.from_numpy(t_np).float().to(device)
+
+    ds = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+    )
+    ds.set_split("train")
+    split_meta = getattr(ds, "meta", {})
+    smoke_train_limit = int(getattr(cfg, "smoke_train_limit", 0) or 0)
+    if smoke_train_limit > 0:
+        ds.train_idx = ds.train_idx[:smoke_train_limit]
+
+    out_dim = int(sensor_values.shape[2]) if sensor_values.ndim == 3 else 1
+    normalize_values = bool(getattr(cfg, "normalize_values", False))
+    vals_mean = np.zeros(out_dim, dtype=np.float32)
+    vals_std = np.ones(out_dim, dtype=np.float32)
+    vals_raw = vals_np.reshape(n_obs, out_dim)
+    mask_raw = mask_np.reshape(n_obs, out_dim)
+    train_idx_np = ds.train_idx.detach().cpu().numpy()
+    if normalize_values:
+        for c in range(out_dim):
+            valid = mask_raw[train_idx_np, c].astype(bool)
+            if valid.any():
+                vals_mean[c] = float(vals_raw[train_idx_np, c][valid].mean())
+                vals_std[c] = float(vals_raw[train_idx_np, c][valid].std() + 1e-6)
+        vals_np = ((vals_raw - vals_mean) / vals_std).reshape(vals_np.shape).astype(np.float32)
+
+    obs_vals = torch.from_numpy(vals_np).float().to(device)
+    vals_mean_t = torch.from_numpy(vals_mean).float().to(device)
+    vals_std_t = torch.from_numpy(vals_std).float().to(device)
+    dl = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
+
+    ds_val = build_observed_index_dataset(
+        dataset_key=dataset_key,
+        pack=pack,
+        n_obs=n_obs,
+        train_frac=cfg.train_frac,
+        val_frac=cfg.val_frac,
+        seed=cfg.seed,
+        valid_idx=valid_idx,
+        sensor_mask=sensor_mask,
+        sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
+        val_sensors=int(getattr(cfg, "val_sensors", 3)),
+        test_sensors=int(getattr(cfg, "test_sensors", 3)),
+        min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
+    )
+    ds_val.set_split("val")
+    smoke_val_limit = int(getattr(cfg, "smoke_val_limit", 0) or 0)
+    if smoke_val_limit > 0:
+        ds_val.val_idx = ds_val.val_idx[:smoke_val_limit]
+    dl_val = DataLoader(ds_val, batch_size=cfg.val_batch_size, shuffle=False, drop_last=False)
+
+    indexer = core["SparseNeighborIndexer"](sensors_xy_t, t_grid_t, cfg.time_radius, cfg.k_neighbors, allowed_indices=ds.train_idx.to(device))
+    model = _new_model(dataset_key, cfg, device, out_dim=out_dim)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
+    stopper = core["EarlyStopping"](patience=cfg.patience)
+
+    def predict_observed(q_lin: torch.Tensor) -> torch.Tensor:
+        nb_idx = indexer.gather_observed_neighbors(q_lin, exclude_self=True)
+        return model.forward_observed(q_lin, obs_coords, obs_vals, nb_idx)
+
+    def masked_mse(pred: torch.Tensor, tgt: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        pred = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
+        tgt = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred.ndim == 2 else tgt
+        mask = mask.unsqueeze(-1) if mask.ndim == 1 and pred.ndim == 2 else mask
+        return (((pred - tgt) ** 2) * mask).sum() / mask.sum().clamp_min(1.0)
+
+    @torch.no_grad()
+    def val_rmse() -> float:
+        model.eval()
+        se_sum, n_sum = 0.0, 0
+        for q_lin in dl_val:
+            q_lin = q_lin.to(device)
+            pred = predict_observed(q_lin)
+            tgt = torch.from_numpy(vals_raw[q_lin.detach().cpu().numpy()]).float().to(device)
+            if out_dim == 1:
+                tgt = tgt[:, 0]
+            mask = obs_mask[q_lin]
+            if normalize_values:
+                pred_m = pred.unsqueeze(-1) if pred.ndim == 1 else pred
+                pred = pred_m * vals_std_t + vals_mean_t
+                if out_dim == 1:
+                    pred = pred[:, 0]
+            pred = pred.unsqueeze(-1) if pred.ndim == 1 and tgt.ndim == 2 else pred
+            tgt = tgt.unsqueeze(-1) if tgt.ndim == 1 and pred.ndim == 2 else tgt
+            mask = mask.unsqueeze(-1) if mask.ndim == 1 and pred.ndim == 2 else mask
+            se_sum += ((((pred - tgt) ** 2) * mask).sum()).item()
+            n_sum += int(mask.sum().item())
+        return math.sqrt(se_sum / max(1, n_sum))
+
+    best_path = Path(cfg.save)
+    best_path.parent.mkdir(parents=True, exist_ok=True)
+    start_epoch, best_rmse = maybe_load_checkpoint(
+        cfg,
+        best_path,
+        model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        device=device,
+        strict=True,
+    )
+    stopper.best = best_rmse
+
+    for epoch in range(start_epoch, cfg.epochs + 1):
+        model.train()
+        running_data, n_batches = 0.0, 0
+        pbar = tqdm(dl, desc=f"Epoch {epoch:03d}/{cfg.epochs}", leave=False)
+        for q_lin in pbar:
+            q_lin = q_lin.to(device)
+            loss = masked_mse(predict_observed(q_lin), obs_vals[q_lin], obs_mask[q_lin])
+
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
+            optimizer.step()
+
+            running_data += loss.item()
+            n_batches += 1
+            pbar.set_postfix({"data": f"{running_data / max(1, n_batches):.4e}"})
+
+        scheduler.step()
+        rmse = val_rmse()
+        print(
+            f"[epoch {epoch:03d}] train_data={running_data/max(1,n_batches):.4e} "
+            f"val_rmse={rmse:.6f} lr={scheduler.get_last_lr()[0]:.2e}"
+        )
+
+        if rmse < best_rmse:
+            best_rmse = rmse
+            _save_checkpoint(
+                best_path,
+                {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scheduler_state_dict": scheduler.state_dict(),
+                    "best_val_rmse": best_rmse,
+                    "config": asdict(cfg),
+                    "meta": {
+                        "variant": f"fieldformer_mlp_{dataset_key}_sparse_no_physics",
+                        "architecture": "mlp_token_mixer",
+                        "obs_key": cfg.obs_key,
+                        "num_sensors": int(n_sensors),
+                        "num_times": int(n_times),
+                        "output_dim": int(out_dim),
+                        "val_mean": vals_mean.tolist() if normalize_values else None,
+                        "val_std": vals_std.tolist() if normalize_values else None,
+                        "normalizes_values": normalize_values,
+                        "split": split_meta or None,
+                        "num_observations": int(n_obs),
+                        "num_valid_observations": int(valid_idx.shape[0]) if valid_idx is not None else int(n_obs),
+                        "x_range": [domain["x_min"], domain["x_max"]],
+                        "y_range": [domain["y_min"], domain["y_max"]],
+                        "t_range": [domain["t_min"], domain["t_max"]],
+                        "dx": domain["dx"],
+                        "dy": domain["dy"],
+                        "dt": domain["dt"],
+                        "physics_loss": False,
+                        "mask_key": obs_mask_key,
+                        "channel_names": pack["pollutant_names"].tolist() if "pollutant_names" in pack else None,
+                        "merged_sensor_names": pack["merged_sensor_names"].tolist() if "merged_sensor_names" in pack else None,
+                        "merged_sensor_sources": pack["merged_sensor_sources"].tolist() if "merged_sensor_sources" in pack else None,
+                    },
+                },
+            )
+            print(f"[save] best checkpoint -> {best_path} (val_rmse={best_rmse:.6f})")
+
+        stopper.step(rmse)
+        if stopper.stopped:
+            print(f"[early-stop] patience={cfg.patience} reached.")
+            break
+
+    print(f"Done. Best val RMSE: {best_rmse:.6f}")
 
 
 def train_periodic_mlp(dataset_key: str, cfg: Any) -> None:

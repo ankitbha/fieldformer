@@ -10,10 +10,10 @@ import torch.nn as nn
 
 
 class _TokenMLP(nn.Module):
-    def __init__(self, d_model: int, layers: int, d_ff: int, out_dim: int):
+    def __init__(self, d_model: int, layers: int, d_ff: int, out_dim: int, input_dim: int = 4):
         super().__init__()
         depth = max(1, int(layers))
-        token_layers: list[nn.Module] = [nn.Linear(4, d_model), nn.GELU()]
+        token_layers: list[nn.Module] = [nn.Linear(input_dim, d_model), nn.GELU()]
         for _ in range(depth - 1):
             token_layers.extend([nn.LayerNorm(d_model), nn.Linear(d_model, d_ff), nn.GELU(), nn.Linear(d_ff, d_model), nn.GELU()])
         self.token_mlp = nn.Sequential(*token_layers)
@@ -66,22 +66,26 @@ class FieldFormerMLPSparseSWE(FieldFormerMLPSparse):
 
 
 class FieldFormerMLPSparsePollution(nn.Module):
-    def __init__(self, d_model: int, nhead: int, layers: int, d_ff: int):
+    def __init__(self, d_model: int, nhead: int, layers: int, d_ff: int, out_dim: int = 1):
         super().__init__()
         del nhead
+        self.out_dim = int(out_dim)
         self.log_gammas = nn.Parameter(torch.zeros(3))
-        self.mlp = _TokenMLP(d_model=d_model, layers=layers, d_ff=d_ff, out_dim=1)
+        self.mlp = _TokenMLP(d_model=d_model, layers=layers, d_ff=d_ff, out_dim=self.out_dim, input_dim=3 + self.out_dim)
 
     def _forward_tokens(self, xyt_q: torch.Tensor, nb_xyt: torch.Tensor, nb_vals: torch.Tensor) -> torch.Tensor:
         rel = (nb_xyt - xyt_q[:, None, :]) * torch.exp(self.log_gammas)[None, None, :]
+        if nb_vals.ndim == 2:
+            nb_vals = nb_vals[..., None]
         mu = nb_vals.mean(dim=1, keepdim=True)
         sigma = nb_vals.std(dim=1, keepdim=True).clamp_min(1e-3)
-        nb_vals_norm = ((nb_vals - mu) / sigma)[..., None]
+        nb_vals_norm = (nb_vals - mu) / sigma
         tokens = torch.cat([rel, nb_vals_norm], dim=-1)
         amp_ctx = torch.cuda.amp.autocast(enabled=False) if torch.cuda.is_available() else nullcontext()
         with amp_ctx:
-            u_std_res = self.mlp(tokens).squeeze(-1)
-        return u_std_res * sigma.squeeze(1) + mu.squeeze(1)
+            u_std_res = self.mlp(tokens)
+        out = u_std_res * sigma.squeeze(1) + mu.squeeze(1)
+        return out.squeeze(-1) if out.shape[-1] == 1 else out
 
     def forward_observed(self, q_lin: torch.Tensor, obs_coords: torch.Tensor, obs_vals: torch.Tensor, nb_idx: torch.Tensor) -> torch.Tensor:
         return self._forward_tokens(obs_coords[q_lin], obs_coords[nb_idx], obs_vals[nb_idx])
@@ -91,8 +95,10 @@ class FieldFormerMLPSparsePollution(nn.Module):
 
 
 def class_for_dataset(dataset_key: str) -> type[nn.Module]:
-    return {
-        "heat": FieldFormerMLPSparse,
-        "swe": FieldFormerMLPSparseSWE,
-        "pol": FieldFormerMLPSparsePollution,
-    }[dataset_key]
+    if dataset_key == "heat":
+        return FieldFormerMLPSparse
+    if dataset_key == "swe":
+        return FieldFormerMLPSparseSWE
+    if dataset_key in {"pol", "govpol", "atm", "govpolsplit", "atmsplit"}:
+        return FieldFormerMLPSparsePollution
+    raise KeyError(dataset_key)

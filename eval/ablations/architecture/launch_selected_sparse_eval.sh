@@ -28,6 +28,8 @@ EXPERIMENTS=(
   "ffag_npgf heat"
   "ffag_npgf pol"
   "ffag_npgf govpol"
+  # "ffag_mlp atm"
+  # "ffag_mlp govpol"
 )
 
 while [[ $# -gt 0 ]]; do
@@ -80,6 +82,8 @@ Submits sparse architecture-ablation eval jobs with an 8-hour limit:
   ffag_mlp-heat
   ffag_mlp-pol
   ffag_mlp-swe
+  ffag_mlp-atm
+  ffag_mlp-govpol
 
 Outputs:
   ${OUT_DIR}/<model>-<dataset>.json

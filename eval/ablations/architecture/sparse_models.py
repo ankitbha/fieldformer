@@ -165,19 +165,29 @@ def build_ablation_sparse_model(
 
     cfg = cfg_obj(ckpt.get("config"))
     state = ckpt.get("ema_model_state_dict") or ckpt.get("model_state_dict", ckpt)
-    model = class_for_dataset(dataset_key)(
-        _get(cfg, "d_model", 128),
-        _get(cfg, "nhead", 4),
-        _get(cfg, "layers", 3),
-        _get(cfg, "d_ff", 256),
-    ).to(device)
+    try:
+        model = class_for_dataset(dataset_key)(
+            _get(cfg, "d_model", 128),
+            _get(cfg, "nhead", 4),
+            _get(cfg, "layers", 3),
+            _get(cfg, "d_ff", 256),
+            out_dim=output_dim_for(dataset_key, ckpt, cfg),
+        ).to(device)
+    except TypeError:
+        model = class_for_dataset(dataset_key)(
+            _get(cfg, "d_model", 128),
+            _get(cfg, "nhead", 4),
+            _get(cfg, "layers", 3),
+            _get(cfg, "d_ff", 256),
+        ).to(device)
     model.load_state_dict(state)
     return EvalAdapter(
         model,
         model_key="ffag",
         dataset_key=dataset_key,
-        obs_mean=obs_mean,
-        obs_std=obs_std,
+        normalizes_values=bool(meta.get("normalizes_values", False)),
+        obs_mean=meta.get("val_mean", obs_mean),
+        obs_std=meta.get("val_std", obs_std),
         x_min=x_min,
         y_min=y_min,
         t_min=t_min,
