@@ -21,15 +21,15 @@ EXPERIMENTS=(
   # "ffag_nophys atmsplit"
   # "ffag_nophys govpolsplit"
   # "ffag_nophys govpol"
-  "ffag_npgf atm"
+  # "ffag_npgf atm"
   # "ffag_npgf govpolsplit"
   # "ffag_npgf atmsplit"
-  "ffag_npgf swe"
-  "ffag_npgf heat"
-  "ffag_npgf pol"
-  "ffag_npgf govpol"
-  # "ffag_mlp atm"
-  # "ffag_mlp govpol"
+  # "ffag_npgf swe"
+  # "ffag_npgf heat"
+  # "ffag_npgf pol"
+  # "ffag_npgf govpol"
+  "ffag_mlp atm"
+  "ffag_mlp govpol"
 )
 
 while [[ $# -gt 0 ]]; do
