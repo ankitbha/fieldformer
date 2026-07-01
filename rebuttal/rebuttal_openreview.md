@@ -1,22 +1,74 @@
-## Official comment: common response on Theorem 5.1
+## Common response on Theorem 5.1
 
 The reviewers are correct that the current statement of Theorem 5.1 is stronger than what the proof establishes.
 
-The current theorem is written as a uniform approximation statement for the continuous PDE solution. The proof in Appendix C establishes a more specific architectural expressivity claim: given the local stencil values used by an explicit finite-difference discretization, FieldFormer can approximate the corresponding finite-stencil update map uniformly over a compact set of stencil-value tuples. Thus the proof controls the network approximation error for the discrete local update map, not the discretization error between the continuous PDE solution u and a numerical solution u_h.
+The current theorem is written as a uniform approximation statement for the continuous PDE solution:
 
-We will revise Theorem 5.1 to state this result directly. The theorem will be retitled as an expressivity result for **finite-stencil local dynamics** and restated as uniform approximation of the discrete update map $\\psi$ by FieldFormer over the compact set of reachable stencil-value tuples $\\mathcal{V}_K$, using tokenization $E(v)$. We will also revise the appendix proof to end at this finite-stencil approximation bound, deleting the unsupported jump to continuous-solution approximation.
+\\[
+\\sup_{z \\in K}\\Vert u(z)-\\hat u(z)\\Vert_2 \\lt \\varepsilon.
+\\]
 
-Finally, we will add a remark separating approximation and discretization: the continuous-solution error decomposes into a numerical discretization/convergence term plus the FieldFormer approximation term. The first term requires standard numerical-analysis assumptions such as consistency, stability, regularity, and grid refinement; Theorem 5.1 only addresses the second term. This preserves the intended role of the theorem: architectural compatibility with local finite-stencil dynamics when the relevant local context is available.
+The proof in Appendix C establishes a more specific architectural expressivity claim: given the local stencil values used by an explicit finite-difference discretization, FieldFormer can approximate the corresponding finite-stencil update map
 
-## Official comment: common response on Theorem 5.3
+\\[
+u_h^{n+1}(\\mathbf{i}) = \\psi(\\{u_h^{n-\\ell}(\\mathbf{i}+\\mathbf{s}) : (\\mathbf{s},\\ell)\\in\\mathcal{S}\\})
+\\]
+
+uniformly over a compact set of stencil-value tuples. Thus the proof controls the network approximation error for the discrete local update map, not the discretization error between the continuous PDE solution \\(u\\) and a numerical solution \\(u_h\\).
+
+We will revise Theorem 5.1 to state this result directly. The theorem will be retitled as an expressivity result for **finite-stencil local dynamics** and restated as
+
+\\[
+\\sup_{v \\in {\\mathcal V}_{K}} \\Vert \\psi(v)-F_{\\theta}(E(v)) \\Vert_{2} \\lt \\varepsilon.
+\\]
+
+Here \\(\\mathcal{V}_K\\) is the compact set of reachable stencil-value tuples and \\(E(v)\\) is the FieldFormer tokenization. We will also revise the appendix proof to end at this finite-stencil approximation bound, deleting the unsupported jump to continuous-solution approximation.
+
+Finally, we will add a remark separating approximation and discretization:
+
+\\[
+\\Vert u-\\hat u\\Vert \\le \\Vert u-u_h\\Vert + \\Vert u_h-\\hat u\\Vert.
+\\]
+
+The first term requires standard numerical-analysis assumptions such as consistency, stability, regularity, and grid refinement; Theorem 5.1 only addresses the second term. This preserves the intended role of the theorem: architectural compatibility with local finite-stencil dynamics when the relevant local context is available.
+
+## Common response on Theorem 5.3
 
 The reviewers are correct that the current proof of Theorem 5.3 is too strong as written.
 
-First, the symmetrization argument only implies a two-world statement. If $V$ and $T V$ agree on the observed coordinates but induce different outputs, an estimator using only the observed data cannot know which completion is true. The triangle inequality lower-bounds the larger of the two risks by half the separation between the two induced updates, $\\psi(V)$ and $\\psi(TV)$. It does not imply the same lower bound for the original world $V$ alone. We will therefore revise the theorem as a two-world/minimax non-identifiability statement: no estimator can be uniformly accurate over two observationally indistinguishable completions when their updates are separated.
+First, the symmetrization argument only implies a two-world statement. If \\(V\\) and \\(T V\\) agree on the observed coordinates but induce different outputs, an estimator using only the observed data cannot know which completion is true. The triangle inequality gives a lower bound on the larger of the two risks:
 
-Second, the proof currently sums coordinate-wise influence margins, which is not valid in general because coordinate effects may interact or cancel. We will replace this with a set-level missed-support assumption. For a missed spatial set J, let A(J) denote its total missed influence mass. The revised assumption states that if J is unobserved, then there exist two observationally indistinguishable stencil completions, differing only on the missed support, whose updates are separated by at least a constant times A(J).
+\\[
+\\max\\{R(V),R(TV)\\} \\ge \\frac{1}{2}\\Vert \\psi(V)-\\psi(TV)\\Vert_2.
+\\]
 
-Under this assumption, the two-world lower bound says that the larger of the two risks is at least a constant times A(J). Averaging over random longitudinal sensor placement with J equal to the missed spatial set gives expected missed influence mass 1 - m_x/N_x, so the original dependence is retained while the theorem is stated as a valid two-world/minimax result.
+It does not imply the same lower bound for the original world \\(V\\) alone. We will therefore revise the theorem as a two-world/minimax non-identifiability statement: no estimator can be uniformly accurate over two observationally indistinguishable completions when their updates are separated.
+
+Second, the proof currently sums coordinate-wise influence margins, which is not valid in general because coordinate effects may interact or cancel. We will replace this with a set-level missed-support assumption. For a missed spatial set \\(J\\), let
+
+\\[
+A(J)=\\sum_{s \\in J}\\bar a_s.
+\\]
+
+The revised assumption states that if \\(J\\) is unobserved, then there exist two observationally indistinguishable stencil completions, differing only on the missed support, whose updates are separated by at least a constant times \\(A(J)\\):
+
+\\[
+\\mathbb{E}\\Vert \\psi(V)-\\psi(T_JV)\\Vert_2 \\ge cA(J).
+\\]
+
+Under this assumption, the two-world lower bound says that the larger of the two risks is at least a constant times \\(A(J)\\):
+
+\\[
+\\max\\{R(V),R(T_JV)\\} \\ge \\frac{c}{2}A(J).
+\\]
+
+Averaging over random longitudinal sensor placement with \\(J\\) equal to the missed spatial set gives
+
+\\[
+\\mathbb{E}_I[A(I^c)] = 1-\\frac{m_x}{N_x},
+\\]
+
+so the original dependence is retained while the theorem is stated as a valid two-world/minimax result.
 
 The revised theorem is therefore not an average-case risk lower bound under the original data distribution alone. It is a conditional non-identifiability result: if sparse sensing leaves missed spatial support that can produce separated but observationally indistinguishable completions, any estimator using only the sensed data must fail on at least one completion.
 
@@ -28,7 +80,7 @@ Thank you for the thoughtful review.
 
 We agree. As detailed in the official comment, the current theorem statement overreaches: the proof supports finite-stencil update-map approximation, not direct uniform approximation of the continuous PDE solution.
 
-We will revise Theorem 5.1 and the appendix proof so the theorem states the finite-stencil expressivity result directly. We will also add the discretization-error caveat separating $\\|u-u_h\\|$ from the FieldFormer approximation term.
+We will revise Theorem 5.1 and the appendix proof so the theorem states the finite-stencil expressivity result directly. We will also add the discretization-error caveat separating \\(\\|u-u_h\\|\\) from the FieldFormer approximation term.
 
 ### R1.Q2: Miss-coverage lower bound
 
@@ -40,7 +92,7 @@ We will revise the theorem as a two-world/minimax non-identifiability bound and 
 
 Our empirical wording does distinguish "strictly best" from "consistently high-performing." Our intended claim is not that FieldFormer is the top row on every synthetic sensor-space metric, but that it remains consistently comparable to the best baseline across all three synthetic PDE benchmarks.
 
-The results support this interpretation. On Heat, FieldFormer obtains RMSE/MAE of $0.09888/0.07876$, compared with the best baseline at $0.09786/0.07786$. On Pollution, FieldFormer obtains $0.1154/0.09216$, compared with $0.1147/0.09153$. On SWE, FieldFormer obtains $0.04644/0.03703$, compared with $0.04623/0.03683$. Thus, across Heat, Pollution, and SWE, FieldFormer is within roughly one percent of the best method while substantially outperforming several alternatives, especially on SWE.
+The results support this interpretation. On Heat, FieldFormer obtains RMSE/MAE of 0.09888/0.07876, compared with the best baseline at 0.09786/0.07786. On Pollution, FieldFormer obtains 0.1154/0.09216, compared with 0.1147/0.09153. On SWE, FieldFormer obtains 0.04644/0.03703, compared with 0.04623/0.03683. Thus, across Heat, Pollution, and SWE, FieldFormer is within roughly one percent of the best method while substantially outperforming several alternatives, especially on SWE.
 
 We will keep this distinction explicit: FieldFormer is consistently competitive on synthetic sensor-space prediction, while its strongest empirical gains appear in the real-world persistent sensor-network setting.
 
@@ -50,23 +102,23 @@ Thank you for the careful reading.
 
 ### R2.Q1: Theorem 5.1 and the missing discretization-error term
 
-We agree with your diagnosis. The decomposition you propose is exactly the distinction needed: the current proof controls the network approximation term for a discrete update rule, but not the discretization error between $u$ and $u_h$.
+We agree with your diagnosis. The decomposition you propose is exactly the distinction needed: the current proof controls the network approximation term for a discrete update rule, but not the discretization error between \\(u\\) and \\(u_h\\).
 
-As detailed in the official comment, we will revise Theorem 5.1 to state approximation of the finite-stencil update map $\\psi$ directly and align the appendix proof with that statement. This is the most defensible fix: the intended claim is architectural compatibility with local finite-stencil dynamics, not a new convergence theorem for continuous PDE solvers.
+As detailed in the official comment, we will revise Theorem 5.1 to state approximation of the finite-stencil update map \\(\\psi\\) directly and align the appendix proof with that statement. This is the most defensible fix: the intended claim is architectural compatibility with local finite-stencil dynamics, not a new convergence theorem for continuous PDE solvers.
 
 ### R2.Q2: Theorem 5.3 lower-bound proof
 
-We agree with both issues you identify. The symmetrization step supports a $\\max(a,b)\\ge D/2$ two-world conclusion, not a lower bound for $a$ alone, and the coordinate-wise perturbation inequalities cannot be summed without an additional non-cancellation condition.
+We agree with both issues you identify. The symmetrization step supports a \\(\\max(a,b)\\ge D/2\\) two-world conclusion, not a lower bound for \\(a\\) alone, and the coordinate-wise perturbation inequalities cannot be summed without an additional non-cancellation condition.
 
 As described in the official comment on Theorem 5.3 above, we will revise the theorem as a two-world/minimax non-identifiability statement under a set-level missed-support influence assumption. The proof will then use the valid max lower bound and will no longer derive cumulative missed influence by summing coordinate-wise inequalities.
 
 ### R2.Q3: Learned metric and characteristic-aligned transport
 
-A characteristic-aligned metric of the form $\\Delta x \\approx v\\Delta t$ is well motivated for wave-like or advective transport when a meaningful transport velocity $v$ is known or can be reliably estimated.
+A characteristic-aligned metric of the form \\(\\Delta x \\approx v\\Delta t\\) is well motivated for wave-like or advective transport when a meaningful transport velocity \\(v\\) is known or can be reliably estimated.
 
-Our setting is broader. In the real-world atmospheric and pollution datasets, a single velocity satisfying $\\Delta x=v\\Delta t$ is not available: transport can be heterogeneous, variable-dependent, affected by forcing and sources, and only indirectly observed through sparse sensors. The strict characteristic form is therefore most appropriate for wave-like transport in the narrower sense, but less directly applicable to diffusion, mixed advection--diffusion, multivariate atmospheric variables, and real monitoring networks.
+Our setting is broader. In the real-world atmospheric and pollution datasets, a single velocity satisfying \\(\\Delta x=v\\Delta t\\) is not available: transport can be heterogeneous, variable-dependent, affected by forcing and sources, and only indirectly observed through sparse sensors. The strict characteristic form is therefore most appropriate for wave-like transport in the narrower sense, but less directly applicable to diffusion, mixed advection--diffusion, multivariate atmospheric variables, and real monitoring networks.
 
-The learned $\\gamma$-scaled metric is intended as a more general and data-adaptive mechanism. It does not explicitly model a tilted characteristic relation $\\Delta x-v\\Delta t$; instead, it learns anisotropic spatial and temporal scaling without requiring a specified velocity field. This makes the same architecture applicable across diffusion-like, transport-like, and heterogeneous real-world regimes. We will clarify this design trade-off in the paper and note characteristic-aligned metrics as a promising specialization when reliable velocity information is available.
+The learned \\(\\gamma\\)-scaled metric is intended as a more general and data-adaptive mechanism. It does not explicitly model a tilted characteristic relation \\(\\Delta x-v\\Delta t\\); instead, it learns anisotropic spatial and temporal scaling without requiring a specified velocity field. This makes the same architecture applicable across diffusion-like, transport-like, and heterogeneous real-world regimes. We will clarify this design trade-off in the paper and note characteristic-aligned metrics as a promising specialization when reliable velocity information is available.
 
 ### R2.W2: Unseen-sensor prediction and global reconstruction
 
@@ -74,7 +126,7 @@ FieldFormer is designed to exploit local observational support, so when an entir
 
 Section 6.1 already states that ImputeFormer is adapted as a fixed-node masked-imputation baseline over the deployed sensor network, rather than as a continuous coordinate-query field model. This matters for Table 4: in the held-out sensor setting, ImputeFormer still operates with a fixed node set and fixed temporal windows, giving it a transductive fixed-topology advantage. It is therefore a strong fixed-node imputer, but it is not solving exactly the same field-estimation problem as coordinate-query baselines.
 
-Table 4 also does not show that Senseiver, or any other global-prior baseline, is consistently best. Senseiver is best only on atmospheric AT RMSE; ImputeFormer is stronger on the remaining AT/RH metrics and on PM$_{10}$/PM$_{2.5}$, while SVGP obtains the best $V_y$ wind metrics. This mixed pattern is the main point: once evaluation moves away from local observational support, performance becomes strongly prior-dependent, and no single model reliably solves global reconstruction across all regimes.
+Table 4 also does not show that Senseiver, or any other global-prior baseline, is consistently best. Senseiver is best only on atmospheric AT RMSE; ImputeFormer is stronger on the remaining AT/RH metrics and on PM10/PM2.5, while SVGP obtains the best \\(V_y\\) wind metrics. This mixed pattern is the main point: once evaluation moves away from local observational support, performance becomes strongly prior-dependent, and no single model reliably solves global reconstruction across all regimes.
 
 FieldFormer performs best in the intended sensor-space regime where local support is available, while fixed-node or global-latent priors can be advantageous in some unseen-sensor settings. This does not contradict our claim; it reinforces our framing that global reconstruction under extreme sparsity is underconstrained and prior-dependent.
 
