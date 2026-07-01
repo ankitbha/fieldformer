@@ -1,4 +1,4 @@
-\begin{thebibliography}{35}
+\begin{thebibliography}{45}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -10,6 +10,13 @@ Jon~Louis Bentley.
 \newblock Multidimensional binary search trees used for associative searching.
 \newblock \emph{Communications of the ACM}, 18\penalty0 (9):\penalty0 509--517,
   1975.
+
+\bibitem[Bhardwaj et~al.(2023)Bhardwaj, Iyer, Ramesh, White, and
+  Subramanian]{bhardwaj2023understanding}
+Ankit Bhardwaj, Shiva~R Iyer, Sriram Ramesh, Jerome White, and Lakshminarayanan
+  Subramanian.
+\newblock Understanding sudden traffic jams: From emergence to impact.
+\newblock \emph{Development Engineering}, 8:\penalty0 100105, 2023.
 
 \bibitem[Bhardwaj et~al.(2025)Bhardwaj, Balashankar, Iyer, Soans, Sudarshan,
   Pande, and Subramanian]{bhardwaj2025comprehensive}
@@ -29,6 +36,15 @@ Mengyu Chu, Lingjie Liu, Quan Zheng, Erik Franz, Hans-Peter Seidel, Christian
 \newblock \emph{ACM Transactions on Graphics (ToG)}, 41\penalty0 (4):\penalty0
   1--14, 2022.
 
+\bibitem[Concas et~al.(2021)Concas, Mineraud, Lagerspetz, Varjonen, Liu,
+  Puolam{\"a}ki, Nurmi, and Tarkoma]{concas2021low}
+Francesco Concas, Julien Mineraud, Eemil Lagerspetz, Samu Varjonen, Xiaoli Liu,
+  Kai Puolam{\"a}ki, Petteri Nurmi, and Sasu Tarkoma.
+\newblock Low-cost outdoor air quality monitoring and sensor calibration: A
+  survey and critical analysis.
+\newblock \emph{ACM Transactions on Sensor Networks (TOSN)}, 17\penalty0
+  (2):\penalty0 1--44, 2021.
+
 \bibitem[Cressie(1990)]{cressie1990origins}
 Noel Cressie.
 \newblock The origins of kriging.
@@ -36,9 +52,41 @@ Noel Cressie.
 
 \bibitem[De~Luna \& Genton(2005)De~Luna and Genton]{de2005predictive}
 Xavier De~Luna and Marc~G Genton.
-\newblock Predictive spatio-temporal models for spatially sparse enviromental
+\newblock Predictive spatio-temporal models for spatially sparse environmental
   data.
 \newblock \emph{Statistica Sinica}, pp.\  547--568, 2005.
+
+\bibitem[Foong et~al.(2020)Foong, Bruinsma, Gordon, Dubois, Requeima, and
+  Turner]{foong2020meta}
+Andrew Y.~K. Foong, Wessel~P. Bruinsma, Jonathan Gordon, Yann Dubois, James
+  Requeima, and Richard~E. Turner.
+\newblock Meta-learning stationary stochastic process prediction with
+  convolutional neural processes.
+\newblock \emph{Advances in Neural Information Processing Systems},
+  33:\penalty0 8284--8295, 2020.
+
+\bibitem[Garnelo et~al.(2018)Garnelo, Rosenbaum, Maddison, Ramalho, Saxton,
+  Shanahan, Teh, Rezende, and Eslami]{garnelo2018conditional}
+Marta Garnelo, Dan Rosenbaum, Christopher Maddison, Tiago Ramalho, David
+  Saxton, Murray Shanahan, Yee~Whye Teh, Danilo Rezende, and S.~M.~Ali Eslami.
+\newblock Conditional neural processes.
+\newblock In \emph{Proceedings of the 35th International Conference on Machine
+  Learning}, pp.\  1704--1713. PMLR, 2018.
+
+\bibitem[Gordon et~al.(2020)Gordon, Bruinsma, Foong, Requeima, Dubois, and
+  Turner]{gordon2020convolutional}
+Jonathan Gordon, Wessel~P. Bruinsma, Andrew Y.~K. Foong, James Requeima, Yann
+  Dubois, and Richard~E. Turner.
+\newblock Convolutional conditional neural processes.
+\newblock \emph{arXiv preprint arXiv:1910.13556}, 2020.
+
+\bibitem[Hart \& Martinez(2006)Hart and Martinez]{hart2006environmental}
+Jane~K. Hart and Kirk Martinez.
+\newblock Environmental sensor networks: A revolution in the earth system
+  science?
+\newblock \emph{Earth-Science Reviews}, 78\penalty0 (3--4):\penalty0 177--191,
+  2006.
+\newblock \doi{10.1016/j.earscirev.2006.05.001}.
 
 \bibitem[Hensman et~al.(2013)Hensman, Fusi, and Lawrence]{hensman2013gaussian}
 James Hensman, Nicolo Fusi, and Neil~D Lawrence.
@@ -78,6 +126,15 @@ Chaitanya~K Joshi.
 \newblock Transformers are graph neural networks.
 \newblock \emph{arXiv preprint arXiv:2506.22084}, 2025.
 
+\bibitem[Khalil et~al.(2021)Khalil, Saeed, Masood, Fard, Alouini, and
+  Al-Naffouri]{khalil2021deep}
+Ruhul~Amin Khalil, Nasir Saeed, Mudassir Masood, Yasaman~Moradi Fard,
+  Mohamed-Slim Alouini, and Tareq~Y Al-Naffouri.
+\newblock Deep learning in the industrial internet of things: Potentials,
+  challenges, and emerging applications.
+\newblock \emph{IEEE Internet of Things Journal}, 8\penalty0 (14):\penalty0
+  11016--11040, 2021.
+
 \bibitem[Kochkov et~al.(2021)Kochkov, Smith, Alieva, Wang, Brenner, and
   Hoyer]{kochkov2021machine}
 Dmitrii Kochkov, Jamie~A Smith, Ayya Alieva, Qing Wang, Michael~P Brenner, and
@@ -95,10 +152,19 @@ Aditi Krishnapriyan, Amir Gholami, Shandian Zhe, Robert Kirby, and Michael~W
 \newblock \emph{Advances in neural information processing systems},
   34:\penalty0 26548--26560, 2021.
 
+\bibitem[Lakshminarayanan et~al.(2017)Lakshminarayanan, Pritzel, and
+  Blundell]{lakshminarayanan2017simple}
+Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell.
+\newblock Simple and scalable predictive uncertainty estimation using deep
+  ensembles.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~30, 2017.
+
 \bibitem[LeVeque(2007)]{leveque2007finite}
 Randall~J LeVeque.
-\newblock Finite difference methods for ordinary and partial differential
-  equations: steady-state and time-dependent problems, 2007.
+\newblock \emph{Finite difference methods for ordinary and partial differential
+  equations: steady-state and time-dependent problems}.
+\newblock SIAM, 2007.
 
 \bibitem[Li et~al.(2017)Li, Yu, Shahabi, and Liu]{li2017diffusion}
 Yaguang Li, Rose Yu, Cyrus Shahabi, and Yan Liu.
@@ -148,6 +214,12 @@ Bethany Lusch, J~Nathan Kutz, and Steven~L Brunton.
 \newblock Deep learning for universal linear embeddings of nonlinear dynamics.
 \newblock \emph{Nature communications}, 9\penalty0 (1):\penalty0 4950, 2018.
 
+\bibitem[{NCEP}(2000)]{cisl_rda_ds083.2}
+{NCEP}.
+\newblock Ncep fnl operational model global tropospheric analyses, continuing
+  from july 1999, 2000.
+\newblock URL \url{https://doi.org/10.5065/D6M043C6}.
+
 \bibitem[Nie et~al.(2024)Nie, Qin, Ma, Mei, and Sun]{nie2024imputeformer}
 Tong Nie, Guoyang Qin, Wei Ma, Yuewen Mei, and Jian Sun.
 \newblock Imputeformer: Low rankness-induced transformers for generalizable
@@ -176,9 +248,9 @@ Maziar Raissi, Paris Perdikaris, and George~E Karniadakis.
 \newblock \emph{Journal of Computational physics}, 378:\penalty0 686--707,
   2019.
 
-\bibitem[Santos et~al.(2023)Santos, Fox, Mohan, O’Malley, Viswanathan, and
+\bibitem[Santos et~al.(2023)Santos, Fox, Mohan, O{'}Malley, Viswanathan, and
   Lubbers]{santos2023development}
-Javier~E Santos, Zachary~R Fox, Arvind Mohan, Daniel O’Malley, Hari
+Javier~E Santos, Zachary~R Fox, Arvind Mohan, Daniel O{'}Malley, Hari
   Viswanathan, and Nicholas Lubbers.
 \newblock Development of the senseiver for efficient field reconstruction from
   sparse observations.
@@ -201,6 +273,13 @@ Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara Fridovich-Keil, Nithin
   dimensional domains.
 \newblock \emph{Advances in neural information processing systems},
   33:\penalty0 7537--7547, 2020.
+
+\bibitem[Tashiro et~al.(2021)Tashiro, Song, Song, and Ermon]{tashiro2021csdi}
+Yusuke Tashiro, Jiaming Song, Yang Song, and Stefano Ermon.
+\newblock Csdi: Conditional score-based diffusion models for probabilistic time
+  series imputation.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~34, pp.\  24804--24816, 2021.
 
 \bibitem[Wang et~al.(2022)Wang, Zhu, Guo, Han, Wang, Wei, and
   Jin]{wang2022transflownet}

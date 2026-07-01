@@ -4,14 +4,14 @@
 FieldFormer is designed around three core principles motivated by sparse, longitudinal spatio-temporal data:
 
 \begin{itemize}[leftmargin=*,topsep=0pt]
-    \item \textbf{Local--Global Information Mixing:}
-    Prior work by \cite{bhardwaj2025comprehensive}has shown that purely local methods (e.g., Kriging) are effective under sparse sensing, while global neural fields can capture long-range dependencies but struggle in longitudinal regimes. FieldFormer combines local neighborhood encoding with global coordinate information using transformer-based attention, enabling relational reasoning across space and time while retaining strong local inductive bias. Although attention is restricted to local neighborhoods, predictions remain globally grounded through continuous coordinates.
+    \item \textbf{Local Context with Coordinate Conditioning:}
+    Prior work by \cite{bhardwaj2025comprehensive} has shown that purely local methods (e.g., Kriging) are effective under sparse sensing, while global neural fields can capture long-range dependencies but struggle in longitudinal regimes. FieldFormer combines local neighborhood encoding with query-coordinate and relative-offset features, enabling relational reasoning within local neighborhoods while retaining a strong local inductive bias. Although transformer attention is restricted to local neighborhoods, each prediction is conditioned on a shared continuous coordinate system through the query coordinate and token offsets, so the model can be evaluated at mesh-free locations without requiring a fixed grid or graph.
 
     \item \textbf{Learned Neighborhood Geometry:}
     Global attention incurs $O(n^2)$ memory cost, which is prohibitive for temporally dense sensing. FieldFormer instead performs attention over compact local neighborhoods, whose geometry is learned from data and physics priors. This allows the model to attend selectively to physically relevant regions while remaining memory-efficient and scalable.
 
     \item \textbf{Mesh-Free Modeling:}
-    FieldFormer adopts a mesh-free coordinate-based representation along with a local spatio-temporal context, enabling inference at arbitrary spatial and temporal resolutions. This makes the model naturally adaptable to evolving sensor networks. For example, when a new sensor is deployed, its measurements can be incorporated as additional coordinate-value observations without redefining the spatial grid, rebuilding a graph adjacency matrix, or changing the model architecture. Similarly, if sensors fail, move, or are added in previously unobserved regions, the model can continue operating by constructing neighborhoods from the updated set of available observations.
+    FieldFormer adopts a mesh-free coordinate-based representation along with a local spatio-temporal context, enabling inference at arbitrary spatial and temporal resolutions. This makes the model compatible with evolving sensor networks: when a new sensor is deployed, its measurements can be incorporated as additional coordinate-value observations without redefining the spatial grid, rebuilding a graph adjacency matrix, or changing the model architecture. Similarly, if sensors fail, move, or are added in previously unobserved regions, the model can continue operating by constructing neighborhoods from the updated set of available observations.
 \end{itemize}
 
 
@@ -29,13 +29,13 @@ Predicting the field value at a query $(\mathbf{x}_q, t_q) \in \mathbb{R}^{d_s} 
 \mathcal{D} = \{ (\mathbf{x}_i, t_i, \mathbf{u}_i) \}_{i=1}^N, \quad \mathbf{u}_i \in \mathbb{R}^q.
 \]
 
-Neighbors are not chosen by naive Euclidean distance, but by a \emph{velocity-scaled metric} that adapts to anisotropic dynamics:
+Neighbors are not chosen by naive Euclidean distance, but by a \emph{velocity-scaled metric}: a learned spatio-temporal distance in which spatial and temporal offsets are rescaled before neighborhood construction:
 \begin{equation}
 \label{eq:velocity_distance}
 d\big( (\mathbf{x}_q, t_q), (\mathbf{x}_i, t_i) \big) 
 = \sum_{k=1}^{d_s} \gamma_k^2 (x_{q,k} - x_{i,k})^2 + \gamma_t^2 (t_q - t_i)^2.
 \end{equation}
-The learnable parameters $\{\gamma_k\}_{k=1}^{d_s}, \gamma_t$ weight each spatial axis and time relative to one another. They are parameterized as $\gamma = \exp(\theta)$ to enforce positivity. This scaling allows the model to \emph{discover} the anisotropy of the underlying process: for purely diffusive systems it may amplify temporal proximity, while for advective or wave-like systems it stretches neighborhoods preferentially along flow directions. Thus the model automatically learns whether a time step is "worth" more than a spatial offset.
+The learnable parameters $\{\gamma_k\}_{k=1}^{d_s}, \gamma_t$ weight each spatial axis and time relative to one another. They are parameterized as $\gamma = \exp(\theta)$ to enforce positivity. We call this metric velocity-scaled because these learned factors control the relative scale of spatial and temporal displacement before distance computation and tokenization. This scaling allows the model to \emph{discover} the anisotropy of the underlying process: for purely diffusive systems it may amplify temporal proximity, while for advective or wave-like systems it stretches neighborhoods preferentially along flow directions. Thus the model automatically learns whether a time step is "worth" more than a spatial offset.
 
 Each neighbor $(\mathbf{x}_j, t_j, \mathbf{u}_j)$ is encoded relative to the query:
 \[
@@ -44,7 +44,7 @@ Each neighbor $(\mathbf{x}_j, t_j, \mathbf{u}_j)$ is encoded relative to the que
 resulting in an input matrix $\mathbf{X}_q \in \mathbb{R}^{n \times (d_s+1+q)}$. This encoding is translation-invariant and emphasizes relative differences, which is crucial when queries are at unseen coordinates.
 
 \noindent\textbf{Sparse Neighborhood Construction.}
-A practical challenge in sparse longitudinal sensing is that the model must construct a local spatio-temporal context from incomplete observations without relying on a dense grid or repeatedly performing query-wise nearest-neighbor search. FieldFormer handles this by operating directly on observed sensor-time tuples. Each available observation is represented as $(\mathbf{x}_s,t_k,\mathbf{u}_{s,k})$, indexed by sensor location $s$ and time index $k$. For a query $(\mathbf{x}_q,t_q)$, FieldFormer constructs a fixed maximal longitudinal context
+A practical challenge in sparse longitudinal sensing is that the model must construct a local spatio-temporal context from incomplete observations without relying on a dense grid or repeatedly performing query-wise nearest-neighbor search. FieldFormer handles this by operating directly on observed sensor-time tuples. Each available observation is represented as $(\mathbf{x}_s,t_k,\mathbf{u}_{s,k})$, indexed by sensor location $s$ and time index $k$. For a query $(\mathbf{x}_q,t_q)$, FieldFormer constructs a \emph{fixed maximal sparse context}: a fixed-size candidate set of observed sensor-time tuples formed from nearby sensors and a bounded temporal window,
 \[
 \mathcal{C}(q)
 =
@@ -53,6 +53,8 @@ A practical challenge in sparse longitudinal sensing is that the model must cons
 \{t_q-K_t,\ldots,t_q+K_t\},
 \]
 where $\mathcal{S}_K(q)$ denotes a small spatial candidate set of nearby sensor locations and $K_t$ is the temporal window radius. Missing observations are excluded from this context, and the remaining valid observations are padded or truncated to produce a fixed-size set of $K$ tokens for transformer aggregation.
+
+Here ``maximal'' means that the context is a candidate superset chosen before attention; attention and the prediction head still determine which included observations are useful for the query.
 
 This fixed-context construction is a differentiable and efficient relaxation of learned metric-based neighbor selection. Given a query $q$, the learned spatio-temporal metric can be written as
 \[
@@ -78,7 +80,7 @@ Concretely, for each candidate observation, FieldFormer computes relative offset
 \qquad
 \gamma=\exp(\theta),
 \]
-with periodic wrapping for spatial coordinates when appropriate. These scaled offsets are concatenated with the observed value to form each input token. Thus, the learned geometry does not determine hard inclusion in the neighborhood; instead, it controls how the transformer interprets spatial and temporal separation within a fixed candidate context. This avoids query-wise kNN, keeps memory and computation constant per query, and provides stable gradients for the geometry parameters.
+with periodic wrapping for spatial coordinates when appropriate. These scaled offsets are concatenated with the observed value to form each input token. We use \emph{token geometry} to refer to this rescaled query-relative coordinate information: each token carries both a measurement and the coordinate structure used by the local transformer. Thus, the learned geometry does not determine hard inclusion in the neighborhood; instead, it controls how the transformer interprets spatial and temporal separation within a fixed candidate context. This avoids query-wise kNN, keeps memory and computation constant per query, and provides stable gradients for the geometry parameters.
 
 This design also reflects the information limits of sparse sensing. If the spatial candidate set fails to cover relevant spatial directions, increasing the temporal window cannot fully compensate for the missing spatial stencil information. For local PDEs, temporal samples at the same sparse locations provide useful longitudinal evidence, but they are not a substitute for unobserved spatial dependencies. FieldFormer therefore treats the fixed context as the maximum available local evidence and uses learned geometry and attention to weight that evidence, rather than assuming that longer time histories can resolve missing spatial coverage.
 
@@ -96,7 +98,7 @@ and a prediction head maps to the output field value:
 \hat{\mathbf{u}}_q = \text{MLP}(\mathbf{h}_q).
 \]
 
-This architecture is deliberately local: unlike global attention, its cost is constant per query, and its design aligns with the locality of PDE operators. It is also anisotropy-aware: the same transformer backbone can adapt to diffusion, advection, or wave propagation simply by learning different $\gamma$ scales.
+This architecture is deliberately local: unlike global attention, its cost is constant per query, and its design aligns with the locality of PDE operators. It is also anisotropy-aware: the learned $\gamma$ scales let the same transformer backbone adjust the relative weighting of spatial and temporal offsets across regimes such as diffusion, advection, or wave propagation.
 
 \subsection{Inference and Efficiency}
 \label{sec:inference_and_efficiency}

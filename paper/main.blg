@@ -3,47 +3,44 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: tmlr.bst
 Database file #1: refs.bib
-Warning--entry type for "leveque2007finite" isn't style-file defined
---line 152 of file refs.bib
-You've used 35 entries,
+You've used 45 entries,
             2773 wiz_defined-function locations,
-            789 strings with 12303 characters,
-and the built_in function-call counts, 19136 in all, are:
-= -- 1589
-> -- 1506
-< -- 11
-+ -- 507
-- -- 471
-* -- 1707
-:= -- 3031
-add.period$ -- 104
-call.type$ -- 35
-change.case$ -- 260
-chr.to.int$ -- 34
-cite$ -- 70
-duplicate$ -- 744
-empty$ -- 1318
-format.name$ -- 510
-if$ -- 3894
+            847 strings with 14760 characters,
+and the built_in function-call counts, 25331 in all, are:
+= -- 2118
+> -- 1984
+< -- 17
++ -- 667
+- -- 621
+* -- 2263
+:= -- 3983
+add.period$ -- 137
+call.type$ -- 45
+change.case$ -- 339
+chr.to.int$ -- 44
+cite$ -- 90
+duplicate$ -- 984
+empty$ -- 1743
+format.name$ -- 672
+if$ -- 5179
 int.to.chr$ -- 2
 int.to.str$ -- 1
-missing$ -- 35
-newline$ -- 182
-num.names$ -- 140
-pop$ -- 511
+missing$ -- 46
+newline$ -- 234
+num.names$ -- 180
+pop$ -- 670
 preamble$ -- 1
-purify$ -- 227
+purify$ -- 297
 quote$ -- 0
-skip$ -- 623
+skip$ -- 829
 stack$ -- 0
-substring$ -- 586
-swap$ -- 70
-text.length$ -- 3
+substring$ -- 821
+swap$ -- 109
+text.length$ -- 7
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 375
+type$ -- 480
 warning$ -- 0
-while$ -- 143
+while$ -- 188
 width$ -- 0
-write$ -- 446
-(There was 1 warning)
+write$ -- 580

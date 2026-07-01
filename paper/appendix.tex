@@ -11,6 +11,89 @@ u_t + c_{\text{eff}} \,\partial_n u \approx 0,
 \]
 with $c_{\text{eff}}$ estimated from gradients and clamped for stability. Both losses are formulated in normalized coordinates and evaluated via autograd.\\
 
+\section{Baseline Training and Evaluation Protocol}
+\label{sec:baseline_protocol}
+
+All methods are trained and evaluated on the same sparse observation arrays and the same train/validation/test splits. In the standard sensor-space setting, splits are over observed sensor-time entries with an 80/10/10 ratio. In sensor-holdout experiments, validation and test sensors are removed entirely from the training context. Checkpoints are selected by validation RMSE, and final sparse metrics are computed with the same RMSE/MAE evaluator on the held-out test entries. Table~\ref{tab:baseline_protocol} summarizes the model-specific input representation, objective, masking protocol, tuning choices, and output interface used in the implementation.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.}
+\label{tab:baseline_protocol}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{0.12\textwidth}p{0.19\textwidth}p{0.18\textwidth}p{0.18\textwidth}p{0.17\textwidth}p{0.18\textwidth}p{0.17\textwidth}}
+\toprule
+Method & Input representation & Objective/loss & Masking and context protocol & Checkpoint and evaluator & Main tuning choices & Output interface \\
+\midrule
+FieldFormer
+& Query-specific local sensor-time context: relative offsets, observed values, and learned velocity-scaled geometry.
+& Sensor MSE on observed tuples, with optional PDE and boundary losses on synthetic PDE datasets when enabled.
+& Split-aware neighbor indexer restricts context to training observations and excludes the queried target from its own context.
+& Best validation RMSE; common sparse RMSE/MAE evaluator, with dense synthetic evaluation where reference fields exist.
+& Number of neighbors, temporal radius, transformer width/heads/layers, learning rate, and physics-loss weights.
+& Mesh-free coordinate query using local sensor context; continuous queries gather a local neighborhood from the training observations. \\
+\midrule
+Fourier-MLP
+& Coordinate triples $(x,y,t)$ encoded with Fourier features.
+& Masked MSE on observed sensor-time targets.
+& Train/val/test observed-index split; no target value is used as input.
+& Best validation RMSE; common RMSE/MAE evaluator.
+& Network width/depth, Fourier frequency bands, learning rate, weight decay, and optional value/coordinate normalization.
+& Direct continuous coordinate function evaluated at arbitrary query coordinates. \\
+\midrule
+SIREN
+& Coordinate triples $(x,y,t)$ passed through sinusoidal layers.
+& Masked MSE on observed sensor-time targets.
+& Train/val/test observed-index split; no target value is used as input.
+& Best validation RMSE; common RMSE/MAE evaluator.
+& Network width/depth, sinusoidal frequency parameters, learning rate, weight decay, and optional normalization.
+& Direct continuous coordinate function evaluated at arbitrary query coordinates. \\
+\midrule
+Fourier-MLP-PINN / SIREN-PINN
+& Same coordinate representation as the corresponding neural field baseline.
+& Masked sensor MSE plus synthetic-dataset physics residual and boundary/radiation losses where the PDE is available.
+& Same observed-index split; physics collocation samples are drawn from the domain and do not use full-field targets.
+& Best validation RMSE on sparse validation observations; common RMSE/MAE evaluator.
+& Neural-field hyperparameters plus residual, boundary, sponge, and radiation-loss weights and ramp schedules.
+& Direct continuous coordinate function; physics terms only affect training. \\
+\midrule
+SVGP
+& Normalized coordinate triples with inducing points and dataset-specific kernels.
+& Negative variational evidence lower bound with Gaussian likelihood.
+& Same observed-index split; multitask runs require valid observed channels for the supervised tuple.
+& Best validation RMSE computed from the posterior predictive mean; common point-prediction RMSE/MAE evaluator.
+& Number of inducing points, kernel lengthscales/output scale, likelihood noise, learning rates, and weight decay.
+& Probabilistic coordinate model, evaluated in the tables through its posterior predictive mean. \\
+\midrule
+RecFNO
+& Sparse sensor values rasterized onto the simulation grid, with binary observation masks and coordinate channels.
+& Masked MSE at held-out sensor-grid targets.
+& Context grid is built only from training observations; the queried target is removed from the input grid during training.
+& Best validation RMSE; common sparse and synthetic full-field RMSE/MAE evaluator.
+& Fourier modes, channel width, learning rate, weight decay, batch size, and optional value normalization.
+& Grid-valued field prediction; arbitrary coordinates are evaluated by nearest grid location. \\
+\midrule
+Impute\-Former
+& Fixed sensor-node by time-window tensor with value channels and observation masks.
+& Masked MSE on randomly dropped training entries within temporal windows.
+& Random masking within training windows; evaluation conditions on training entries only. The model assumes a fixed deployed node set.
+& Best validation RMSE over held-out entries/windows; common RMSE/MAE evaluator.
+& Window length/stride, random mask rate, embedding sizes, layers, temporal heads, learning rate, and dropout.
+& Fixed-node imputation over the deployed sensor array; continuous queries are not native and are mapped to the nearest node/time when needed. \\
+\midrule
+Senseiver
+& Sensor-set tokens containing normalized coordinates, time, values, and masks, plus coordinate query tokens.
+& Masked MSE on held-out sensor-time targets.
+& Sensor tokens are formed from training observations only; query targets are not included in the context.
+& Best validation RMSE; common RMSE/MAE evaluator.
+& Number of latents, latent width, cross/self attention layers and heads, learning rate, weight decay, and dropout.
+& Global sensor-set encoder with query decoder; supports coordinate queries through query tokens and a globally compressed sensor context. \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
 \section{Formal Definitions and Assumptions}
 \label{sec:definitions}
 \begin{definition}[Finite-order local differential operator]
