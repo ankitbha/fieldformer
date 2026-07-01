@@ -144,16 +144,64 @@ Thank you for the detailed review and for identifying several places where the f
 
 ### R3.Q1: Uncertainty-expressive baselines and framing of identifiability
 
-Response to be added.
+We agree that the current framing can read as a stronger dichotomy than intended. Our argument is not that sensor-space point prediction is the only meaningful alternative to global reconstruction. Rather, our intended claim is narrower: under extreme sparse sensing, **point-estimate global field reconstruction** is underidentified unless one introduces additional priors or represents uncertainty over multiple plausible completions.
+
+Uncertainty-expressive methods are therefore complementary to our framing, not excluded by it. Models such as CSDI, Neural Processes, ConvCNP/ConvNP, and deep ensembles address the natural distributional question: given sparse observations, what range of fields or predictions remain plausible? Our main experiments, however, evaluate a point-estimation objective using RMSE/MAE against a single realized target field. Under this protocol, distributional methods must still be reduced to a point prediction, typically a predictive mean or median. This evaluates their point accuracy, but does not fully test calibration or multimodal uncertainty.
+
+We also agree that our current SVGP comparison should be described more carefully. SVGP is a probabilistic interpolation baseline, but in our tables it is evaluated through its posterior mean to match the point-prediction protocol used for all methods. Thus, SVGP should not be presented as covering the full class of uncertainty-expressive reconstruction methods.
+
+To address this concern empirically, we are running a **deep ensemble of Fourier-MLP** as an additional predictive baseline. We chose Fourier-MLP because it is already one of the strongest point-prediction baselines in our experiments and is cheap enough to ensemble reliably. We will evaluate the ensemble mean using the same RMSE/MAE protocol and will additionally report uncertainty diagnostics such as predictive variance or interval coverage where appropriate. We will update the results after these experiments conclude, and revise the text to make clear that uncertainty-aware global reconstruction is a complementary direction rather than something ruled out by our sensor-space framing.
 
 ### R3.Q2: Local decomposition versus architecture
 
-Response to be added.
+The current experiments already separate these factors more than the review suggests, although we can make this logic clearer in the paper.
+
+FieldFormer-MLP is the controlled ablation for **local decomposition without transformer aggregation**. It uses the same query-specific local neighborhood construction and local coordinate/value context as FieldFormer, but replaces the transformer aggregator with an MLP-style alternative. This directly tests how much of the gain comes from the local decomposition itself versus the transformer aggregator operating within that local context.
+
+The complementary comparison is Senseiver. Senseiver is an attention-based global set model: it aggregates information from the observed sensor set through a global transformer-style backbone and does not use FieldFormer's query-specific local neighborhood, local velocity-scaled metric, or per-query local decomposition. Thus, while Senseiver is not a one-switch ablation of FieldFormer because its tokenization and encoder-decoder details differ, it is the relevant **no-local-decomposition + attention/transformer** comparator already included in the experiments.
+
+Taken together, FieldFormer, FieldFormer-MLP, and Senseiver compare the main design choices at the level relevant to the paper: local decomposition versus global attention-based aggregation, and transformer aggregation versus MLP aggregation within a local context. We will revise the ablation discussion to make this comparison explicit, rather than implying that Table 5 only tests the transformer block in isolation. We will extend the FieldFormer-MLP ablation to the two real-world datasets so that the local-decomposition-versus-transformer comparison is evaluated not only on synthetic PDEs but also on the persistent sparse sensor networks that motivate the paper.
 
 ### R3.Q3: Bootstrap standard deviations in tables
 
-Response to be added.
+The standard deviations in the tables are **bootstrap standard deviations of the RMSE/MAE estimates**, not model predictive uncertainty. In other words, the bootstrap answers: if we resample the held-out evaluation set, how much does the aggregate RMSE or MAE change? It does not measure epistemic uncertainty over possible global field completions, nor does it represent per-query predictive variance.
+
+This distinction matters here because many of the held-out sensor-time sets are large and come from smooth, deterministic, or highly structured processes. Under data bootstrapping, the empirical distribution of test points changes very little across bootstrap samples, so the aggregate RMSE/MAE estimates can have very small standard deviations. We do not interpret these small values as evidence that global reconstruction is certain; they only indicate that the reported point-error metrics are stable under resampling of the evaluation observations.
 
 ### R3.Q4: Baseline comparison transparency
 
-Response to be added.
+The comparison is like-for-like at the level of the prediction task and evaluation protocol: all methods are trained from the same sparse observations, use the same train/validation/test split, exclude missing entries through masks, select checkpoints by validation RMSE, and are evaluated with the same RMSE/MAE code on the same held-out targets. This is reflected in the anonymous repository currently provided with the submission: the baseline scripts use shared split construction and checkpoint metadata, and the evaluator loads every method through a common sparse-evaluation interface.
+
+The baselines necessarily differ in input representation because they were designed for different data regimes. We made these adaptations explicit in the implementation:
+
+1. Fourier-MLP, SIREN, and SVGP operate directly on continuous coordinates and sparse coordinate-value observations.
+2. RecFNO receives a rasterized sparse-value grid, an observation mask, and coordinate channels, then predicts a grid-valued field.
+3. ImputeFormer is used as a fixed-node temporal imputer over the deployed sensor network, with observed values and masks over temporal windows.
+4. Senseiver receives sensor-set tokens containing coordinates, time, observed values, and masks, and decodes query locations from a global attention-based representation.
+5. FieldFormer uses query-specific local sensor contexts with relative coordinate/value tokens.
+
+The training objectives are also method-appropriate rather than literally identical. Neural point-prediction models use masked squared-error data losses where applicable; PINN variants include additional physics and boundary terms; SVGP uses its variational GP objective; and the fixed-node/grid baselines use their native masked reconstruction objectives. Similarly, the hyperparameters are not identical across architectures with different computational profiles. Instead, each method is tuned and selected using validation performance under the same data split and evaluation target.
+
+These are not hidden differences; they are the required adaptations for comparing mesh-free, grid-based, fixed-node, and global set models on the same sparse sensing task. The current anonymous code release already exposes these details, but we agree that the paper should make the comparison protocol more easily auditable. We will add a compact protocol table in the appendix listing, for each baseline, the input representation, training objective, masking strategy, checkpoint-selection metric, and main hyperparameters/tuning choices. This will make clear which parts of the comparison are shared exactly and which parts are method-specific adaptations required by the original model design.
+
+### R3.Q5: Scalability and efficiency claims
+
+We will add a concrete inference-efficiency comparison to support the scalability discussion empirically.
+
+The relevant deployment cost in our setting is inference cost under sparse persistent sensor networks. We will therefore report wall-clock prediction time per evaluated query,
+$$
+\frac{\text{total inference wall-clock time}}{\text{number of evaluated query points}},
+$$
+using trained checkpoints, the same evaluation script, the same device, and the same batching protocol used for the reported RMSE/MAE results. We will also report peak GPU memory during inference where available.
+
+This comparison will be framed as empirical evaluation throughput under the actual sparse-sensing protocol, not as an architecture-intrinsic complexity theorem. This distinction is important because the baselines expose different inference interfaces: coordinate neural fields predict arbitrary query points, RecFNO predicts rasterized grids, ImputeFormer predicts fixed-node temporal windows, Senseiver decodes queries from a global sensor-set representation, and FieldFormer predicts from query-specific local contexts. Reporting time per evaluated query and peak memory under the common evaluator is the most direct way to compare the practical cost of using these methods in the task setting studied in the paper.
+
+### R3.Q6: Paper revisions for scope, related work, and exposition
+
+The remaining points are paper-revision issues, and we will address them directly in the revised manuscript.
+
+First, we will strengthen the motivation with additional references from application domains where persistent sparse sensor networks are central, including environmental monitoring, air-quality monitoring, meteorological sensing, observation-system design, and IoT sensing infrastructure. This will make the real-world stakes of the setting clearer beyond closely related ML papers.
+
+Second, we will expand the related-work discussion of diffusion- and score-based imputation methods such as CSDI. These methods are relevant to uncertainty-aware imputation, but they target a distributional reconstruction objective and often assume fixed grids, fixed node sets, or specific masking/imputation protocols. We will clarify this relationship and explain why our main benchmark is a point-prediction evaluation over sparse persistent sensor networks, while distributional imputation methods are complementary to the current scope.
+
+Third, we will improve terminology and self-containedness. In particular, we will define paper-specific phrases such as "velocity-scaled distance metric," "fixed maximal sparse context," and "token geometry" at first use, and we will expand the method description to make clearer how the learned metric affects neighborhood construction and transformer aggregation. These revisions do not change the method, but they should make the framing and architecture easier to evaluate for readers outside the immediate transformer/neural-field audience.
