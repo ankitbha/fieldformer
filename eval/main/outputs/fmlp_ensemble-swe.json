@@ -1,0 +1,48 @@
+{
+  "dataset": "swe",
+  "model": "fmlp_ensemble",
+  "checkpoint": [
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_swesparse_seed101_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_swesparse_seed102_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_swesparse_seed103_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_swesparse_seed104_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_swesparse_seed105_best.pt"
+  ],
+  "obs_key": "eta_sensor_noisy",
+  "mask_key": "",
+  "num_sparse_test": 20000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.10100550011492838,
+    "mae": 0.08043349304199218,
+    "rmse_bootstrap_std": 0.00043650132030599543,
+    "mae_bootstrap_std": 0.00028402112958419306,
+    "channels": {
+      "channel_0": {
+        "rmse": 0.10100550011492838,
+        "mae": 0.08043349609375,
+        "count": 20000,
+        "rmse_bootstrap_std": 0.00043650132030599543,
+        "mae_bootstrap_std": 0.00028402112958419306
+      }
+    }
+  },
+  "ensemble_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "ensemble_aggregation": "mean",
+  "num_full_field": 40960000,
+  "num_full_field_total": 40960000,
+  "full_field_sample_fraction": 1.0,
+  "full_field": {
+    "rmse": 0.1828098193850725,
+    "mae": 0.1339781625221173,
+    "rmse_bootstrap_std": 0.0001669154843432073,
+    "mae_bootstrap_std": 0.00013241078138131196
+  }
+}

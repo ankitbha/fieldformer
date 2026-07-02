@@ -1,0 +1,48 @@
+{
+  "dataset": "pol",
+  "model": "fmlp_ensemble",
+  "checkpoint": [
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_polsparse_seed101_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_polsparse_seed102_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_polsparse_seed103_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_polsparse_seed104_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_polsparse_seed105_best.pt"
+  ],
+  "obs_key": "U_sensor_noisy",
+  "mask_key": "",
+  "num_sparse_test": 32000,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 0.12887818233212794,
+    "mae": 0.10040514945983886,
+    "rmse_bootstrap_std": 0.0005314862317078141,
+    "mae_bootstrap_std": 0.00027806399163796586,
+    "channels": {
+      "channel_0": {
+        "rmse": 0.12887817816973365,
+        "mae": 0.10040514373779297,
+        "count": 32000,
+        "rmse_bootstrap_std": 0.0005314862317078141,
+        "mae_bootstrap_std": 0.00027806399163796586
+      }
+    }
+  },
+  "ensemble_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "ensemble_aggregation": "mean",
+  "num_full_field": 16000000,
+  "num_full_field_total": 16000000,
+  "full_field_sample_fraction": 1.0,
+  "full_field": {
+    "rmse": 0.43435599924729507,
+    "mae": 0.09690760005629062,
+    "rmse_bootstrap_std": 0.04489875213155955,
+    "mae_bootstrap_std": 0.006017471219625369
+  }
+}

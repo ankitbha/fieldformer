@@ -1,0 +1,60 @@
+{
+  "dataset": "atm",
+  "model": "fmlp_ensemble",
+  "checkpoint": [
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_atmsparse_seed101_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_atmsparse_seed102_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_atmsparse_seed103_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_atmsparse_seed104_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_atmsparse_seed105_best.pt"
+  ],
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "num_sparse_test": 53161,
+  "bootstrap_samples": 1000,
+  "bootstrap_seed": 123,
+  "sparse_test": {
+    "rmse": 7.924116463885603,
+    "mae": 4.115618374421653,
+    "rmse_bootstrap_std": 0.019075300800392214,
+    "mae_bootstrap_std": 0.009714519203211319,
+    "channels": {
+      "AT": {
+        "rmse": 3.8784155553269883,
+        "mae": 3.143666060723151,
+        "count": 42702,
+        "rmse_bootstrap_std": 0.01236770159730277,
+        "mae_bootstrap_std": 0.009326682800549282
+      },
+      "RH": {
+        "rmse": 14.866537547873785,
+        "mae": 11.832898732505942,
+        "count": 53018,
+        "rmse_bootstrap_std": 0.03755334138636151,
+        "mae_bootstrap_std": 0.030695266765050324
+      },
+      "U_x": {
+        "rmse": 0.841164140014377,
+        "mae": 0.535655714283968,
+        "count": 51129,
+        "rmse_bootstrap_std": 0.007255441551487655,
+        "mae_bootstrap_std": 0.0026512002748377314
+      },
+      "V_y": {
+        "rmse": 0.8290033203572892,
+        "mae": 0.5049362351234133,
+        "count": 51129,
+        "rmse_bootstrap_std": 0.009319998662263454,
+        "mae_bootstrap_std": 0.002971931573364567
+      }
+    }
+  },
+  "ensemble_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "ensemble_aggregation": "mean"
+}
