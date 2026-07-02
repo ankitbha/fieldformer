@@ -18,7 +18,8 @@ All methods are trained and evaluated on the same sparse observation arrays and 
 
 \begin{table}[htbp]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{4pt}
 \caption{Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.}
 \label{tab:baseline_protocol}
 \resizebox{\textwidth}{!}{%
@@ -41,6 +42,14 @@ Fourier-MLP
 & Best validation RMSE; common RMSE/MAE evaluator.
 & Network width/depth, Fourier frequency bands, learning rate, weight decay, and optional value/coordinate normalization.
 & Direct continuous coordinate function evaluated at arbitrary query coordinates. \\
+\midrule
+Fourier-MLP Ensemble
+& Same coordinate Fourier-feature representation as Fourier-MLP.
+& Masked MSE on observed sensor-time targets for each member.
+& Five independently seeded data-only Fourier-MLP members trained with the same split seed and observed-index split.
+& Each member uses best validation RMSE checkpointing; the ensemble mean is passed to the common RMSE/MAE evaluator.
+& Same neural-field hyperparameters as Fourier-MLP, with independent random seeds and fixed member count.
+& Direct continuous coordinate query by averaging member predictions. \\
 \midrule
 SIREN
 & Coordinate triples $(x,y,t)$ passed through sinusoidal layers.
