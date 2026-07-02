@@ -32,6 +32,9 @@ class Config:
     train_frac: float = 0.8
     val_frac: float = 0.1
     seed: int = 123
+    split_seed: int = 123
+    smoke_train_limit: int = 0
+    smoke_val_limit: int = 0
     batch_size: int = 2048
     val_batch_size: int = 4096
     epochs: int = 300

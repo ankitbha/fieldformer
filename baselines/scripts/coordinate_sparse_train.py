@@ -112,6 +112,11 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
     set_seed(int(cfg.seed))
     torch.set_float32_matmul_precision("high")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    split_seed = int(getattr(cfg, "split_seed", cfg.seed))
+    uses_pinn_loss = bool(getattr(cfg, "pinn", False)) or any(
+        float(getattr(cfg, name, 0.0)) > 0.0
+        for name in ("lambda_phys", "lambda_bc", "lambda_sponge", "lambda_rad")
+    )
 
     dataset_key = _dataset_key(cfg)
     pack = np.load(cfg.data)
@@ -140,7 +145,7 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
         n_obs=n_obs,
         train_frac=cfg.train_frac,
         val_frac=cfg.val_frac,
-        seed=cfg.seed,
+        seed=split_seed,
         valid_idx=valid_idx,
         sensor_mask=sensor_mask,
         sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
@@ -149,13 +154,16 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
         min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
     )
     train_ds.set_split("train")
+    smoke_train_limit = int(getattr(cfg, "smoke_train_limit", 0) or 0)
+    if smoke_train_limit > 0:
+        train_ds.train_idx = train_ds.train_idx[:smoke_train_limit]
     val_ds = build_observed_index_dataset(
         dataset_key=dataset_key,
         pack=pack,
         n_obs=n_obs,
         train_frac=cfg.train_frac,
         val_frac=cfg.val_frac,
-        seed=cfg.seed,
+        seed=split_seed,
         valid_idx=valid_idx,
         sensor_mask=sensor_mask,
         sensor_split_seed=getattr(cfg, "sensor_split_seed", None),
@@ -164,6 +172,9 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
         min_valid_frac=float(getattr(cfg, "sensor_min_valid_frac", 0.10)),
     )
     val_ds.set_split("val")
+    smoke_val_limit = int(getattr(cfg, "smoke_val_limit", 0) or 0)
+    if smoke_val_limit > 0:
+        val_ds.val_idx = val_ds.val_idx[:smoke_val_limit]
     split_meta = getattr(train_ds, "meta", {})
     out_dim = int(vals_np.shape[-1]) if vals_np.ndim == 2 else 1
     normalize_values = bool(getattr(cfg, "normalize_values", False))
@@ -429,7 +440,7 @@ def train_coordinate_sparse(cfg: Any, model_key: str, model_factory: Callable[[A
                         "normalizes_values": normalize_values,
                         "output_dim": out_dim,
                         "split": split_meta or None,
-                        "physics_loss": False,
+                        "physics_loss": uses_pinn_loss,
                         "swe_params": list(_swe_params(pack)) if dataset_key == "swe" else None,
                     },
                 },

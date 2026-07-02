@@ -27,7 +27,7 @@ for path in (ROOT, THIS_DIR, CORE_SCRIPT_DIR):
     if path_str not in sys.path:
         sys.path.insert(0, path_str)
 
-from sparse_models import build_sparse_model
+from sparse_models import build_fmlp_ensemble_adapter, build_sparse_model
 from sparse_neighbor_indexer import SplitAwareSparseNeighborIndexer
 from baselines.models.data import build_observed_index_dataset, base_dataset_key, is_sensor_split_dataset
 
@@ -46,6 +46,8 @@ class Config:
     senseiver_full_field_fraction: float = 0.10
     bootstrap_samples: int = 1000
     bootstrap_seed: int = 123
+    ensemble_seeds: str = "101,102,103,104,105"
+    ensemble_dir: str = ""
 
 
 DATASETS = {
@@ -70,6 +72,7 @@ MODELS = {
     "siren",
     "siren_pinn",
     "fmlp",
+    "fmlp_ensemble",
     "fmlp_pinn",
     "svgp",
     "recfno",
@@ -181,6 +184,8 @@ def ckpt_path(model_key: str, dataset_key: str) -> Path:
         return ROOT / "ablations" / "architecture" / "checkpoints" / f"ffag_{dataset_key}sparse_nophys_best.pt"
     if model_key == "ffag":
         return ROOT / "fieldformer_core" / "checkpoints" / f"ffag_{dataset_slug}sparse_best.pt"
+    if model_key == "fmlp_ensemble":
+        return ensemble_ckpt_paths(dataset_key, "101,102,103,104,105", "")[0]
     if model_key in PINN_ALIASES:
         impl = PINN_ALIASES[model_key]
         return ROOT / "baselines" / "checkpoints" / f"{impl}_pinn_{dataset_slug}sparse_best.pt"
@@ -188,11 +193,25 @@ def ckpt_path(model_key: str, dataset_key: str) -> Path:
 
 
 def implementation_key(model_key: str) -> str:
+    if model_key == "fmlp_ensemble":
+        return "fmlp"
     return PINN_ALIASES.get(model_key, model_key)
 
 
+def parse_ensemble_seeds(raw: str) -> list[int]:
+    seeds = [int(part.strip()) for part in str(raw).replace(";", ",").split(",") if part.strip()]
+    if not seeds:
+        raise SystemExit("--ensemble_seeds must contain at least one integer seed")
+    return seeds
+
+
+def ensemble_ckpt_paths(dataset_key: str, seeds_raw: str, ensemble_dir: str) -> list[Path]:
+    base = Path(ensemble_dir) if ensemble_dir else ROOT / "baselines" / "checkpoints" / "fmlp_ensemble"
+    return [base / f"fmlp_{dataset_key}sparse_seed{seed}_best.pt" for seed in parse_ensemble_seeds(seeds_raw)]
+
+
 def available_checkpoints() -> str:
-    roots = [ROOT / "fieldformer_core" / "checkpoints", ROOT / "baselines" / "checkpoints"]
+    roots = [ROOT / "fieldformer_core" / "checkpoints", ROOT / "baselines" / "checkpoints", ROOT / "baselines" / "checkpoints" / "fmlp_ensemble"]
     files = []
     for root in roots:
         if root.exists():
@@ -545,13 +564,23 @@ def main(cfg: Config) -> None:
     if model_key not in MODELS:
         raise SystemExit(f"Unknown model {cfg.model!r}. Expected one of: {sorted(MODELS)}")
 
-    path = ckpt_path(model_key, dataset_key)
-    if not path.exists():
-        raise SystemExit(f"Checkpoint not found: {path}\n\nAvailable sparse checkpoints:\n{available_checkpoints()}")
-
     device = torch.device(cfg.device if cfg.device == "cpu" or torch.cuda.is_available() else "cpu")
     pack = np.load(DATASETS[dataset_key])
-    ckpt = load_checkpoint(path, device)
+    ensemble_paths: list[Path] = []
+    ensemble_ckpts: list[dict[str, Any]] = []
+    if model_key == "fmlp_ensemble":
+        ensemble_paths = ensemble_ckpt_paths(dataset_key, cfg.ensemble_seeds, cfg.ensemble_dir)
+        missing = [str(path) for path in ensemble_paths if not path.exists()]
+        if missing:
+            raise SystemExit(f"Ensemble checkpoint(s) not found:\n" + "\n".join(missing) + f"\n\nAvailable sparse checkpoints:\n{available_checkpoints()}")
+        ensemble_ckpts = [load_checkpoint(path, device) for path in ensemble_paths]
+        ckpt = ensemble_ckpts[0]
+        path = ensemble_paths[0]
+    else:
+        path = ckpt_path(model_key, dataset_key)
+        if not path.exists():
+            raise SystemExit(f"Checkpoint not found: {path}\n\nAvailable sparse checkpoints:\n{available_checkpoints()}")
+        ckpt = load_checkpoint(path, device)
     ckpt_cfg = ckpt.get("config", {})
     meta = checkpoint_meta(ckpt)
     split_ckpt_meta = meta.get("split", {})
@@ -567,7 +596,7 @@ def main(cfg: Config) -> None:
 
     train_frac = float(ckpt_cfg.get("train_frac", 0.8))
     val_frac = float(ckpt_cfg.get("val_frac", 0.1))
-    seed = int(ckpt_cfg.get("seed", 123))
+    seed = int(ckpt_cfg.get("split_seed", ckpt_cfg.get("seed", 123)))
     sensor_mask_np = pack[obs_mask_key].astype(np.float32) if obs_mask_key else None
     split = build_observed_index_dataset(
         dataset_key=dataset_key,
@@ -643,30 +672,45 @@ def main(cfg: Config) -> None:
             int(ckpt_cfg.get("k_neighbors", 128)),
             allowed_indices=context_idx.to(device),
         )
-    adapter = build_sparse_model(
-        model_key=impl_model_key,
-        dataset_key=dataset_key,
-        ckpt=ckpt,
-        data=pack,
-        device=device,
-        obs_mean=obs_mean,
-        obs_std=obs_std,
-        x_min=x_min,
-        y_min=y_min,
-        t_min=t_min,
-        Lx=Lx,
-        Ly=Ly,
-        Tt=Tt,
-        nt_count=t_np.shape[0],
-        sensors_xy=sensors_xy,
-        x_grid=x_np,
-        y_grid=y_np,
-        t_grid=t_np,
-        train_idx=context_idx.numpy(),
-        obs_coords_np=obs_coords_np,
-        obs_vals_np=obs_vals_np,
-        obs_mask_np=obs_mask_np,
-    )
+    if model_key == "fmlp_ensemble":
+        adapter = build_fmlp_ensemble_adapter(
+            dataset_key=dataset_key,
+            ckpts=ensemble_ckpts,
+            device=device,
+            obs_mean=obs_mean,
+            obs_std=obs_std,
+            x_min=x_min,
+            y_min=y_min,
+            t_min=t_min,
+            Lx=Lx,
+            Ly=Ly,
+            Tt=Tt,
+        )
+    else:
+        adapter = build_sparse_model(
+            model_key=impl_model_key,
+            dataset_key=dataset_key,
+            ckpt=ckpt,
+            data=pack,
+            device=device,
+            obs_mean=obs_mean,
+            obs_std=obs_std,
+            x_min=x_min,
+            y_min=y_min,
+            t_min=t_min,
+            Lx=Lx,
+            Ly=Ly,
+            Tt=Tt,
+            nt_count=t_np.shape[0],
+            sensors_xy=sensors_xy,
+            x_grid=x_np,
+            y_grid=y_np,
+            t_grid=t_np,
+            train_idx=context_idx.numpy(),
+            obs_coords_np=obs_coords_np,
+            obs_vals_np=obs_vals_np,
+            obs_mask_np=obs_mask_np,
+        )
 
     sparse_metrics = eval_sparse_test(
         adapter,
@@ -684,7 +728,7 @@ def main(cfg: Config) -> None:
     result = {
         "dataset": dataset_key,
         "model": model_key,
-        "checkpoint": str(path),
+        "checkpoint": [str(path) for path in ensemble_paths] if model_key == "fmlp_ensemble" else str(path),
         "obs_key": obs_key,
         "mask_key": obs_mask_key,
         "num_sparse_test": int(sparse_test_idx.numel()),
@@ -692,6 +736,9 @@ def main(cfg: Config) -> None:
         "bootstrap_seed": int(cfg.bootstrap_seed),
         "sparse_test": sparse_metrics,
     }
+    if model_key == "fmlp_ensemble":
+        result["ensemble_seeds"] = parse_ensemble_seeds(cfg.ensemble_seeds)
+        result["ensemble_aggregation"] = "mean"
     if split_meta:
         result["split"] = split_meta
         result["context_sensor_ids"] = split_meta.get("train_sensor_ids", []) + split_meta.get("val_sensor_ids", [])
@@ -715,10 +762,13 @@ def main(cfg: Config) -> None:
             "full_field": full_metrics,
         })
 
-    try:
-        display_ckpt = path.relative_to(ROOT)
-    except ValueError:
-        display_ckpt = path
+    if model_key == "fmlp_ensemble":
+        display_ckpt = [str(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path) for path in ensemble_paths]
+    else:
+        try:
+            display_ckpt = path.relative_to(ROOT)
+        except ValueError:
+            display_ckpt = path
     print(f"[eval] dataset={dataset_key} model={model_key} checkpoint={display_ckpt}")
     print("")
     print(f"{'metric':<18} {'rmse':>14} {'mae':>14} {'rmse_bs_std':>14} {'mae_bs_std':>14}")

@@ -17,20 +17,28 @@ BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
+  # "fmlp_ensemble heat"
+  # "fmlp_ensemble pol"
+  # "fmlp_ensemble swe"
   # "fmlp atm"
+  # "fmlp_ensemble atm"
   # "siren atm"
   # "svgp atm"
   # "imputeformer atm"
   # "recfno atm"
   "senseiver atm"
+  # "fmlp govpol"
+  # "fmlp_ensemble govpol"
   "senseiver govpol"
   # "fmlp govpolsplit"
+  # "fmlp_ensemble govpolsplit"
   # "siren govpolsplit"
   # "svgp govpolsplit"
   # "imputeformer govpolsplit"
   # "recfno govpolsplit"
   "senseiver govpolsplit"
   # "fmlp atmsplit"
+  # "fmlp_ensemble atmsplit"
   # "siren atmsplit"
   # "svgp atmsplit"
   # "imputeformer atmsplit"
@@ -74,18 +82,27 @@ Usage: $0 [--dry-run] [--batch_size N] [--output_dir DIR] [--max_sparse_test N] 
 
 Submits sparse eval jobs with an 8-hour limit:
   fmlp-atm
+  fmlp_ensemble-atm
+  fmlp_ensemble-heat
+  fmlp_ensemble-pol
+  fmlp_ensemble-swe
   siren-atm
   svgp-atm
   imputeformer-atm
   recfno-atm
   senseiver-atm
+  fmlp-govpol
+  fmlp_ensemble-govpol
+  senseiver-govpol
   fmlp-govpolsplit
+  fmlp_ensemble-govpolsplit
   siren-govpolsplit
   svgp-govpolsplit
   imputeformer-govpolsplit
   recfno-govpolsplit
   senseiver-govpolsplit
   fmlp-atmsplit
+  fmlp_ensemble-atmsplit
   siren-atmsplit
   svgp-atmsplit
   imputeformer-atmsplit

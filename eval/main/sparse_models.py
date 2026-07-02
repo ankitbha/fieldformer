@@ -162,6 +162,131 @@ class EvalAdapter(nn.Module):
         return self
 
 
+class FMLPEnsemble(nn.Module):
+    def __init__(self, models: list[nn.Module]):
+        super().__init__()
+        if not models:
+            raise ValueError("FMLPEnsemble requires at least one member model")
+        self.models = nn.ModuleList(models)
+
+    def forward(self, xyt: torch.Tensor, *, Lx: float = 1.0, Ly: float = 1.0, Tt: float = 1.0) -> torch.Tensor:
+        preds = [model(xyt, Lx=Lx, Ly=Ly, Tt=Tt) for model in self.models]
+        return torch.stack(preds, dim=0).mean(dim=0)
+
+
+def _build_fmlp_model(dataset_key: str, ckpt: dict[str, Any], device: torch.device) -> nn.Module:
+    from baselines.models.fmlp import FourierMLP, FourierMLPSWE
+
+    cfg = cfg_obj(ckpt.get("config"))
+    out_dim = output_dim_for(dataset_key, ckpt, cfg)
+    if dataset_key == "swe":
+        model = FourierMLPSWE(_get(cfg, "width", 256), _get(cfg, "depth", 6), _get(cfg, "kx", 16), _get(cfg, "ky", 16), _get(cfg, "kt", 8))
+    else:
+        model = FourierMLP(_get(cfg, "width", 256), _get(cfg, "depth", 6), _get(cfg, "kx", 16), _get(cfg, "ky", 16), _get(cfg, "kt", 8), out_dim)
+    state = ckpt.get("model_state_dict", ckpt)
+    model.to(device)
+    model.load_state_dict(state)
+    return model
+
+
+def build_fmlp_ensemble_adapter(
+    *,
+    dataset_key: str,
+    ckpts: list[dict[str, Any]],
+    device: torch.device,
+    obs_mean: Any,
+    obs_std: Any,
+    x_min: float,
+    y_min: float,
+    t_min: float,
+    Lx: float,
+    Ly: float,
+    Tt: float,
+) -> EvalAdapter:
+    if not ckpts:
+        raise ValueError("No FMLP ensemble checkpoints were provided")
+
+    ref_cfg = cfg_obj(ckpts[0].get("config"))
+    ref_meta = checkpoint_meta(ckpts[0])
+    ref_out_dim = output_dim_for(dataset_key, ckpts[0], ref_cfg)
+    ref_normalizes = bool(ref_meta.get("normalizes_values", False))
+    ref_split_seed = _get(ref_cfg, "split_seed", _get(ref_cfg, "seed", 123))
+    ref_obs_key = ref_meta.get("obs_key")
+    ref_mask_key = ref_meta.get("mask_key")
+    ref_train_frac = _get(ref_cfg, "train_frac", None)
+    ref_val_frac = _get(ref_cfg, "val_frac", None)
+    ref_params = (
+        _get(ref_cfg, "width", 256),
+        _get(ref_cfg, "depth", 6),
+        _get(ref_cfg, "kx", 16),
+        _get(ref_cfg, "ky", 16),
+        _get(ref_cfg, "kt", 8),
+    )
+    ref_mean = ref_meta.get("val_mean", obs_mean)
+    ref_std = ref_meta.get("val_std", obs_std)
+
+    for idx, ckpt in enumerate(ckpts):
+        cfg = cfg_obj(ckpt.get("config"))
+        meta = checkpoint_meta(ckpt)
+        variant = str(meta.get("variant", ""))
+        expected_variant = f"fmlp_{dataset_key}_sparse"
+        if variant != expected_variant:
+            raise ValueError(f"Ensemble member {idx} has mismatched variant: {variant!r} != {expected_variant!r}")
+        cfg_dataset = str(_get(cfg, "dataset", ""))
+        if cfg_dataset and cfg_dataset != dataset_key:
+            raise ValueError(f"Ensemble member {idx} has mismatched dataset: {cfg_dataset!r} != {dataset_key!r}")
+        if bool(_get(cfg, "pinn", False)) or any(
+            float(_get(cfg, name, 0.0)) > 0.0
+            for name in ("lambda_phys", "lambda_bc", "lambda_sponge", "lambda_rad")
+        ):
+            raise ValueError(f"Ensemble member {idx} was trained with physics losses; fmlp_ensemble expects data-only FMLP checkpoints")
+        if meta.get("obs_key") != ref_obs_key:
+            raise ValueError(f"Ensemble member {idx} has mismatched obs_key")
+        if meta.get("mask_key") != ref_mask_key:
+            raise ValueError(f"Ensemble member {idx} has mismatched mask_key")
+        if ref_train_frac is not None and _get(cfg, "train_frac", None) != ref_train_frac:
+            raise ValueError(f"Ensemble member {idx} has mismatched train_frac")
+        if ref_val_frac is not None and _get(cfg, "val_frac", None) != ref_val_frac:
+            raise ValueError(f"Ensemble member {idx} has mismatched val_frac")
+        params = (
+            _get(cfg, "width", 256),
+            _get(cfg, "depth", 6),
+            _get(cfg, "kx", 16),
+            _get(cfg, "ky", 16),
+            _get(cfg, "kt", 8),
+        )
+        split_seed = _get(cfg, "split_seed", _get(cfg, "seed", 123))
+        if params != ref_params:
+            raise ValueError(f"Ensemble member {idx} has mismatched FMLP hyperparameters: {params} != {ref_params}")
+        if output_dim_for(dataset_key, ckpt, cfg) != ref_out_dim:
+            raise ValueError(f"Ensemble member {idx} has mismatched output_dim")
+        if bool(meta.get("normalizes_values", False)) != ref_normalizes:
+            raise ValueError(f"Ensemble member {idx} has mismatched normalizes_values")
+        if int(split_seed) != int(ref_split_seed):
+            raise ValueError(f"Ensemble member {idx} has mismatched split_seed")
+        if ref_normalizes:
+            mean = meta.get("val_mean")
+            std = meta.get("val_std")
+            if mean is None or std is None or not np.allclose(mean, ref_mean) or not np.allclose(std, ref_std):
+                raise ValueError(f"Ensemble member {idx} has mismatched normalization statistics")
+
+    model = FMLPEnsemble([_build_fmlp_model(dataset_key, ckpt, device) for ckpt in ckpts])
+    return EvalAdapter(
+        model,
+        model_key="fmlp",
+        dataset_key=dataset_key,
+        normalizes_values=ref_normalizes,
+        obs_mean=ref_mean,
+        obs_std=ref_std,
+        x_min=x_min,
+        y_min=y_min,
+        t_min=t_min,
+        Lx=Lx,
+        Ly=Ly,
+        Tt=Tt,
+    ).to(device)
+
+
 def split_train_mask(train_idx: np.ndarray, n_sensors: int, n_times: int) -> np.ndarray:
     mask = np.zeros((n_sensors, n_times), dtype=bool)
     mask[train_idx // n_times, train_idx % n_times] = True

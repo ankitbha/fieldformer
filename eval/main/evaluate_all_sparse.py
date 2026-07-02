@@ -35,6 +35,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--senseiver_full_field_fraction", type=float, default=0.10, help="Fraction of the full field to sample for Senseiver full-field eval.")
     parser.add_argument("--bootstrap_samples", type=int, default=1000, help="Bootstrap resamples for metric standard deviations; 0 disables.")
     parser.add_argument("--bootstrap_seed", type=int, default=123, help="Seed for bootstrap resampling.")
+    parser.add_argument("--ensemble_seeds", default="101,102,103,104,105", help="Comma-separated ensemble member seeds for ensemble baselines.")
+    parser.add_argument("--ensemble_dir", default="", help="Directory containing ensemble member checkpoints.")
     parser.add_argument("--slurm_array", action="store_true", help="Run one model/dataset pair selected by SLURM_ARRAY_TASK_ID.")
     parser.add_argument("--stop_on_error", action="store_true")
     return parser.parse_args()
@@ -85,6 +87,8 @@ def main() -> None:
                 senseiver_full_field_fraction=args.senseiver_full_field_fraction,
                 bootstrap_samples=args.bootstrap_samples,
                 bootstrap_seed=args.bootstrap_seed,
+                ensemble_seeds=args.ensemble_seeds,
+                ensemble_dir=args.ensemble_dir,
             )
             try:
                 run_sparse_eval(cfg)
