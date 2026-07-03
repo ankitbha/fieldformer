@@ -185,8 +185,8 @@ Fourier-MLP
 & 0.08049 $\pm$ 0.0002947 \\
 
 Fourier-MLP Ensemble
-& 1.588 $\pm$ 0.007539
-& 1.124 $\pm$ 0.003787
+& 0.09807 $\pm$ 0.0006568
+& 0.07799 $\pm$ 0.0005219
 & 0.1289 $\pm$ 0.0005315
 & 0.1004 $\pm$ 0.0002781
 & 0.1010 $\pm$ 0.0004365
@@ -391,8 +391,8 @@ Fourier-MLP
 & 0.1319 $\pm$ 0.0001417 \\
 
 Fourier-MLP Ensemble
-& 1.326 $\pm$ 0.008649
-& 0.9717 $\pm$ 0.006706
+& 0.2089 $\pm$ 0.001412
+& 0.1414 $\pm$ 0.0009312
 & 0.4344 $\pm$ 0.04490
 & 0.09691 $\pm$ 0.006017
 & 0.1828 $\pm$ 0.0001669
@@ -519,6 +519,8 @@ Appendix~\ref{sec:inference_efficiency} reports wall-clock sparse-test predictio
 \label{sec:ablations}
 
 We ablate three FieldFormer variants to isolate the role of physics regularization, transformer-based local aggregation, and spatially adaptive neighborhood geometry. \textbf{FieldFormer-PINN} augments FieldFormer with the PDE residual and boundary losses described in Section~\ref{sec:ff_variants}. \textbf{FieldFormer-Gamma Field} replaces global velocity-scaling parameters with coordinate-dependent gamma fields, also described in Section~\ref{sec:ff_variants}. \textbf{FieldFormer-MLP} preserves the same mesh-free neighborhood construction and velocity-scaled spatio-temporal metric as FieldFormer, but replaces the local transformer encoder with a multilayer perceptron. In this variant, the selected local neighborhood is encoded through relative offsets and observed values, then aggregated by an MLP prediction head rather than attention. This ablation tests whether performance gains arise primarily from adaptive local evidence selection or from transformer-based relational reasoning within the neighborhood.
+
+These ablations should be interpreted together with Senseiver from Section~\ref{sec:baselines}. The comparison between FieldFormer and FieldFormer-MLP isolates the effect of the local transformer: both models use the same query-specific local decomposition, the same sparse sensor-time neighborhood, and the same relative-coordinate tokenization, but FieldFormer-MLP replaces attention with an MLP aggregator. Senseiver provides the complementary no-local-decomposition attention comparator. It is still a transformer-based sensor-set model, but it conditions on the observed sensor set globally rather than constructing a query-specific local neighborhood before prediction. Thus, the three-way comparison FieldFormer vs.\ FieldFormer-MLP vs.\ Senseiver separates two design choices: whether the model first decomposes reconstruction into local query neighborhoods, and whether the evidence within that context is aggregated by attention or by an MLP. The real-world FieldFormer-MLP results in Table~\ref{tab:ablation_real_sparse}, together with the Senseiver results in Tables~\ref{tab:sensor_space_real} and~\ref{tab:global_proxy_real}, show that both choices matter: local neighborhood construction alone is competitive, but FieldFormer's local attention improves robustness, while global attention without the local decomposition is not uniformly stronger under sparse sensing.
 
 \paragraph{Synthetic PDE benchmarks.}
 Table~\ref{tab:ablation_synthetic_sparse} reports sensor-space imputation results on the three synthetic PDE benchmarks. FieldFormer without explicit physics regularization performs best on Heat and SWE sensor-space prediction, while FieldFormer-Gamma Field is marginally strongest on the Pollution simulation. FieldFormer-MLP is competitive on Heat but degrades more noticeably on Pollution and SWE, suggesting that attention-based aggregation is useful when local neighborhoods contain coupled or directional structure. FieldFormer-PINN generally worsens sensor-space performance, especially on Heat and SWE, indicating that physics residuals can conflict with sparse noisy observations when the reconstruction target is sensor-space imputation.

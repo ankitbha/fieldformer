@@ -14,17 +14,17 @@
   "bootstrap_samples": 1000,
   "bootstrap_seed": 123,
   "sparse_test": {
-    "rmse": 1.5884137380182155,
-    "mae": 1.1238142700195313,
-    "rmse_bootstrap_std": 0.007538703999906298,
-    "mae_bootstrap_std": 0.0037865953899239337,
+    "rmse": 0.09806526163660584,
+    "mae": 0.07798798217773438,
+    "rmse_bootstrap_std": 0.0006567958442905619,
+    "mae_bootstrap_std": 0.0005219308723083357,
     "channels": {
       "channel_0": {
-        "rmse": 1.5884137380182155,
-        "mae": 1.12381435546875,
+        "rmse": 0.09806526066411639,
+        "mae": 0.07798798217773438,
         "count": 20000,
-        "rmse_bootstrap_std": 0.007538703999906298,
-        "mae_bootstrap_std": 0.0037865953899239337
+        "rmse_bootstrap_std": 0.0006567958442905619,
+        "mae_bootstrap_std": 0.0005219308723083357
       }
     }
   },
@@ -40,9 +40,9 @@
   "num_full_field_total": 40960000,
   "full_field_sample_fraction": 1.0,
   "full_field": {
-    "rmse": 1.3256852013542682,
-    "mae": 0.9717149425057694,
-    "rmse_bootstrap_std": 0.008649169902014486,
-    "mae_bootstrap_std": 0.006706148930381996
+    "rmse": 0.20889385207771527,
+    "mae": 0.14136766925374977,
+    "rmse_bootstrap_std": 0.0014120915583255137,
+    "mae_bootstrap_std": 0.00093119334334803
   }
 }

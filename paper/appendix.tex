@@ -383,10 +383,20 @@ is continuous on $E(\mathcal{V}_K)$.
 
 
 \paragraph{4) Universal approximation by the FieldFormer.}
-A transformer/MLP stack defines a continuous function
+A FieldFormer encoder followed by pooling defines a continuous
+permutation-invariant set function of the token multiset. This does not lose
+the stencil ordering needed by $\psi$: the relative offsets
+$(h\mathbf{s}_j,\Delta t\,\ell_j)$ are distinct fixed identifiers included in
+the tokens, so any permutation-invariant function of the position-value tokens
+can represent a function of the corresponding ordered stencil tuple. Equivalently,
+the Deep Sets representation theorem \citep{zaheer2017deep} applies to the
+token set, while the injective tokenization above recovers the ordered tuple on
+$\mathcal{V}_K$; this is also consistent with transformer universality results
+with positional encodings \citep{yun2019transformers}, since the relative
+coordinates play the role of token identifiers.
+Thus the FieldFormer/MLP stack defines a continuous function
 $g_\theta:\mathbb{R}^{m d_{\mathrm{in}}}\to\mathbb{R}^{q}$.
-By universal approximation theorems for MLPs and transformers
-\citep{hornik1991approximation,yun2019transformers},
+By universal approximation for MLPs \citep{hornik1991approximation},
 for any $\varepsilon>0$ there exist width $d'$ and depth $L$ such that
 \[
 \sup_{x\in E(\mathcal{V}_K)}
@@ -433,9 +443,8 @@ where $T_{I^c}V$ agrees with $V$ on the observed coordinates and differs only on
 \;\ge\;
 c\,\mathbb{E}_I\bigl[\,A(I^c)\,\bigr]
 \;=\;
-c\,\Bigl(1-\frac{m_x}{N_x}\Bigr),
+c\,\Bigl(1-\frac{m_x}{N_x}\Bigr).
 \]
-with the triangle-inequality factor absorbed into $c$.
 \end{theorem}
 
 \begin{proof}[Proof]

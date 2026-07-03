@@ -1,4 +1,4 @@
-\begin{thebibliography}{45}
+\begin{thebibliography}{46}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -319,6 +319,14 @@ Chulhee Yun, Srinadh Bhojanapalli, Ankit~Singh Rawat, Sashank~J Reddi, and
 \newblock Are transformers universal approximators of sequence-to-sequence
   functions?
 \newblock \emph{arXiv preprint arXiv:1912.10077}, 2019.
+
+\bibitem[Zaheer et~al.(2017)Zaheer, Kottur, Ravanbakhsh, Poczos, Salakhutdinov,
+  and Smola]{zaheer2017deep}
+Manzil Zaheer, Satwik Kottur, Siamak Ravanbakhsh, Barnabas Poczos, Ruslan
+  Salakhutdinov, and Alexander Smola.
+\newblock Deep sets.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~30, 2017.
 
 \bibitem[Zhao et~al.(2024)Zhao, Chen, Gong, Zhou, Yao, and
   Zhang]{zhao2024recfno}

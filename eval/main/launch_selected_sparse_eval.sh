@@ -17,7 +17,7 @@ BOOTSTRAP_SEED=123
 EXTRA_ARGS=()
 
 EXPERIMENTS=(
-  # "fmlp_ensemble heat"
+  "fmlp_ensemble heat"
   # "fmlp_ensemble pol"
   # "fmlp_ensemble swe"
   # "fmlp atm"
@@ -26,24 +26,24 @@ EXPERIMENTS=(
   # "svgp atm"
   # "imputeformer atm"
   # "recfno atm"
-  "senseiver atm"
+  # "senseiver atm"
   # "fmlp govpol"
   # "fmlp_ensemble govpol"
-  "senseiver govpol"
+  # "senseiver govpol"
   # "fmlp govpolsplit"
   # "fmlp_ensemble govpolsplit"
   # "siren govpolsplit"
   # "svgp govpolsplit"
   # "imputeformer govpolsplit"
   # "recfno govpolsplit"
-  "senseiver govpolsplit"
+  # "senseiver govpolsplit"
   # "fmlp atmsplit"
   # "fmlp_ensemble atmsplit"
   # "siren atmsplit"
   # "svgp atmsplit"
   # "imputeformer atmsplit"
   # "recfno atmsplit"
-  "senseiver atmsplit"
+  # "senseiver atmsplit"
 )
 
 while [[ $# -gt 0 ]]; do
