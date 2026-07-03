@@ -1,0 +1,35 @@
+{
+  "dataset": "atm",
+  "model": "ffag",
+  "implementation_model": "ffag",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_atmsparse_nophys_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    1.7649217220023274,
+    1.7732909270562232,
+    1.7781885748263448
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 5.316401223884895,
+  "ms_per_query": 0.0354426748258993,
+  "queries_per_second": 28214.57480035514,
+  "load_seconds": 0.4140903139486909,
+  "setup_seconds": 0.5189253310672939,
+  "needs_sensor_context": true,
+  "output_dim": 4,
+  "peak_gpu_memory_bytes": 2511203328,
+  "peak_gpu_memory_mb": 2394.8701171875
+}

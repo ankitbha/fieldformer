@@ -1,0 +1,35 @@
+{
+  "dataset": "heat",
+  "model": "fmlp",
+  "implementation_model": "fmlp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 20000,
+  "num_timed_queries": 60000,
+  "warmup_batches": 5,
+  "warmup_queries": 20000,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.006060804007574916,
+    0.014892916893586516,
+    0.006589156109839678
+  ],
+  "repeat_queries": [
+    20000,
+    20000,
+    20000
+  ],
+  "seconds_total": 0.02754287701100111,
+  "ms_per_query": 0.00045904795018335184,
+  "queries_per_second": 2178421.665101832,
+  "load_seconds": 0.48866496281698346,
+  "setup_seconds": 0.07592597883194685,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 23703552,
+  "peak_gpu_memory_mb": 22.60546875
+}

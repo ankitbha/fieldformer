@@ -32,6 +32,23 @@ def output_dim_for(dataset_key: str, ckpt: dict[str, Any], cfg: SimpleNamespace,
     return int(meta.get("output_dim", meta.get("out_dim", _get(cfg, "out_dim", default))))
 
 
+def state_shape(state: dict[str, torch.Tensor], key: str) -> tuple[int, ...] | None:
+    value = state.get(key)
+    if value is None:
+        return None
+    return tuple(int(x) for x in value.shape)
+
+
+def infer_linear_out_dim(state: dict[str, torch.Tensor], key: str, default: int) -> int:
+    shape = state_shape(state, key)
+    return int(shape[0]) if shape is not None and len(shape) >= 1 else int(default)
+
+
+def infer_linear_in_dim(state: dict[str, torch.Tensor], key: str, default: int) -> int:
+    shape = state_shape(state, key)
+    return int(shape[1]) if shape is not None and len(shape) >= 2 else int(default)
+
+
 def infer_inducing_points(state: dict[str, torch.Tensor]) -> torch.Tensor:
     for key, value in state.items():
         if key.endswith("inducing_points"):
@@ -624,18 +641,24 @@ def build_sparse_model(
     elif model_key == "recfno":
         from baselines.models.recfno import VoronoiFNO2d
 
+        out_dim = output_dim_for(dataset_key, ckpt, cfg)
         model = VoronoiFNO2d(
             _get(cfg, "modes1", 12),
             _get(cfg, "modes2", 12),
             _get(cfg, "width", 32),
-            in_channels=2 * output_dim_for(dataset_key, ckpt, cfg) + 2,
-            out_channels=3 if dataset_key == "swe" else output_dim_for(dataset_key, ckpt, cfg),
+            in_channels=infer_linear_in_dim(state, "fc0.weight", 2 * out_dim + 2),
+            out_channels=infer_linear_out_dim(state, "fc2.weight", 3 if dataset_key == "swe" else out_dim),
         )
     elif model_key == "senseiver":
         from baselines.models.senseiver import Senseiver
 
+        out_dim = output_dim_for(dataset_key, ckpt, cfg)
         model = Senseiver(
-            sensor_feature_dim=3 + 2 * output_dim_for(dataset_key, ckpt, cfg),
+            sensor_feature_dim=infer_linear_in_dim(
+                state,
+                "encoder_1.0.0.module.attn.attn.k_proj_weight",
+                3 + 2 * out_dim,
+            ),
             query_feature_dim=3,
             num_latents=_get(cfg, "num_latents", 16),
             latent_channels=_get(cfg, "latent_channels", 64),
@@ -644,7 +667,7 @@ def build_sparse_model(
             decoder_heads=_get(cfg, "decoder_heads", 1),
             self_heads=_get(cfg, "self_heads", 4),
             self_layers=_get(cfg, "self_layers", 2),
-            out_dim=3 if dataset_key == "swe" else output_dim_for(dataset_key, ckpt, cfg),
+            out_dim=infer_linear_out_dim(state, "readout.weight", 3 if dataset_key == "swe" else out_dim),
             dropout=_get(cfg, "dropout", 0.0),
         )
     elif model_key == "imputeformer":
@@ -652,11 +675,13 @@ def build_sparse_model(
 
         if sensors_xy is None:
             raise ValueError("ImputeFormer eval requires sensors_xy")
+        node_shape = state_shape(state, "node_embedding")
+        out_dim = output_dim_for(dataset_key, ckpt, cfg)
         model = FixedNodeImputeFormer(
-            int(sensors_xy.shape[0]),
-            min(_get(cfg, "windows", 128), int(t_grid.shape[0]) if t_grid is not None else 128),
-            input_dim=2 * output_dim_for(dataset_key, ckpt, cfg),
-            output_dim=3 if dataset_key == "swe" else output_dim_for(dataset_key, ckpt, cfg),
+            int(node_shape[1]) if node_shape is not None and len(node_shape) >= 2 else int(sensors_xy.shape[0]),
+            int(node_shape[0]) if node_shape is not None and len(node_shape) >= 1 else min(_get(cfg, "windows", 128), int(t_grid.shape[0]) if t_grid is not None else 128),
+            input_dim=infer_linear_in_dim(state, "input_proj.weight", 2 * out_dim),
+            output_dim=infer_linear_out_dim(state, "readout.2.weight", 3 if dataset_key == "swe" else out_dim),
             input_embedding_dim=_get(cfg, "input_embedding_dim", 32),
             learnable_embedding_dim=_get(cfg, "learnable_embedding_dim", 96),
             num_layers=_get(cfg, "num_layers", 3),

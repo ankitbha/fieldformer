@@ -1,0 +1,49 @@
+{
+  "dataset": "heat",
+  "model": "fmlp_ensemble",
+  "implementation_model": "fmlp",
+  "checkpoint": [
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_heatsparse_seed101_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_heatsparse_seed102_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_heatsparse_seed103_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_heatsparse_seed104_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_heatsparse_seed105_best.pt"
+  ],
+  "obs_key": "sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 20000,
+  "num_timed_queries": 60000,
+  "warmup_batches": 5,
+  "warmup_queries": 20000,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.006768333958461881,
+    0.017918878002092242,
+    0.019765866920351982
+  ],
+  "repeat_queries": [
+    20000,
+    20000,
+    20000
+  ],
+  "seconds_total": 0.044453078880906105,
+  "ms_per_query": 0.0007408846480151018,
+  "queries_per_second": 1349737.779935233,
+  "load_seconds": 0.4562533418647945,
+  "setup_seconds": 0.058260624995455146,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 28317696,
+  "peak_gpu_memory_mb": 27.005859375,
+  "ensemble_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "ensemble_aggregation": "mean"
+}

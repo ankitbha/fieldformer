@@ -178,8 +178,8 @@ def parse_args() -> Config:
 
 def ckpt_path(model_key: str, dataset_key: str) -> Path:
     dataset_slug = {"pol": "pol"}.get(dataset_key, dataset_key)
-    if dataset_key == "govpol" and model_key == "ffag":
-        return ROOT / "ablations" / "architecture" / "checkpoints" / "ffag_govpolsparse_nophys_best.pt"
+    if dataset_key in {"atm", "govpol"} and model_key == "ffag":
+        return ROOT / "ablations" / "architecture" / "checkpoints" / f"ffag_{dataset_key}sparse_nophys_best.pt"
     if dataset_key in {"govpolsplit", "atmsplit"} and model_key == "ffag":
         return ROOT / "ablations" / "architecture" / "checkpoints" / f"ffag_{dataset_key}sparse_nophys_best.pt"
     if model_key == "ffag":

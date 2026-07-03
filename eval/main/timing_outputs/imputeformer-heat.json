@@ -1,0 +1,35 @@
+{
+  "dataset": "heat",
+  "model": "imputeformer",
+  "implementation_model": "imputeformer",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/imputeformer_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0005211019888520241,
+    0.0004449759144335985,
+    0.00042496901005506516
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.0013910469133406878,
+  "ms_per_query": 9.273646088937919e-06,
+  "queries_per_second": 107832452.35041387,
+  "load_seconds": 0.43528821086511016,
+  "setup_seconds": 16.590603118063882,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 26705408,
+  "peak_gpu_memory_mb": 25.46826171875
+}

@@ -1,0 +1,35 @@
+{
+  "dataset": "heat",
+  "model": "svgp",
+  "implementation_model": "svgp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/svgp_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 20000,
+  "num_timed_queries": 60000,
+  "warmup_batches": 5,
+  "warmup_queries": 20000,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.04269124404527247,
+    0.05153197702020407,
+    0.05711281392723322
+  ],
+  "repeat_queries": [
+    20000,
+    20000,
+    20000
+  ],
+  "seconds_total": 0.15133603499270976,
+  "ms_per_query": 0.002522267249878496,
+  "queries_per_second": 396468.69301743206,
+  "load_seconds": 0.3736047169659287,
+  "setup_seconds": 5.076076939003542,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 108425216,
+  "peak_gpu_memory_mb": 103.40234375
+}

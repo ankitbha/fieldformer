@@ -1,0 +1,35 @@
+{
+  "dataset": "govpol",
+  "model": "senseiver",
+  "implementation_model": "senseiver",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    225.0949818920344,
+    229.053067476023,
+    229.17827435885556
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 683.326323726913,
+  "ms_per_query": 4.555508824846086,
+  "queries_per_second": 219.5144468925019,
+  "load_seconds": 0.4069720199331641,
+  "setup_seconds": 0.23797180992551148,
+  "needs_sensor_context": false,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 30373888,
+  "peak_gpu_memory_mb": 28.966796875
+}

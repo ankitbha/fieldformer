@@ -1,0 +1,35 @@
+{
+  "dataset": "pol",
+  "model": "senseiver",
+  "implementation_model": "senseiver",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 32000,
+  "num_timed_queries": 96000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    127.03557818988338,
+    128.3734784098342,
+    128.2530153049156
+  ],
+  "repeat_queries": [
+    32000,
+    32000,
+    32000
+  ],
+  "seconds_total": 383.6620719046332,
+  "ms_per_query": 3.9964799156732624,
+  "queries_per_second": 250.22019905022748,
+  "load_seconds": 1.0048187877982855,
+  "setup_seconds": 0.27031017397530377,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 16967168,
+  "peak_gpu_memory_mb": 16.18115234375
+}

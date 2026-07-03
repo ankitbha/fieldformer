@@ -1,0 +1,35 @@
+{
+  "dataset": "swe",
+  "model": "recfno",
+  "implementation_model": "recfno",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/recfno_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    16.96490386989899,
+    16.84971667197533,
+    16.95486570801586
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 50.76948624989018,
+  "ms_per_query": 0.3384632416659345,
+  "queries_per_second": 2954.53058677198,
+  "load_seconds": 0.4919383558444679,
+  "setup_seconds": 0.20063534495420754,
+  "needs_sensor_context": false,
+  "output_dim": 3,
+  "peak_gpu_memory_bytes": 16324262912,
+  "peak_gpu_memory_mb": 15568.0302734375
+}

@@ -1,0 +1,35 @@
+{
+  "dataset": "pol",
+  "model": "imputeformer",
+  "implementation_model": "imputeformer",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/imputeformer_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0005132120568305254,
+    0.00042559695430099964,
+    0.00042477413080632687
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.001363583141937852,
+  "ms_per_query": 9.090554279585679e-06,
+  "queries_per_second": 110004293.38458084,
+  "load_seconds": 0.3730546759907156,
+  "setup_seconds": 15.203645626083016,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 24712192,
+  "peak_gpu_memory_mb": 23.5673828125
+}

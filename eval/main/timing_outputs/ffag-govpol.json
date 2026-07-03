@@ -1,0 +1,35 @@
+{
+  "dataset": "govpol",
+  "model": "ffag",
+  "implementation_model": "ffag",
+  "checkpoint": "/scratch/ab9738/fieldformer/ablations/architecture/checkpoints/ffag_govpolsparse_nophys_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    1.686479990836233,
+    1.6971580781973898,
+    1.7036998991388828
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 5.0873379681725055,
+  "ms_per_query": 0.03391558645448337,
+  "queries_per_second": 29484.968551024656,
+  "load_seconds": 0.4749870700761676,
+  "setup_seconds": 0.5178627099376172,
+  "needs_sensor_context": true,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 2481436160,
+  "peak_gpu_memory_mb": 2366.48193359375
+}

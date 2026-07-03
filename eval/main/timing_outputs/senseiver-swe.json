@@ -1,0 +1,35 @@
+{
+  "dataset": "swe",
+  "model": "senseiver",
+  "implementation_model": "senseiver",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/senseiver_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    192.97056320193224,
+    196.34508453402668,
+    197.18444982497022
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 586.5000975609291,
+  "ms_per_query": 3.9100006504061944,
+  "queries_per_second": 255.75443316003387,
+  "load_seconds": 0.4199577709659934,
+  "setup_seconds": 0.22082110005430877,
+  "needs_sensor_context": false,
+  "output_dim": 3,
+  "peak_gpu_memory_bytes": 23458816,
+  "peak_gpu_memory_mb": 22.3720703125
+}

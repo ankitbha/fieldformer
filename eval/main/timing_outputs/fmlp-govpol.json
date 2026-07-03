@@ -1,0 +1,35 @@
+{
+  "dataset": "govpol",
+  "model": "fmlp",
+  "implementation_model": "fmlp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.005131385056301951,
+    0.0042778339702636,
+    0.010939937783405185
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.020349156809970737,
+  "ms_per_query": 0.0001356610453998049,
+  "queries_per_second": 7371312.796926435,
+  "load_seconds": 0.4514624560251832,
+  "setup_seconds": 0.06485092197544873,
+  "needs_sensor_context": false,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 34574848,
+  "peak_gpu_memory_mb": 32.97314453125
+}

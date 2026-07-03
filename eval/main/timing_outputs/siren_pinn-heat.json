@@ -1,0 +1,35 @@
+{
+  "dataset": "heat",
+  "model": "siren_pinn",
+  "implementation_model": "siren",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_pinn_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 20000,
+  "num_timed_queries": 60000,
+  "warmup_batches": 5,
+  "warmup_queries": 20000,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0011321990750730038,
+    0.0011123719159513712,
+    0.0011063010897487402
+  ],
+  "repeat_queries": [
+    20000,
+    20000,
+    20000
+  ],
+  "seconds_total": 0.003350872080773115,
+  "ms_per_query": 5.584786801288525e-05,
+  "queries_per_second": 17905786.47996517,
+  "load_seconds": 0.3498146189376712,
+  "setup_seconds": 0.06823347602039576,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 25459712,
+  "peak_gpu_memory_mb": 24.2802734375
+}

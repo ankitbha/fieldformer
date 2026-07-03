@@ -1,0 +1,35 @@
+{
+  "dataset": "govpol",
+  "model": "imputeformer",
+  "implementation_model": "imputeformer",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/imputeformer_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0021630600094795227,
+    0.00041241804137825966,
+    0.00039860582910478115
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.0029740838799625635,
+  "ms_per_query": 1.982722586641709e-05,
+  "queries_per_second": 50435699.211647026,
+  "load_seconds": 0.47808586596511304,
+  "setup_seconds": 16.800119946943596,
+  "needs_sensor_context": false,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 32089600,
+  "peak_gpu_memory_mb": 30.60302734375
+}

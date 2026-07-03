@@ -1,0 +1,49 @@
+{
+  "dataset": "govpol",
+  "model": "fmlp_ensemble",
+  "implementation_model": "fmlp",
+  "checkpoint": [
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_govpolsparse_seed101_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_govpolsparse_seed102_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_govpolsparse_seed103_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_govpolsparse_seed104_best.pt",
+    "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_ensemble/fmlp_govpolsparse_seed105_best.pt"
+  ],
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.035786940017715096,
+    0.030217967927455902,
+    0.034161453135311604
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.1001663610804826,
+  "ms_per_query": 0.0006677757405365507,
+  "queries_per_second": 1497508.72829928,
+  "load_seconds": 0.6425617779605091,
+  "setup_seconds": 0.06111092702485621,
+  "needs_sensor_context": false,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 39258624,
+  "peak_gpu_memory_mb": 37.43994140625,
+  "ensemble_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "ensemble_aggregation": "mean"
+}

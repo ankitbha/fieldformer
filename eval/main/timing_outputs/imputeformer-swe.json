@@ -1,0 +1,35 @@
+{
+  "dataset": "swe",
+  "model": "imputeformer",
+  "implementation_model": "imputeformer",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/imputeformer_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0005070860497653484,
+    0.0004142180550843477,
+    0.00039805215783417225
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.0013193562626838684,
+  "ms_per_query": 8.795708417892456e-06,
+  "queries_per_second": 113691808.8332458,
+  "load_seconds": 0.42358146607875824,
+  "setup_seconds": 16.383231532061473,
+  "needs_sensor_context": false,
+  "output_dim": 3,
+  "peak_gpu_memory_bytes": 31891968,
+  "peak_gpu_memory_mb": 30.41455078125
+}

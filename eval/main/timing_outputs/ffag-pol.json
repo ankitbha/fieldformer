@@ -1,0 +1,35 @@
+{
+  "dataset": "pol",
+  "model": "ffag",
+  "implementation_model": "ffag",
+  "checkpoint": "/scratch/ab9738/fieldformer/fieldformer_core/checkpoints/ffag_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 32000,
+  "num_timed_queries": 96000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    1.0681854330468923,
+    1.077773637836799,
+    1.0750888311304152
+  ],
+  "repeat_queries": [
+    32000,
+    32000,
+    32000
+  ],
+  "seconds_total": 3.2210479020141065,
+  "ms_per_query": 0.03355258231264694,
+  "queries_per_second": 29803.965330652685,
+  "load_seconds": 0.5780428659636527,
+  "setup_seconds": 0.6264216611161828,
+  "needs_sensor_context": true,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 2464424448,
+  "peak_gpu_memory_mb": 2350.25830078125
+}

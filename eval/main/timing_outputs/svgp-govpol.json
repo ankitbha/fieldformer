@@ -1,0 +1,35 @@
+{
+  "dataset": "govpol",
+  "model": "svgp",
+  "implementation_model": "svgp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/svgp_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.1491848579607904,
+    0.14026945095974952,
+    0.12633331899996847
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.4157876279205084,
+  "ms_per_query": 0.002771917519470056,
+  "queries_per_second": 360761.095153792,
+  "load_seconds": 0.39601971895899624,
+  "setup_seconds": 5.052338858949952,
+  "needs_sensor_context": false,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 115766784,
+  "peak_gpu_memory_mb": 110.40380859375
+}

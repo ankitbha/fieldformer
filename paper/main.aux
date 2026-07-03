@@ -108,16 +108,17 @@
 \newlabel{tab:global_synthetic}{{3}{18}{Global field reconstruction results on synthetic PDE benchmarks. Dense reference fields are available for these datasets. Lower is better.\relax }{table.caption.6}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Sensor-holdout results on real-world sparse sensor benchmarks, used as a proxy for spatial generalization when dense full-field ground truth is unavailable. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better. ImputeFormer is a fixed-node imputer, giving it a transductive fixed-topology advantage in this sensor-holdout setting.\relax }}{19}{table.caption.7}\protected@file@percent }
 \newlabel{tab:global_proxy_real}{{4}{19}{Sensor-holdout results on real-world sparse sensor benchmarks, used as a proxy for spatial generalization when dense full-field ground truth is unavailable. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better. ImputeFormer is a fixed-node imputer, giving it a transductive fixed-topology advantage in this sensor-holdout setting.\relax }{table.caption.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Ablation Studies}{19}{subsection.6.5}\protected@file@percent }
-\newlabel{sec:ablations}{{6.5}{19}{Ablation Studies}{subsection.6.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{Synthetic PDE benchmarks.}{20}{section*.8}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{20}{table.caption.9}\protected@file@percent }
-\newlabel{tab:ablation_synthetic_sparse}{{5}{20}{Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.9}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better.\relax }}{20}{table.caption.10}\protected@file@percent }
-\newlabel{tab:ablation_synthetic_global}{{6}{20}{Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better.\relax }{table.caption.10}{}}
-\@writefile{toc}{\contentsline {paragraph}{Real-world sparse sensor benchmarks.}{20}{section*.11}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{21}{table.caption.12}\protected@file@percent }
-\newlabel{tab:ablation_real_sparse}{{7}{21}{Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.12}{}}
+\@writefile{toc}{\contentsline {paragraph}{Inference efficiency.}{19}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Ablation Studies}{20}{subsection.6.5}\protected@file@percent }
+\newlabel{sec:ablations}{{6.5}{20}{Ablation Studies}{subsection.6.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Synthetic PDE benchmarks.}{20}{section*.9}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{20}{table.caption.10}\protected@file@percent }
+\newlabel{tab:ablation_synthetic_sparse}{{5}{20}{Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.10}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better.\relax }}{20}{table.caption.11}\protected@file@percent }
+\newlabel{tab:ablation_synthetic_global}{{6}{20}{Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better.\relax }{table.caption.11}{}}
+\@writefile{toc}{\contentsline {paragraph}{Real-world sparse sensor benchmarks.}{20}{section*.12}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{21}{table.caption.13}\protected@file@percent }
+\newlabel{tab:ablation_real_sparse}{{7}{21}{Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.13}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {7}Discussion and Conclusion}{21}{section.7}\protected@file@percent }
 \newlabel{sec:discussion_conclusion}{{7}{21}{Discussion and Conclusion}{section.7}{}}
 \bibdata{refs}
@@ -169,31 +170,37 @@
 \bibstyle{tmlr}
 \@writefile{toc}{\contentsline {section}{\numberline {A}Boundary Loss Implementation}{25}{appendix.A}\protected@file@percent }
 \newlabel{sec:boundary_loss}{{A}{25}{Boundary Loss Implementation}{appendix.A}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {B}Baseline Training and Evaluation Protocol}{25}{appendix.B}\protected@file@percent }
-\newlabel{sec:baseline_protocol}{{B}{25}{Baseline Training and Evaluation Protocol}{appendix.B}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.\relax }}{26}{table.caption.16}\protected@file@percent }
-\newlabel{tab:baseline_protocol}{{8}{26}{Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.\relax }{table.caption.16}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {C}Formal Definitions and Assumptions}{27}{appendix.C}\protected@file@percent }
-\newlabel{sec:definitions}{{C}{27}{Formal Definitions and Assumptions}{appendix.C}{}}
-\newlabel{def:local_operator}{{C.1}{27}{Finite-order local differential operator}{theorem.C.1}{}}
-\newlabel{ass:locality}{{C.2}{27}{}{theorem.C.2}{}}
-\newlabel{ass:sampling}{{C.3}{27}{}{theorem.C.3}{}}
-\newlabel{ass:influence}{{C.4}{27}{}{theorem.C.4}{}}
-\newlabel{eq:set_inf}{{3}{27}{}{equation.C.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Baseline Training and Evaluation Protocol}{26}{appendix.B}\protected@file@percent }
+\newlabel{sec:baseline_protocol}{{B}{26}{Baseline Training and Evaluation Protocol}{appendix.B}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.\relax }}{26}{table.caption.17}\protected@file@percent }
+\newlabel{tab:baseline_protocol}{{8}{26}{Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.\relax }{table.caption.17}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Inference Efficiency Benchmark}{27}{appendix.C}\protected@file@percent }
+\newlabel{sec:inference_efficiency}{{C}{27}{Inference Efficiency Benchmark}{appendix.C}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Formal Definitions and Assumptions}{27}{appendix.D}\protected@file@percent }
+\newlabel{sec:definitions}{{D}{27}{Formal Definitions and Assumptions}{appendix.D}{}}
+\newlabel{def:local_operator}{{D.1}{27}{Finite-order local differential operator}{theorem.D.1}{}}
+\newlabel{ass:locality}{{D.2}{27}{}{theorem.D.2}{}}
+\newlabel{ass:sampling}{{D.3}{27}{}{theorem.D.3}{}}
+\newlabel{ass:influence}{{D.4}{27}{}{theorem.D.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Inference timing on synthetic PDE benchmarks. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }}{28}{table.caption.18}\protected@file@percent }
+\newlabel{tab:timing_synthetic}{{9}{28}{Inference timing on synthetic PDE benchmarks. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }{table.caption.18}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Inference timing on real-world sparse sensor benchmarks and sensor-holdout splits. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }}{29}{table.caption.19}\protected@file@percent }
+\newlabel{tab:timing_real}{{10}{29}{Inference timing on real-world sparse sensor benchmarks and sensor-holdout splits. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }{table.caption.19}{}}
+\newlabel{eq:set_inf}{{3}{30}{}{equation.D.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {E}Proofs of Theorems}{30}{appendix.E}\protected@file@percent }
+\newlabel{sec:proofs}{{E}{30}{Proofs of Theorems}{appendix.E}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.1}Proof of Theorem \ref  {prop:universal_pde}}{30}{subsection.E.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{1) Discrete locality and finite map.}{30}{section*.20}\protected@file@percent }
 \citation{hornik1991approximation,yun2019transformers}
-\@writefile{toc}{\contentsline {section}{\numberline {D}Proofs of Theorems}{28}{appendix.D}\protected@file@percent }
-\newlabel{sec:proofs}{{D}{28}{Proofs of Theorems}{appendix.D}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {D.1}Proof of Theorem \ref  {prop:universal_pde}}{28}{subsection.D.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{1) Discrete locality and finite map.}{28}{section*.17}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{2) Tokenization of the stencil.}{28}{section*.18}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{3) Compact domain of interest.}{28}{section*.19}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{4) Universal approximation by the FieldFormer.}{29}{section*.20}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {D.2}Proof of Theorem \ref  {prop:avg_long}}{29}{subsection.D.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{1) Conditioning on sensed sites.}{29}{section*.21}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{2) Two indistinguishable completions.}{29}{section*.22}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{3) Applying the missed-support ambiguity margin.}{30}{section*.23}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{4) Averaging over random sampling.}{30}{section*.24}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {E}Additional Results}{30}{appendix.E}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{30}{table.caption.25}\protected@file@percent }
-\newlabel{tab:ablation_real_holdout}{{9}{30}{Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.25}{}}
-\gdef \@abspage@last{30}
+\@writefile{toc}{\contentsline {paragraph}{2) Tokenization of the stencil.}{31}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{3) Compact domain of interest.}{31}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{4) Universal approximation by the FieldFormer.}{31}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.2}Proof of Theorem \ref  {prop:avg_long}}{31}{subsection.E.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{1) Conditioning on sensed sites.}{31}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{2) Two indistinguishable completions.}{32}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{3) Applying the missed-support ambiguity margin.}{32}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{4) Averaging over random sampling.}{32}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {F}Additional Results}{32}{appendix.F}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{32}{table.caption.28}\protected@file@percent }
+\newlabel{tab:ablation_real_holdout}{{11}{32}{Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.28}{}}
+\gdef \@abspage@last{32}

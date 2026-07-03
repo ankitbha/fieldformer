@@ -1,0 +1,35 @@
+{
+  "dataset": "pol",
+  "model": "fmlp_pinn",
+  "implementation_model": "fmlp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/fmlp_pinn_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 32000,
+  "num_timed_queries": 96000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0027117698919028044,
+    0.0026432049926370382,
+    0.0026226809713989496
+  ],
+  "repeat_queries": [
+    32000,
+    32000,
+    32000
+  ],
+  "seconds_total": 0.007977655855938792,
+  "ms_per_query": 8.310058183269575e-05,
+  "queries_per_second": 12033610.08967752,
+  "load_seconds": 0.45612056413665414,
+  "setup_seconds": 0.07373986300081015,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 26139136,
+  "peak_gpu_memory_mb": 24.92822265625
+}

@@ -1,0 +1,35 @@
+{
+  "dataset": "swe",
+  "model": "siren_pinn",
+  "implementation_model": "siren",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_pinn_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 20000,
+  "num_timed_queries": 60000,
+  "warmup_batches": 5,
+  "warmup_queries": 20000,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0010585749987512827,
+    0.0010374640114605427,
+    0.0010361969470977783
+  ],
+  "repeat_queries": [
+    20000,
+    20000,
+    20000
+  ],
+  "seconds_total": 0.0031322359573096037,
+  "ms_per_query": 5.2203932621826725e-05,
+  "queries_per_second": 19155644.982613724,
+  "load_seconds": 0.3882762819994241,
+  "setup_seconds": 0.06028026598505676,
+  "needs_sensor_context": false,
+  "output_dim": 3,
+  "peak_gpu_memory_bytes": 25494528,
+  "peak_gpu_memory_mb": 24.3134765625
+}

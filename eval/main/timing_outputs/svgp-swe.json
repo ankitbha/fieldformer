@@ -1,0 +1,35 @@
+{
+  "dataset": "swe",
+  "model": "svgp",
+  "implementation_model": "svgp",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/svgp_swesparse_best.pt",
+  "obs_key": "eta_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 20000,
+  "num_timed_queries": 60000,
+  "warmup_batches": 5,
+  "warmup_queries": 20000,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.10000401502475142,
+    0.12106126709841192,
+    0.10676288208924234
+  ],
+  "repeat_queries": [
+    20000,
+    20000,
+    20000
+  ],
+  "seconds_total": 0.3278281642124057,
+  "ms_per_query": 0.005463802736873428,
+  "queries_per_second": 183022.71296350527,
+  "load_seconds": 0.4395180270075798,
+  "setup_seconds": 6.174888656008989,
+  "needs_sensor_context": false,
+  "output_dim": 3,
+  "peak_gpu_memory_bytes": 302557696,
+  "peak_gpu_memory_mb": 288.54150390625
+}

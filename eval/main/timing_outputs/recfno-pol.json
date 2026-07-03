@@ -1,0 +1,35 @@
+{
+  "dataset": "pol",
+  "model": "recfno",
+  "implementation_model": "recfno",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/recfno_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 32000,
+  "num_timed_queries": 96000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    8.021215589018539,
+    8.073271143017337,
+    8.053809841861948
+  ],
+  "repeat_queries": [
+    32000,
+    32000,
+    32000
+  ],
+  "seconds_total": 24.148296573897824,
+  "ms_per_query": 0.25154475597810233,
+  "queries_per_second": 3975.435687822698,
+  "load_seconds": 0.41317081917077303,
+  "setup_seconds": 0.23417341290041804,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 6399986176,
+  "peak_gpu_memory_mb": 6103.50244140625
+}

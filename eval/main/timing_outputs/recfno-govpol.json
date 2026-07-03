@@ -1,0 +1,35 @@
+{
+  "dataset": "govpol",
+  "model": "recfno",
+  "implementation_model": "recfno",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/recfno_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    12.536172411870211,
+    12.469220365863293,
+    12.510255467146635
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 37.51564824488014,
+  "ms_per_query": 0.25010432163253427,
+  "queries_per_second": 3998.3315501011207,
+  "load_seconds": 0.497086294926703,
+  "setup_seconds": 0.27411663183011115,
+  "needs_sensor_context": false,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 4576304640,
+  "peak_gpu_memory_mb": 4364.30419921875
+}

@@ -1,0 +1,35 @@
+{
+  "dataset": "heat",
+  "model": "ffag",
+  "implementation_model": "ffag",
+  "checkpoint": "/scratch/ab9738/fieldformer/fieldformer_core/checkpoints/ffag_heatsparse_best.pt",
+  "obs_key": "sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 20000,
+  "num_timed_queries": 60000,
+  "warmup_batches": 5,
+  "warmup_queries": 20000,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.6722377869300544,
+    0.6801686938852072,
+    0.6720158769749105
+  ],
+  "repeat_queries": [
+    20000,
+    20000,
+    20000
+  ],
+  "seconds_total": 2.024422357790172,
+  "ms_per_query": 0.0337403726298362,
+  "queries_per_second": 29638.084053514933,
+  "load_seconds": 0.5933710869867355,
+  "setup_seconds": 0.49356649187393486,
+  "needs_sensor_context": true,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 2465420800,
+  "peak_gpu_memory_mb": 2351.20849609375
+}

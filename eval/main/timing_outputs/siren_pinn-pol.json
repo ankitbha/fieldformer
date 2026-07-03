@@ -1,0 +1,35 @@
+{
+  "dataset": "pol",
+  "model": "siren_pinn",
+  "implementation_model": "siren",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_pinn_polsparse_best.pt",
+  "obs_key": "U_sensor_noisy",
+  "mask_key": "",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 32000,
+  "num_timed_queries": 96000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.0017662059981375933,
+    0.0017356900498270988,
+    0.001739709870889783
+  ],
+  "repeat_queries": [
+    32000,
+    32000,
+    32000
+  ],
+  "seconds_total": 0.005241605918854475,
+  "ms_per_query": 5.460006165473411e-05,
+  "queries_per_second": 18314997.63358408,
+  "load_seconds": 0.45207622181624174,
+  "setup_seconds": 0.07917592604644597,
+  "needs_sensor_context": false,
+  "output_dim": 1,
+  "peak_gpu_memory_bytes": 27379200,
+  "peak_gpu_memory_mb": 26.11083984375
+}

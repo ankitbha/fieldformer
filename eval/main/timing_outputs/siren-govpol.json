@@ -1,0 +1,35 @@
+{
+  "dataset": "govpol",
+  "model": "siren",
+  "implementation_model": "siren",
+  "checkpoint": "/scratch/ab9738/fieldformer/baselines/checkpoints/siren_govpolsparse_best.pt",
+  "obs_key": "U_sensor",
+  "mask_key": "U_sensor_mask",
+  "device": "cuda",
+  "batch_size": 4096,
+  "max_queries": 50000,
+  "num_queries_per_repeat": 50000,
+  "num_timed_queries": 150000,
+  "warmup_batches": 5,
+  "warmup_queries": 20480,
+  "timed_repeats": 3,
+  "repeat_seconds": [
+    0.003435705089941621,
+    0.0033933098893612623,
+    0.0033794150222092867
+  ],
+  "repeat_queries": [
+    50000,
+    50000,
+    50000
+  ],
+  "seconds_total": 0.01020843000151217,
+  "ms_per_query": 6.805620001008113e-05,
+  "queries_per_second": 14693738.408137253,
+  "load_seconds": 0.5335234380327165,
+  "setup_seconds": 0.0631440409924835,
+  "needs_sensor_context": false,
+  "output_dim": 2,
+  "peak_gpu_memory_bytes": 36331008,
+  "peak_gpu_memory_mb": 34.64794921875
+}
