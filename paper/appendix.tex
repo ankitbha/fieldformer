@@ -9,7 +9,7 @@ We explicitly handle boundaries:
 \[
 u_t + c_{\text{eff}} \,\partial_n u \approx 0,
 \]
-with $c_{\text{eff}}$ estimated from gradients and clamped for stability. Both losses are formulated in normalized coordinates and evaluated via autograd.\\
+with $c_{\text{eff}}$ estimated from gradients and clamped for stability. Both losses are formulated in normalized coordinates and evaluated via autograd.
 
 \section{Baseline Training and Evaluation Protocol}
 \label{sec:baseline_protocol}
@@ -216,7 +216,7 @@ Dataset & Model & ms/query & queries/s & Peak GPU MB & Setup s \\
 \label{sec:definitions}
 \begin{definition}[Finite-order local differential operator]
 \label{def:local_operator}
-Let $u:\mathbb{R}^{d+1}\to\mathbb{R}^m$.  
+Let $u:\mathbb{R}^{d+1}\to\mathbb{R}^q$.
 A differential operator $\mathcal{L}$ is called a \emph{finite-order local operator of order $r$} if
 \[
 \mathcal{L}u(z) \;=\; F\!\left(z,\, \{D^\alpha u(z) : |\alpha|\le r\}\right),
@@ -290,7 +290,7 @@ where the expectation is over $V\sim\mathcal{D}$ and any internal randomness of 
 \label{sec:proofs}
 
 \subsection{Proof of Theorem \ref{prop:universal_pde}}
-\begin{theorem}[Expressivity for Finite-Stencil Local Dynamics]
+\begin{restatedtheorem}{\ref{prop:universal_pde}}[Expressivity for Finite-Stencil Local Dynamics]
 
 Let $u:\mathbb{R}^{d}\times\mathbb{R}\to\mathbb{R}^q$ solve a parabolic or hyperbolic PDE
 \[
@@ -324,7 +324,7 @@ Then for any $\varepsilon>0$ there exists a FieldFormer with neighborhood size $
 <\varepsilon,
 \]
 where $E(v)$ denotes the FieldFormer tokenization of the ordered stencil tuple $v$.
-\end{theorem}
+\end{restatedtheorem}
 
 
 \begin{proof}[Proof]
@@ -332,7 +332,7 @@ Let $u:\mathbb{R}^{d}\times\mathbb{R}\to\mathbb{R}^q$ solve a parabolic or hyper
 \[
 F\bigl(z,u(z),\nabla u(z),\ldots,D^{r}u(z)\bigr) \;=\; 0,\qquad z=(x,t),
 \]
-whose differential operator is finite-order and local (Def. 3.1).
+whose differential operator is finite-order and local (Definition~\ref{def:local_operator}).
 Assume a consistent explicit finite-difference scheme with compact stencil
 $\mathcal{S}\subset\{-s_{\max},\ldots,s_{\max}\}^d\times\{0,\ldots,k\}$ and CFL-admissible $\Delta t>0$.
 Let $U_h$ denote the numerical solution produced by this scheme.
@@ -373,7 +373,7 @@ The set of all stencil value tuples attained over $K$,
   \;:\;
   (x_{\mathbf{i}},\,t_{n+1}) \in K
 \Bigr\},
-\qquad (x_{\mathbf{i}},t_n) = (\mathbf{i}h,\, n\Delta t).
+\qquad (x_{\mathbf{i}},t_n) = (\mathbf{i}h,\, n\Delta t),
 \]
 is a finite, hence compact, subset of $(\mathbb{R}^{q})^{N}$. Since $E$ is continuous and injective on $\mathcal{V}_K$, it has a continuous inverse on its compact image $E(\mathcal{V}_K)$. Therefore
 \[
@@ -413,7 +413,7 @@ FieldFormer uniformly approximates the finite-stencil update map on $\mathcal{V}
 \end{proof}
 
 \subsection{Proof of Theorem \ref{prop:avg_long}}
-\begin{theorem}[Missed-Support Non-Identifiability Under Longitudinal Sampling]
+\begin{restatedtheorem}{\ref{prop:avg_long}}[Missed-Support Non-Identifiability Under Longitudinal Sampling]
 Sample $m_x$ spatial locations uniformly without replacement from $\mathcal{S}_x$, let $I\subseteq\mathcal{S}_x$ be the sensed set and $I^c$ the missed set.
 Under equation \eqref{eq:set_inf}, let $\hat u$ be any estimator using only the observed stencil block $V_{I\times\mathcal{T}}$. For fixed $I$, define the two completion risks
 \[
@@ -445,7 +445,7 @@ c\,\mathbb{E}_I\bigl[\,A(I^c)\,\bigr]
 \;=\;
 c\,\Bigl(1-\frac{m_x}{N_x}\Bigr).
 \]
-\end{theorem}
+\end{restatedtheorem}
 
 \begin{proof}[Proof]
 Let $V\in(\mathbb{R}^{q})^{N}$ denote the random tuple of stencil values under distribution $\mathcal{D}$, with $\mathcal{S}=\mathcal{S}_x\times\mathcal{T}$ and $N=|\mathcal{S}|$. The local update target is $\psi(V)\in\mathbb{R}^q$.

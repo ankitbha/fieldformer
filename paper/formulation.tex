@@ -30,13 +30,13 @@ f_{\phi}(\mathbf{x},t;\mathcal{D}_{\mathcal{S}})
 \]
 where $f_{\phi}$ is the learned field estimator and $\mathcal{R}_{\mathrm{phys}}$ denotes optional physical regularization. This formulation is natural when dense ground-truth fields are available, as in simulations, and when the sensing process provides sufficient spatial coverage to constrain the latent state.
 
-However, in real sparse sensor networks, $\mathbf{u}(\mathbf{x},t)$ is generally unobserved for most $\mathbf{x}\in\Omega$. The only directly observed quantities are the projections of the latent field onto the deployed sensor locations. Consequently, multiple globally distinct fields may induce identical or nearly identical sensor trajectories, making the global objective underdetermined without additional assumptions on smoothness, locality, transport, or the data-generating process. Thus, global field recovery should be interpreted as prior-guided surrogate reconstruction rather than identifiable recovery of the true latent field under extreme sparse sensing. \\
+However, in real sparse sensor networks, $\mathbf{u}(\mathbf{x},t)$ is generally unobserved for most $\mathbf{x}\in\Omega$. The only directly observed quantities are the projections of the latent field onto the deployed sensor locations. Consequently, multiple globally distinct fields may induce identical or nearly identical sensor trajectories, making the global objective underdetermined without additional assumptions on smoothness, locality, transport, or the data-generating process. Thus, global field recovery should be interpreted as prior-guided surrogate reconstruction rather than identifiable recovery of the true latent field under extreme sparse sensing.
 
 
 \textbf{Sensor-Space Modeling.} Under extreme spatial sparsity, estimating the latent field over an arbitrary query set
 $\mathcal{Q} \subset \Omega \times [0,T]$ may be fundamentally underconstrained. We therefore distinguish global field reconstruction from a more identifiable objective: \emph{sensor-space modeling}. Let the deployed sensor network be denoted by
 \[
-\mathcal{S} = \{\mathbf{s}_j\}_{j=1}^{M}, \qquad \mathbf{s}_j \in \Omega ,
+\mathcal{S} = \{\mathbf{s}_j\}_{j=1}^{M}, \qquad \mathbf{s}_j \in \Omega,
 \]
 where $M$ is small relative to the spatial resolution of the underlying domain. The sensor-space observation operator is
 \[
@@ -56,7 +56,7 @@ The observed sensor trajectory is therefore
 =
 \mathcal{O}_{\mathcal{S}}(\mathbf{u})(t)
 +
-\boldsymbol{\epsilon}_t .
+\boldsymbol{\epsilon}_t.
 \]
 
 In the longitudinal sensing regime, observations are dense in time but restricted to the spatial support of the sensor network:

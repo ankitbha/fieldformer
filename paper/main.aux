@@ -1,19 +1,5 @@
 \relax 
 \providecommand\hyper@newdestlabel[2]{}
-\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
-\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
-\global\let\oldcontentsline\contentsline
-\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
-\global\let\oldnewlabel\newlabel
-\gdef\newlabel#1#2{\newlabelxx{#1}#2}
-\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
-\AtEndDocument{\ifx\hyper@anchor\@undefined
-\let\contentsline\oldcontentsline
-\let\newlabel\oldnewlabel
-\fi}
-\fi}
-\global\let\hyper@last\relax 
-\gdef\HyperFirstAtBeginDocument#1{#1}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
@@ -24,15 +10,14 @@
 \citation{iyer2022modeling,bhardwaj2025comprehensive,concas2021low}
 \citation{li2017diffusion,bhardwaj2023understanding}
 \citation{khalil2021deep}
-\citation{hart2006environmental}
 \citation{cressie1990origins}
 \citation{wikle2019spatio,de2005predictive}
 \citation{leveque2007finite,hughes2003finite}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{3}{section.2}\protected@file@percent }
 \citation{iyer2022modeling}
 \citation{wu2019graph}
 \citation{xu2020spatial}
 \citation{nie2024imputeformer}
-\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{3}{section.2}\protected@file@percent }
 \citation{tashiro2021csdi}
 \citation{garnelo2018conditional}
 \citation{gordon2020convolutional,foong2020meta}
@@ -54,18 +39,18 @@
 \@writefile{toc}{\contentsline {section}{\numberline {4}FieldFormer}{6}{section.4}\protected@file@percent }
 \newlabel{sec:method}{{4}{6}{FieldFormer}{section.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Design Rationale}{6}{subsection.4.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \small  Conceptual overview of FieldFormer. For each query location, a physics-aware local neighborhood is constructed via learned velocity scaling, encoded with relative offsets and observations, and aggregated using a transformer encoder to produce mesh-free spatio-temporal predictions, trained with data and optionally balanced physics losses.\relax }}{7}{figure.caption.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \small  Conceptual overview of FieldFormer. For each query location, a physics-aware local neighborhood is constructed via learned velocity scaling, encoded with relative offsets and observations, and aggregated using a transformer encoder to produce mesh-free spatio-temporal predictions, trained with data and optionally balanced physics losses.}}{7}{figure.caption.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:concept}{{1}{7}{\small Conceptual overview of FieldFormer. For each query location, a physics-aware local neighborhood is constructed via learned velocity scaling, encoded with relative offsets and observations, and aggregated using a transformer encoder to produce mesh-free spatio-temporal predictions, trained with data and optionally balanced physics losses.\relax }{figure.caption.1}{}}
+\newlabel{fig:concept}{{1}{7}{\small Conceptual overview of FieldFormer. For each query location, a physics-aware local neighborhood is constructed via learned velocity scaling, encoded with relative offsets and observations, and aggregated using a transformer encoder to produce mesh-free spatio-temporal predictions, trained with data and optionally balanced physics losses}{figure.caption.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Architecture}{7}{subsection.4.2}\protected@file@percent }
-\newlabel{eq:velocity_distance}{{2}{7}{Architecture}{equation.4.2}{}}
+\newlabel{eq:velocity_distance}{{2}{8}{Architecture}{equation.2}{}}
 \citation{bentley1975multidimensional}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Inference and Efficiency}{9}{subsection.4.3}\protected@file@percent }
 \newlabel{sec:inference_and_efficiency}{{4.3}{9}{Inference and Efficiency}{subsection.4.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.4}FieldFormer Variants}{9}{subsection.4.4}\protected@file@percent }
 \newlabel{sec:ff_variants}{{4.4}{9}{FieldFormer Variants}{subsection.4.4}{}}
 \@writefile{toc}{\contentsline {paragraph}{FieldFormer-PINN.}{9}{section*.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{FieldFormer--Gamma Field.}{10}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{FieldFormer-Gamma Field.}{10}{section*.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}Theoretical Insights}{10}{section.5}\protected@file@percent }
 \newlabel{sec:analysis}{{5}{10}{Theoretical Insights}{section.5}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Local Structure in Spatio-Temporal Dynamics}{10}{subsection.5.1}\protected@file@percent }
@@ -77,48 +62,48 @@
 \citation{hensman2013gaussian}
 \citation{tancik2020fourier}
 \citation{sitzmann2020implicit}
-\citation{raissi2019physics}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Connection to Sensor-Space Modeling}{13}{subsection.5.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6}Evaluation}{13}{section.6}\protected@file@percent }
 \newlabel{sec:evaluation}{{6}{13}{Evaluation}{section.6}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Baselines}{13}{subsection.6.1}\protected@file@percent }
 \newlabel{sec:baselines}{{6.1}{13}{Baselines}{subsection.6.1}{}}
+\citation{raissi2019physics}
 \citation{zhao2024recfno}
 \citation{nie2024imputeformer}
 \citation{santos2023development}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Experimental Setup}{14}{subsection.6.2}\protected@file@percent }
-\newlabel{sec:experimental_setup}{{6.2}{14}{Experimental Setup}{subsection.6.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Experimental Setup}{15}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:experimental_setup}{{6.2}{15}{Experimental Setup}{subsection.6.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Datasets}{16}{subsection.6.3}\protected@file@percent }
 \newlabel{sec:datasets}{{6.3}{16}{Datasets}{subsection.6.3}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.1}Synthetic PDE Benchmarks}{16}{subsubsection.6.3.1}\protected@file@percent }
 \newlabel{sec:synthetic_datasets}{{6.3.1}{16}{Synthetic PDE Benchmarks}{subsubsection.6.3.1}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.2}Real-World Sparse Sensor Benchmarks}{16}{subsubsection.6.3.2}\protected@file@percent }
-\newlabel{sec:real_datasets}{{6.3.2}{16}{Real-World Sparse Sensor Benchmarks}{subsubsection.6.3.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.2}Real-World Sparse Sensor Benchmarks}{17}{subsubsection.6.3.2}\protected@file@percent }
+\newlabel{sec:real_datasets}{{6.3.2}{17}{Real-World Sparse Sensor Benchmarks}{subsubsection.6.3.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Results}{17}{subsection.6.4}\protected@file@percent }
 \newlabel{sec:results}{{6.4}{17}{Results}{subsection.6.4}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {6.4.1}Sensor-Space Imputation}{17}{subsubsection.6.4.1}\protected@file@percent }
 \newlabel{sec:sensor_space_results}{{6.4.1}{17}{Sensor-Space Imputation}{subsubsection.6.4.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Sensor-space imputation results on synthetic PDE benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{17}{table.caption.4}\protected@file@percent }
-\newlabel{tab:sensor_space_synthetic}{{1}{17}{Sensor-space imputation results on synthetic PDE benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.4}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.4.2}Global Field Reconstruction}{17}{subsubsection.6.4.2}\protected@file@percent }
-\newlabel{sec:global_reconstruction_results}{{6.4.2}{17}{Global Field Reconstruction}{subsubsection.6.4.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Sensor-space imputation results on real-world sparse sensor benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{18}{table.caption.5}\protected@file@percent }
-\newlabel{tab:sensor_space_real}{{2}{18}{Sensor-space imputation results on real-world sparse sensor benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Global field reconstruction results on synthetic PDE benchmarks. Dense reference fields are available for these datasets. Lower is better.\relax }}{18}{table.caption.6}\protected@file@percent }
-\newlabel{tab:global_synthetic}{{3}{18}{Global field reconstruction results on synthetic PDE benchmarks. Dense reference fields are available for these datasets. Lower is better.\relax }{table.caption.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Sensor-holdout results on real-world sparse sensor benchmarks, used as a proxy for spatial generalization when dense full-field ground truth is unavailable. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better. ImputeFormer is a fixed-node imputer, giving it a transductive fixed-topology advantage in this sensor-holdout setting.\relax }}{19}{table.caption.7}\protected@file@percent }
-\newlabel{tab:global_proxy_real}{{4}{19}{Sensor-holdout results on real-world sparse sensor benchmarks, used as a proxy for spatial generalization when dense full-field ground truth is unavailable. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better. ImputeFormer is a fixed-node imputer, giving it a transductive fixed-topology advantage in this sensor-holdout setting.\relax }{table.caption.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{Inference efficiency.}{19}{section*.8}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Sensor-space imputation results on synthetic PDE benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.}}{17}{table.caption.4}\protected@file@percent }
+\newlabel{tab:sensor_space_synthetic}{{1}{17}{Sensor-space imputation results on synthetic PDE benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better}{table.caption.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Sensor-space imputation results on real-world sparse sensor benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.}}{18}{table.caption.5}\protected@file@percent }
+\newlabel{tab:sensor_space_real}{{2}{18}{Sensor-space imputation results on real-world sparse sensor benchmarks. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better}{table.caption.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.4.2}Global Field Reconstruction}{18}{subsubsection.6.4.2}\protected@file@percent }
+\newlabel{sec:global_reconstruction_results}{{6.4.2}{18}{Global Field Reconstruction}{subsubsection.6.4.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Global field reconstruction results on synthetic PDE benchmarks. Dense reference fields are available for these datasets. Lower is better.}}{19}{table.caption.6}\protected@file@percent }
+\newlabel{tab:global_synthetic}{{3}{19}{Global field reconstruction results on synthetic PDE benchmarks. Dense reference fields are available for these datasets. Lower is better}{table.caption.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Sensor-holdout results on real-world sparse sensor benchmarks, used as a proxy for spatial generalization when dense full-field ground truth is unavailable. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better. ImputeFormer is a fixed-node imputer, giving it a transductive fixed-topology advantage in this sensor-holdout setting.}}{19}{table.caption.7}\protected@file@percent }
+\newlabel{tab:global_proxy_real}{{4}{19}{Sensor-holdout results on real-world sparse sensor benchmarks, used as a proxy for spatial generalization when dense full-field ground truth is unavailable. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better. ImputeFormer is a fixed-node imputer, giving it a transductive fixed-topology advantage in this sensor-holdout setting}{table.caption.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Inference efficiency.}{20}{section*.8}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Ablation Studies}{20}{subsection.6.5}\protected@file@percent }
 \newlabel{sec:ablations}{{6.5}{20}{Ablation Studies}{subsection.6.5}{}}
 \@writefile{toc}{\contentsline {paragraph}{Synthetic PDE benchmarks.}{20}{section*.9}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{20}{table.caption.10}\protected@file@percent }
-\newlabel{tab:ablation_synthetic_sparse}{{5}{20}{Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.10}{}}
-\@writefile{toc}{\contentsline {paragraph}{Real-world sparse sensor benchmarks.}{20}{section*.12}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better.\relax }}{21}{table.caption.11}\protected@file@percent }
-\newlabel{tab:ablation_synthetic_global}{{6}{21}{Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better.\relax }{table.caption.11}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{21}{table.caption.13}\protected@file@percent }
-\newlabel{tab:ablation_real_sparse}{{7}{21}{Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.}}{21}{table.caption.10}\protected@file@percent }
+\newlabel{tab:ablation_synthetic_sparse}{{5}{21}{Ablation study on synthetic PDE benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better}{table.caption.10}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better.}}{21}{table.caption.11}\protected@file@percent }
+\newlabel{tab:ablation_synthetic_global}{{6}{21}{Ablation study on synthetic PDE benchmarks: global field reconstruction. Dense reference fields are available for these datasets. Lower is better}{table.caption.11}{}}
+\@writefile{toc}{\contentsline {paragraph}{Real-world sparse sensor benchmarks.}{21}{section*.12}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.}}{21}{table.caption.13}\protected@file@percent }
+\newlabel{tab:ablation_real_sparse}{{7}{21}{Ablation study on real-world benchmarks: sensor-space imputation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better}{table.caption.13}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {7}Discussion and Conclusion}{21}{section.7}\protected@file@percent }
 \newlabel{sec:discussion_conclusion}{{7}{21}{Discussion and Conclusion}{section.7}{}}
 \bibdata{refs}
@@ -169,41 +154,41 @@
 \bibcite{zaheer2017deep}{{45}{2017}{{Zaheer et~al.}}{{Zaheer, Kottur, Ravanbakhsh, Poczos, Salakhutdinov, and Smola}}}
 \bibcite{zhao2024recfno}{{46}{2024}{{Zhao et~al.}}{{Zhao, Chen, Gong, Zhou, Yao, and Zhang}}}
 \bibstyle{tmlr}
-\@writefile{toc}{\contentsline {section}{\numberline {A}Boundary Loss Implementation}{25}{appendix.A}\protected@file@percent }
-\newlabel{sec:boundary_loss}{{A}{25}{Boundary Loss Implementation}{appendix.A}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Boundary Loss Implementation}{26}{appendix.A}\protected@file@percent }
+\newlabel{sec:boundary_loss}{{A}{26}{Boundary Loss Implementation}{appendix.A}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {B}Baseline Training and Evaluation Protocol}{26}{appendix.B}\protected@file@percent }
 \newlabel{sec:baseline_protocol}{{B}{26}{Baseline Training and Evaluation Protocol}{appendix.B}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.\relax }}{26}{table.caption.16}\protected@file@percent }
-\newlabel{tab:baseline_protocol}{{8}{26}{Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.\relax }{table.caption.16}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {C}Inference Efficiency Benchmark}{27}{appendix.C}\protected@file@percent }
-\newlabel{sec:inference_efficiency}{{C}{27}{Inference Efficiency Benchmark}{appendix.C}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {D}Formal Definitions and Assumptions}{27}{appendix.D}\protected@file@percent }
-\newlabel{sec:definitions}{{D}{27}{Formal Definitions and Assumptions}{appendix.D}{}}
-\newlabel{def:local_operator}{{D.1}{27}{Finite-order local differential operator}{theorem.D.1}{}}
-\newlabel{ass:locality}{{D.2}{27}{}{theorem.D.2}{}}
-\newlabel{ass:sampling}{{D.3}{27}{}{theorem.D.3}{}}
-\newlabel{ass:influence}{{D.4}{27}{}{theorem.D.4}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Inference timing on synthetic PDE benchmarks. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }}{28}{table.caption.17}\protected@file@percent }
-\newlabel{tab:timing_synthetic}{{9}{28}{Inference timing on synthetic PDE benchmarks. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }{table.caption.17}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Inference timing on real-world sparse sensor benchmarks and sensor-holdout splits. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }}{29}{table.caption.18}\protected@file@percent }
-\newlabel{tab:timing_real}{{10}{29}{Inference timing on real-world sparse sensor benchmarks and sensor-holdout splits. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.\relax }{table.caption.18}{}}
-\newlabel{eq:set_inf}{{3}{30}{}{equation.D.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {E}Proofs of Theorems}{30}{appendix.E}\protected@file@percent }
-\newlabel{sec:proofs}{{E}{30}{Proofs of Theorems}{appendix.E}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {E.1}Proof of Theorem \ref  {prop:universal_pde}}{30}{subsection.E.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{1) Discrete locality and finite map.}{30}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {C}Inference Efficiency Benchmark}{26}{appendix.C}\protected@file@percent }
+\newlabel{sec:inference_efficiency}{{C}{26}{Inference Efficiency Benchmark}{appendix.C}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective.}}{27}{table.caption.17}\protected@file@percent }
+\newlabel{tab:baseline_protocol}{{8}{27}{Training and evaluation protocol for FieldFormer and comparison methods. The comparison uses common sparse observations, splits, validation-RMSE checkpointing, and RMSE/MAE evaluation, while allowing each method to use its native input representation and objective}{table.caption.17}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Inference timing on synthetic PDE benchmarks. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.}}{28}{table.caption.18}\protected@file@percent }
+\newlabel{tab:timing_synthetic}{{9}{28}{Inference timing on synthetic PDE benchmarks. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass}{table.caption.18}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Inference timing on real-world sparse sensor benchmarks and sensor-holdout splits. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass.}}{29}{table.caption.19}\protected@file@percent }
+\newlabel{tab:timing_real}{{10}{29}{Inference timing on real-world sparse sensor benchmarks and sensor-holdout splits. Times are measured on sparse-test prediction using trained checkpoints. The ms/query column excludes model loading and adapter setup; setup time is reported separately. Peak memory is measured during the timed prediction pass}{table.caption.19}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Formal Definitions and Assumptions}{30}{appendix.D}\protected@file@percent }
+\newlabel{sec:definitions}{{D}{30}{Formal Definitions and Assumptions}{appendix.D}{}}
+\newlabel{def:local_operator}{{D.1}{30}{Finite-order local differential operator}{theorem.D.1}{}}
+\newlabel{ass:locality}{{D.2}{30}{}{theorem.D.2}{}}
+\newlabel{ass:sampling}{{D.3}{30}{}{theorem.D.3}{}}
+\newlabel{ass:influence}{{D.4}{30}{}{theorem.D.4}{}}
+\newlabel{eq:set_inf}{{3}{30}{}{equation.3}{}}
 \citation{zaheer2017deep}
 \citation{yun2019transformers}
 \citation{hornik1991approximation}
-\@writefile{toc}{\contentsline {paragraph}{2) Tokenization of the stencil.}{31}{section*.20}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{3) Compact domain of interest.}{31}{section*.21}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{4) Universal approximation by the FieldFormer.}{31}{section*.22}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {E.2}Proof of Theorem \ref  {prop:avg_long}}{31}{subsection.E.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{1) Conditioning on sensed sites.}{32}{section*.23}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{2) Two indistinguishable completions.}{32}{section*.24}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{3) Applying the missed-support ambiguity margin.}{32}{section*.25}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{4) Averaging over random sampling.}{32}{section*.26}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {F}Additional Results}{32}{appendix.F}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }}{33}{table.caption.27}\protected@file@percent }
-\newlabel{tab:ablation_real_holdout}{{11}{33}{Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.\relax }{table.caption.27}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {E}Proofs of Theorems}{31}{appendix.E}\protected@file@percent }
+\newlabel{sec:proofs}{{E}{31}{Proofs of Theorems}{appendix.E}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.1}Proof of Theorem \ref {prop:universal_pde}}{31}{subsection.E.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{1) Discrete locality and finite map.}{31}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{2) Tokenization of the stencil.}{31}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{3) Compact domain of interest.}{31}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{4) Universal approximation by the FieldFormer.}{32}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.2}Proof of Theorem \ref {prop:avg_long}}{32}{subsection.E.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{1) Conditioning on sensed sites.}{32}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{2) Two indistinguishable completions.}{32}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{3) Applying the missed-support ambiguity margin.}{33}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{4) Averaging over random sampling.}{33}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {F}Additional Results}{33}{appendix.F}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better.}}{33}{table.caption.28}\protected@file@percent }
+\newlabel{tab:ablation_real_holdout}{{11}{33}{Ablation study on real-world benchmarks: sensor-holdout evaluation. Results are reported as mean $\pm $ std over bootstrap samples. Lower is better}{table.caption.28}{}}
 \gdef \@abspage@last{33}

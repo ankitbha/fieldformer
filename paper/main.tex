@@ -1,8 +1,8 @@
 
 \documentclass[10pt]{article} % For LaTeX2e
-\usepackage{tmlr}
+% \usepackage{tmlr}
 % If accepted, instead use the following line for the camera-ready submission:
-%\usepackage[accepted]{tmlr}
+\usepackage[accepted]{tmlr}
 % To de-anonymize and remove mentions to TMLR (for example for posting to preprint servers), instead use the following:
 %\usepackage[preprint]{tmlr}
 
@@ -43,9 +43,9 @@
 \newcommand{\fix}{\marginpar{FIX}}
 \newcommand{\new}{\marginpar{NEW}}
 
-\def\month{MM}  % Insert correct month for camera-ready version
-\def\year{YYYY} % Insert correct year for camera-ready version
-\def\openreview{\url{https://openreview.net/forum?id=XXXX}} % Insert correct link to OpenReview for camera-ready version
+\def\month{08}  % Insert correct month for camera-ready version
+\def\year{2026} % Insert correct year for camera-ready version
+\def\openreview{\url{https://openreview.net/forum?id=we4FYGOE2y}} % Insert correct link to OpenReview for camera-ready version
 
 \usepackage{amsthm}
 % Theorem styles
@@ -65,6 +65,14 @@
 \theoremstyle{remark} % italic heading, upright body
 \newtheorem{remark}[theorem]{Remark}
 \newtheorem{note}[theorem]{Note}
+
+% Restate a theorem in the appendix under its original main-text number,
+% without advancing the theorem counter.
+\theoremstyle{plain}
+\newtheorem{innercustomthm}{Theorem}
+\newenvironment{restatedtheorem}[1]
+  {\renewcommand\theinnercustomthm{#1}\innercustomthm}
+  {\endinnercustomthm}
 
 \begin{document}
 
