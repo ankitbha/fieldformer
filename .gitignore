@@ -9,3 +9,6 @@ __pycache__/
 .codex
 gpu_burn.log
 .tools/
+.DS_Store
+paper/main.fdb_latexmk
+paper/main.fls

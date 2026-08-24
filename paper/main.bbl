@@ -8,42 +8,27 @@
 \bibitem[Bentley(1975)]{bentley1975multidimensional}
 Jon~Louis Bentley.
 \newblock Multidimensional binary search trees used for associative searching.
-\newblock \emph{Communications of the ACM}, 18\penalty0 (9):\penalty0 509--517,
-  1975.
+\newblock \emph{Communications of the ACM}, 18\penalty0 (9):\penalty0 509--517, 1975.
 
-\bibitem[Bhardwaj et~al.(2023)Bhardwaj, Iyer, Ramesh, White, and
-  Subramanian]{bhardwaj2023understanding}
-Ankit Bhardwaj, Shiva~R Iyer, Sriram Ramesh, Jerome White, and Lakshminarayanan
-  Subramanian.
+\bibitem[Bhardwaj et~al.(2023)Bhardwaj, Iyer, Ramesh, White, and Subramanian]{bhardwaj2023understanding}
+Ankit Bhardwaj, Shiva~R Iyer, Sriram Ramesh, Jerome White, and Lakshminarayanan Subramanian.
 \newblock Understanding sudden traffic jams: From emergence to impact.
 \newblock \emph{Development Engineering}, 8:\penalty0 100105, 2023.
 
-\bibitem[Bhardwaj et~al.(2025)Bhardwaj, Balashankar, Iyer, Soans, Sudarshan,
-  Pande, and Subramanian]{bhardwaj2025comprehensive}
-Ankit Bhardwaj, Ananth Balashankar, Shiva Iyer, Nita Soans, Anant Sudarshan,
-  Rohini Pande, and Lakshminarayanan Subramanian.
-\newblock Comprehensive monitoring of air pollution hotspots using sparse
-  sensor networks.
-\newblock \emph{ACM Journal on Computing and Sustainable Societies}, 3\penalty0
-  (4):\penalty0 1--36, 2025.
+\bibitem[Bhardwaj et~al.(2025)Bhardwaj, Balashankar, Iyer, Soans, Sudarshan, Pande, and Subramanian]{bhardwaj2025comprehensive}
+Ankit Bhardwaj, Ananth Balashankar, Shiva Iyer, Nita Soans, Anant Sudarshan, Rohini Pande, and Lakshminarayanan Subramanian.
+\newblock Comprehensive monitoring of air pollution hotspots using sparse sensor networks.
+\newblock \emph{ACM Journal on Computing and Sustainable Societies}, 3\penalty0 (4):\penalty0 1--36, 2025.
 
-\bibitem[Chu et~al.(2022)Chu, Liu, Zheng, Franz, Seidel, Theobalt, and
-  Zayer]{chu2022physics}
-Mengyu Chu, Lingjie Liu, Quan Zheng, Erik Franz, Hans-Peter Seidel, Christian
-  Theobalt, and Rhaleb Zayer.
-\newblock Physics informed neural fields for smoke reconstruction with sparse
-  data.
-\newblock \emph{ACM Transactions on Graphics (ToG)}, 41\penalty0 (4):\penalty0
-  1--14, 2022.
+\bibitem[Chu et~al.(2022)Chu, Liu, Zheng, Franz, Seidel, Theobalt, and Zayer]{chu2022physics}
+Mengyu Chu, Lingjie Liu, Quan Zheng, Erik Franz, Hans-Peter Seidel, Christian Theobalt, and Rhaleb Zayer.
+\newblock Physics informed neural fields for smoke reconstruction with sparse data.
+\newblock \emph{ACM Transactions on Graphics (ToG)}, 41\penalty0 (4):\penalty0 1--14, 2022.
 
-\bibitem[Concas et~al.(2021)Concas, Mineraud, Lagerspetz, Varjonen, Liu,
-  Puolam{\"a}ki, Nurmi, and Tarkoma]{concas2021low}
-Francesco Concas, Julien Mineraud, Eemil Lagerspetz, Samu Varjonen, Xiaoli Liu,
-  Kai Puolam{\"a}ki, Petteri Nurmi, and Sasu Tarkoma.
-\newblock Low-cost outdoor air quality monitoring and sensor calibration: A
-  survey and critical analysis.
-\newblock \emph{ACM Transactions on Sensor Networks (TOSN)}, 17\penalty0
-  (2):\penalty0 1--44, 2021.
+\bibitem[Concas et~al.(2021)Concas, Mineraud, Lagerspetz, Varjonen, Liu, Puolam{\"a}ki, Nurmi, and Tarkoma]{concas2021low}
+Francesco Concas, Julien Mineraud, Eemil Lagerspetz, Samu Varjonen, Xiaoli Liu, Kai Puolam{\"a}ki, Petteri Nurmi, and Sasu Tarkoma.
+\newblock Low-cost outdoor air quality monitoring and sensor calibration: A survey and critical analysis.
+\newblock \emph{ACM Transactions on Sensor Networks (TOSN)}, 17\penalty0 (2):\penalty0 1--44, 2021.
 
 \bibitem[Cressie(1990)]{cressie1990origins}
 Noel Cressie.
@@ -52,40 +37,28 @@ Noel Cressie.
 
 \bibitem[De~Luna \& Genton(2005)De~Luna and Genton]{de2005predictive}
 Xavier De~Luna and Marc~G Genton.
-\newblock Predictive spatio-temporal models for spatially sparse environmental
-  data.
+\newblock Predictive spatio-temporal models for spatially sparse environmental data.
 \newblock \emph{Statistica Sinica}, pp.\  547--568, 2005.
 
-\bibitem[Foong et~al.(2020)Foong, Bruinsma, Gordon, Dubois, Requeima, and
-  Turner]{foong2020meta}
-Andrew Y.~K. Foong, Wessel~P. Bruinsma, Jonathan Gordon, Yann Dubois, James
-  Requeima, and Richard~E. Turner.
-\newblock Meta-learning stationary stochastic process prediction with
-  convolutional neural processes.
-\newblock \emph{Advances in Neural Information Processing Systems},
-  33:\penalty0 8284--8295, 2020.
+\bibitem[Foong et~al.(2020)Foong, Bruinsma, Gordon, Dubois, Requeima, and Turner]{foong2020meta}
+Andrew Y.~K. Foong, Wessel~P. Bruinsma, Jonathan Gordon, Yann Dubois, James Requeima, and Richard~E. Turner.
+\newblock Meta-learning stationary stochastic process prediction with convolutional neural processes.
+\newblock \emph{Advances in Neural Information Processing Systems}, 33:\penalty0 8284--8295, 2020.
 
-\bibitem[Garnelo et~al.(2018)Garnelo, Rosenbaum, Maddison, Ramalho, Saxton,
-  Shanahan, Teh, Rezende, and Eslami]{garnelo2018conditional}
-Marta Garnelo, Dan Rosenbaum, Christopher Maddison, Tiago Ramalho, David
-  Saxton, Murray Shanahan, Yee~Whye Teh, Danilo Rezende, and S.~M.~Ali Eslami.
+\bibitem[Garnelo et~al.(2018)Garnelo, Rosenbaum, Maddison, Ramalho, Saxton, Shanahan, Teh, Rezende, and Eslami]{garnelo2018conditional}
+Marta Garnelo, Dan Rosenbaum, Christopher Maddison, Tiago Ramalho, David Saxton, Murray Shanahan, Yee~Whye Teh, Danilo Rezende, and S.~M.~Ali Eslami.
 \newblock Conditional neural processes.
-\newblock In \emph{Proceedings of the 35th International Conference on Machine
-  Learning}, pp.\  1704--1713. PMLR, 2018.
+\newblock In \emph{Proceedings of the 35th International Conference on Machine Learning}, pp.\  1704--1713. PMLR, 2018.
 
-\bibitem[Gordon et~al.(2020)Gordon, Bruinsma, Foong, Requeima, Dubois, and
-  Turner]{gordon2020convolutional}
-Jonathan Gordon, Wessel~P. Bruinsma, Andrew Y.~K. Foong, James Requeima, Yann
-  Dubois, and Richard~E. Turner.
+\bibitem[Gordon et~al.(2020)Gordon, Bruinsma, Foong, Requeima, Dubois, and Turner]{gordon2020convolutional}
+Jonathan Gordon, Wessel~P. Bruinsma, Andrew Y.~K. Foong, James Requeima, Yann Dubois, and Richard~E. Turner.
 \newblock Convolutional conditional neural processes.
 \newblock \emph{arXiv preprint arXiv:1910.13556}, 2020.
 
 \bibitem[Hart \& Martinez(2006)Hart and Martinez]{hart2006environmental}
 Jane~K. Hart and Kirk Martinez.
-\newblock Environmental sensor networks: A revolution in the earth system
-  science?
-\newblock \emph{Earth-Science Reviews}, 78\penalty0 (3--4):\penalty0 177--191,
-  2006.
+\newblock Environmental sensor networks: A revolution in the earth system science?
+\newblock \emph{Earth-Science Reviews}, 78\penalty0 (3--4):\penalty0 177--191, 2006.
 \newblock \doi{10.1016/j.earscirev.2006.05.001}.
 
 \bibitem[Hensman et~al.(2013)Hensman, Fusi, and Lawrence]{hensman2013gaussian}
@@ -98,116 +71,80 @@ Kurt Hornik.
 \newblock Approximation capabilities of multilayer feedforward networks.
 \newblock \emph{Neural networks}, 4\penalty0 (2):\penalty0 251--257, 1991.
 
-\bibitem[Hu et~al.(2019)Hu, Anderson, Li, Sun, Carr, Ragan-Kelley, and
-  Durand]{hu2019difftaichi}
-Yuanming Hu, Luke Anderson, Tzu-Mao Li, Qi~Sun, Nathan Carr, Jonathan
-  Ragan-Kelley, and Fr{\'e}do Durand.
+\bibitem[Hu et~al.(2019)Hu, Anderson, Li, Sun, Carr, Ragan-Kelley, and Durand]{hu2019difftaichi}
+Yuanming Hu, Luke Anderson, Tzu-Mao Li, Qi~Sun, Nathan Carr, Jonathan Ragan-Kelley, and Fr{\'e}do Durand.
 \newblock Difftaichi: Differentiable programming for physical simulation.
 \newblock \emph{arXiv preprint arXiv:1910.00935}, 2019.
 
 \bibitem[Hughes(2003)]{hughes2003finite}
 Thomas~JR Hughes.
-\newblock \emph{The finite element method: linear static and dynamic finite
-  element analysis}.
+\newblock \emph{The finite element method: linear static and dynamic finite element analysis}.
 \newblock Courier Corporation, 2003.
 
-\bibitem[Iyer et~al.(2022)Iyer, Balashankar, Aeberhard, Bhattacharyya, Rusconi,
-  Jose, Soans, Sudarshan, Pande, and Subramanian]{iyer2022modeling}
-Shiva~R Iyer, Ananth Balashankar, William~H Aeberhard, Sujoy Bhattacharyya,
-  Giuditta Rusconi, Lejo Jose, Nita Soans, Anant Sudarshan, Rohini Pande, and
-  Lakshminarayanan Subramanian.
-\newblock Modeling fine-grained spatio-temporal pollution maps with low-cost
-  sensors.
-\newblock \emph{npj Climate and Atmospheric Science}, 5\penalty0 (1):\penalty0
-  76, 2022.
+\bibitem[Iyer et~al.(2022)Iyer, Balashankar, Aeberhard, Bhattacharyya, Rusconi, Jose, Soans, Sudarshan, Pande, and Subramanian]{iyer2022modeling}
+Shiva~R Iyer, Ananth Balashankar, William~H Aeberhard, Sujoy Bhattacharyya, Giuditta Rusconi, Lejo Jose, Nita Soans, Anant Sudarshan, Rohini Pande, and Lakshminarayanan Subramanian.
+\newblock Modeling fine-grained spatio-temporal pollution maps with low-cost sensors.
+\newblock \emph{npj Climate and Atmospheric Science}, 5\penalty0 (1):\penalty0 76, 2022.
 
 \bibitem[Joshi(2025)]{joshi2025transformers}
 Chaitanya~K Joshi.
 \newblock Transformers are graph neural networks.
 \newblock \emph{arXiv preprint arXiv:2506.22084}, 2025.
 
-\bibitem[Khalil et~al.(2021)Khalil, Saeed, Masood, Fard, Alouini, and
-  Al-Naffouri]{khalil2021deep}
-Ruhul~Amin Khalil, Nasir Saeed, Mudassir Masood, Yasaman~Moradi Fard,
-  Mohamed-Slim Alouini, and Tareq~Y Al-Naffouri.
-\newblock Deep learning in the industrial internet of things: Potentials,
-  challenges, and emerging applications.
-\newblock \emph{IEEE Internet of Things Journal}, 8\penalty0 (14):\penalty0
-  11016--11040, 2021.
+\bibitem[Khalil et~al.(2021)Khalil, Saeed, Masood, Fard, Alouini, and Al-Naffouri]{khalil2021deep}
+Ruhul~Amin Khalil, Nasir Saeed, Mudassir Masood, Yasaman~Moradi Fard, Mohamed-Slim Alouini, and Tareq~Y Al-Naffouri.
+\newblock Deep learning in the industrial internet of things: Potentials, challenges, and emerging applications.
+\newblock \emph{IEEE Internet of Things Journal}, 8\penalty0 (14):\penalty0 11016--11040, 2021.
 
-\bibitem[Kochkov et~al.(2021)Kochkov, Smith, Alieva, Wang, Brenner, and
-  Hoyer]{kochkov2021machine}
-Dmitrii Kochkov, Jamie~A Smith, Ayya Alieva, Qing Wang, Michael~P Brenner, and
-  Stephan Hoyer.
+\bibitem[Kochkov et~al.(2021)Kochkov, Smith, Alieva, Wang, Brenner, and Hoyer]{kochkov2021machine}
+Dmitrii Kochkov, Jamie~A Smith, Ayya Alieva, Qing Wang, Michael~P Brenner, and Stephan Hoyer.
 \newblock Machine learning--accelerated computational fluid dynamics.
-\newblock \emph{Proceedings of the National Academy of Sciences}, 118\penalty0
-  (21):\penalty0 e2101784118, 2021.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 118\penalty0 (21):\penalty0 e2101784118, 2021.
 
-\bibitem[Krishnapriyan et~al.(2021)Krishnapriyan, Gholami, Zhe, Kirby, and
-  Mahoney]{krishnapriyan2021characterizing}
-Aditi Krishnapriyan, Amir Gholami, Shandian Zhe, Robert Kirby, and Michael~W
-  Mahoney.
-\newblock Characterizing possible failure modes in physics-informed neural
-  networks.
-\newblock \emph{Advances in neural information processing systems},
-  34:\penalty0 26548--26560, 2021.
+\bibitem[Krishnapriyan et~al.(2021)Krishnapriyan, Gholami, Zhe, Kirby, and Mahoney]{krishnapriyan2021characterizing}
+Aditi Krishnapriyan, Amir Gholami, Shandian Zhe, Robert Kirby, and Michael~W Mahoney.
+\newblock Characterizing possible failure modes in physics-informed neural networks.
+\newblock \emph{Advances in neural information processing systems}, 34:\penalty0 26548--26560, 2021.
 
-\bibitem[Lakshminarayanan et~al.(2017)Lakshminarayanan, Pritzel, and
-  Blundell]{lakshminarayanan2017simple}
+\bibitem[Lakshminarayanan et~al.(2017)Lakshminarayanan, Pritzel, and Blundell]{lakshminarayanan2017simple}
 Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell.
-\newblock Simple and scalable predictive uncertainty estimation using deep
-  ensembles.
-\newblock In \emph{Advances in Neural Information Processing Systems},
-  volume~30, 2017.
+\newblock Simple and scalable predictive uncertainty estimation using deep ensembles.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~30, 2017.
 
 \bibitem[LeVeque(2007)]{leveque2007finite}
 Randall~J LeVeque.
-\newblock \emph{Finite difference methods for ordinary and partial differential
-  equations: steady-state and time-dependent problems}.
+\newblock \emph{Finite difference methods for ordinary and partial differential equations: steady-state and time-dependent problems}.
 \newblock SIAM, 2007.
 
 \bibitem[Li et~al.(2017)Li, Yu, Shahabi, and Liu]{li2017diffusion}
 Yaguang Li, Rose Yu, Cyrus Shahabi, and Yan Liu.
-\newblock Diffusion convolutional recurrent neural network: Data-driven traffic
-  forecasting.
+\newblock Diffusion convolutional recurrent neural network: Data-driven traffic forecasting.
 \newblock \emph{arXiv preprint arXiv:1707.01926}, 2017.
 
-\bibitem[Li et~al.(2020{\natexlab{a}})Li, Kovachki, Azizzadenesheli, Liu,
-  Bhattacharya, Stuart, and Anandkumar]{li2020fourier}
-Zongyi Li, Nikola Kovachki, Kamyar Azizzadenesheli, Burigede Liu, Kaushik
-  Bhattacharya, Andrew Stuart, and Anima Anandkumar.
-\newblock Fourier neural operator for parametric partial differential
-  equations.
+\bibitem[Li et~al.(2020{\natexlab{a}})Li, Kovachki, Azizzadenesheli, Liu, Bhattacharya, Stuart, and Anandkumar]{li2020fourier}
+Zongyi Li, Nikola Kovachki, Kamyar Azizzadenesheli, Burigede Liu, Kaushik Bhattacharya, Andrew Stuart, and Anima Anandkumar.
+\newblock Fourier neural operator for parametric partial differential equations.
 \newblock \emph{arXiv preprint arXiv:2010.08895}, 2020{\natexlab{a}}.
 
-\bibitem[Li et~al.(2020{\natexlab{b}})Li, Kovachki, Azizzadenesheli, Liu,
-  Bhattacharya, Stuart, and Anandkumar]{li2020neural}
-Zongyi Li, Nikola Kovachki, Kamyar Azizzadenesheli, Burigede Liu, Kaushik
-  Bhattacharya, Andrew Stuart, and Anima Anandkumar.
-\newblock Neural operator: Graph kernel network for partial differential
-  equations.
+\bibitem[Li et~al.(2020{\natexlab{b}})Li, Kovachki, Azizzadenesheli, Liu, Bhattacharya, Stuart, and Anandkumar]{li2020neural}
+Zongyi Li, Nikola Kovachki, Kamyar Azizzadenesheli, Burigede Liu, Kaushik Bhattacharya, Andrew Stuart, and Anima Anandkumar.
+\newblock Neural operator: Graph kernel network for partial differential equations.
 \newblock \emph{arXiv preprint arXiv:2003.03485}, 2020{\natexlab{b}}.
 
-\bibitem[Liang et~al.(2024)Liang, Tiwari, Nowaczyk, and
-  Byttner]{liang2024higher}
+\bibitem[Liang et~al.(2024)Liang, Tiwari, Nowaczyk, and Byttner]{liang2024higher}
 Guojun Liang, Prayag Tiwari, S{\l}awomir Nowaczyk, and Stefan Byttner.
-\newblock Higher-order spatio-temporal physics-incorporated graph neural
-  network for multivariate time series imputation.
-\newblock In \emph{Proceedings of the 33rd ACM International Conference on
-  Information and Knowledge Management}, pp.\  1356--1366, 2024.
+\newblock Higher-order spatio-temporal physics-incorporated graph neural network for multivariate time series imputation.
+\newblock In \emph{Proceedings of the 33rd ACM International Conference on Information and Knowledge Management}, pp.\  1356--1366, 2024.
 
 \bibitem[Liu \& Pyrcz(2023)Liu and Pyrcz]{liu2023physics}
 Wendi Liu and Michael~J Pyrcz.
-\newblock Physics-informed graph neural network for spatial-temporal production
-  forecasting.
+\newblock Physics-informed graph neural network for spatial-temporal production forecasting.
 \newblock \emph{Geoenergy Science and Engineering}, 223:\penalty0 211486, 2023.
 
 \bibitem[Lorsung et~al.(2024)Lorsung, Li, and Farimani]{lorsung2024physics}
 Cooper Lorsung, Zijie Li, and Amir~Barati Farimani.
-\newblock Physics informed token transformer for solving partial differential
-  equations.
-\newblock \emph{Machine Learning: Science and Technology}, 5\penalty0
-  (1):\penalty0 015032, 2024.
+\newblock Physics informed token transformer for solving partial differential equations.
+\newblock \emph{Machine Learning: Science and Technology}, 5\penalty0 (1):\penalty0 015032, 2024.
 
 \bibitem[Lusch et~al.(2018)Lusch, Kutz, and Brunton]{lusch2018deep}
 Bethany Lusch, J~Nathan Kutz, and Steven~L Brunton.
@@ -216,22 +153,17 @@ Bethany Lusch, J~Nathan Kutz, and Steven~L Brunton.
 
 \bibitem[{NCEP}(2000)]{cisl_rda_ds083.2}
 {NCEP}.
-\newblock Ncep fnl operational model global tropospheric analyses, continuing
-  from july 1999, 2000.
+\newblock Ncep fnl operational model global tropospheric analyses, continuing from july 1999, 2000.
 \newblock URL \url{https://doi.org/10.5065/D6M043C6}.
 
 \bibitem[Nie et~al.(2024)Nie, Qin, Ma, Mei, and Sun]{nie2024imputeformer}
 Tong Nie, Guoyang Qin, Wei Ma, Yuewen Mei, and Jian Sun.
-\newblock Imputeformer: Low rankness-induced transformers for generalizable
-  spatiotemporal imputation.
-\newblock In \emph{Proceedings of the 30th ACM SIGKDD Conference on Knowledge
-  Discovery and Data Mining}, pp.\  2260--2271, 2024.
+\newblock Imputeformer: Low rankness-induced transformers for generalizable spatiotemporal imputation.
+\newblock In \emph{Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}, pp.\  2260--2271, 2024.
 
-\bibitem[Norden et~al.(2025)Norden, Oostwal, Chappell, Tino, and
-  Bunte]{norden2025importancestructuralidentifiabilitymachine}
+\bibitem[Norden et~al.(2025)Norden, Oostwal, Chappell, Tino, and Bunte]{norden2025importancestructuralidentifiabilitymachine}
 Janis Norden, Elisa Oostwal, Michael Chappell, Peter Tino, and Kerstin Bunte.
-\newblock On the importance of structural identifiability for machine learning
-  with partially observed dynamical systems, 2025.
+\newblock On the importance of structural identifiability for machine learning with partially observed dynamical systems, 2025.
 \newblock URL \url{https://arxiv.org/abs/2502.04131}.
 
 \bibitem[Rahman et~al.(2022)Rahman, Ross, and Azizzadenesheli]{rahman2022u}
@@ -239,60 +171,38 @@ Md~Ashiqur Rahman, Zachary~E Ross, and Kamyar Azizzadenesheli.
 \newblock U-no: U-shaped neural operators.
 \newblock \emph{arXiv preprint arXiv:2204.11127}, 2022.
 
-\bibitem[Raissi et~al.(2019)Raissi, Perdikaris, and
-  Karniadakis]{raissi2019physics}
+\bibitem[Raissi et~al.(2019)Raissi, Perdikaris, and Karniadakis]{raissi2019physics}
 Maziar Raissi, Paris Perdikaris, and George~E Karniadakis.
-\newblock Physics-informed neural networks: A deep learning framework for
-  solving forward and inverse problems involving nonlinear partial differential
-  equations.
-\newblock \emph{Journal of Computational physics}, 378:\penalty0 686--707,
-  2019.
+\newblock Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations.
+\newblock \emph{Journal of Computational physics}, 378:\penalty0 686--707, 2019.
 
-\bibitem[Santos et~al.(2023)Santos, Fox, Mohan, O{'}Malley, Viswanathan, and
-  Lubbers]{santos2023development}
-Javier~E Santos, Zachary~R Fox, Arvind Mohan, Daniel O{'}Malley, Hari
-  Viswanathan, and Nicholas Lubbers.
-\newblock Development of the senseiver for efficient field reconstruction from
-  sparse observations.
-\newblock \emph{Nature Machine Intelligence}, 5\penalty0 (11):\penalty0
-  1317--1325, 2023.
+\bibitem[Santos et~al.(2023)Santos, Fox, Mohan, O{'}Malley, Viswanathan, and Lubbers]{santos2023development}
+Javier~E Santos, Zachary~R Fox, Arvind Mohan, Daniel O{'}Malley, Hari Viswanathan, and Nicholas Lubbers.
+\newblock Development of the senseiver for efficient field reconstruction from sparse observations.
+\newblock \emph{Nature Machine Intelligence}, 5\penalty0 (11):\penalty0 1317--1325, 2023.
 
-\bibitem[Sitzmann et~al.(2020)Sitzmann, Martel, Bergman, Lindell, and
-  Wetzstein]{sitzmann2020implicit}
-Vincent Sitzmann, Julien Martel, Alexander Bergman, David Lindell, and Gordon
-  Wetzstein.
+\bibitem[Sitzmann et~al.(2020)Sitzmann, Martel, Bergman, Lindell, and Wetzstein]{sitzmann2020implicit}
+Vincent Sitzmann, Julien Martel, Alexander Bergman, David Lindell, and Gordon Wetzstein.
 \newblock Implicit neural representations with periodic activation functions.
-\newblock \emph{Advances in neural information processing systems},
-  33:\penalty0 7462--7473, 2020.
+\newblock \emph{Advances in neural information processing systems}, 33:\penalty0 7462--7473, 2020.
 
-\bibitem[Tancik et~al.(2020)Tancik, Srinivasan, Mildenhall, Fridovich-Keil,
-  Raghavan, Singhal, Ramamoorthi, Barron, and Ng]{tancik2020fourier}
-Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara Fridovich-Keil, Nithin
-  Raghavan, Utkarsh Singhal, Ravi Ramamoorthi, Jonathan Barron, and Ren Ng.
-\newblock Fourier features let networks learn high frequency functions in low
-  dimensional domains.
-\newblock \emph{Advances in neural information processing systems},
-  33:\penalty0 7537--7547, 2020.
+\bibitem[Tancik et~al.(2020)Tancik, Srinivasan, Mildenhall, Fridovich-Keil, Raghavan, Singhal, Ramamoorthi, Barron, and Ng]{tancik2020fourier}
+Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara Fridovich-Keil, Nithin Raghavan, Utkarsh Singhal, Ravi Ramamoorthi, Jonathan Barron, and Ren Ng.
+\newblock Fourier features let networks learn high frequency functions in low dimensional domains.
+\newblock \emph{Advances in neural information processing systems}, 33:\penalty0 7537--7547, 2020.
 
 \bibitem[Tashiro et~al.(2021)Tashiro, Song, Song, and Ermon]{tashiro2021csdi}
 Yusuke Tashiro, Jiaming Song, Yang Song, and Stefano Ermon.
-\newblock Csdi: Conditional score-based diffusion models for probabilistic time
-  series imputation.
-\newblock In \emph{Advances in Neural Information Processing Systems},
-  volume~34, pp.\  24804--24816, 2021.
+\newblock Csdi: Conditional score-based diffusion models for probabilistic time series imputation.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~34, pp.\  24804--24816, 2021.
 
-\bibitem[Wang et~al.(2022)Wang, Zhu, Guo, Han, Wang, Wei, and
-  Jin]{wang2022transflownet}
-Xinjie Wang, Siyuan Zhu, Yundong Guo, Peng Han, Yucheng Wang, Zhiqiang Wei, and
-  Xiaogang Jin.
-\newblock Transflownet: A physics-constrained transformer framework for
-  spatio-temporal super-resolution of flow simulations.
+\bibitem[Wang et~al.(2022)Wang, Zhu, Guo, Han, Wang, Wei, and Jin]{wang2022transflownet}
+Xinjie Wang, Siyuan Zhu, Yundong Guo, Peng Han, Yucheng Wang, Zhiqiang Wei, and Xiaogang Jin.
+\newblock Transflownet: A physics-constrained transformer framework for spatio-temporal super-resolution of flow simulations.
 \newblock \emph{Journal of Computational Science}, 65:\penalty0 101906, 2022.
 
-\bibitem[Wieland et~al.(2021)Wieland, Hauber, Rosenblatt, T{\"o}nsing, and
-  Timmer]{wieland2021structural}
-Franz-Georg Wieland, Adrian~L Hauber, Marcus Rosenblatt, Christian T{\"o}nsing,
-  and Jens Timmer.
+\bibitem[Wieland et~al.(2021)Wieland, Hauber, Rosenblatt, T{\"o}nsing, and Timmer]{wieland2021structural}
+Franz-Georg Wieland, Adrian~L Hauber, Marcus Rosenblatt, Christian T{\"o}nsing, and Jens Timmer.
 \newblock On structural and practical identifiability.
 \newblock \emph{Current opinion in systems biology}, 25:\penalty0 60--69, 2021.
 
@@ -307,34 +217,23 @@ Zonghan Wu, Shirui Pan, Guodong Long, Jing Jiang, and Chengqi Zhang.
 \newblock \emph{arXiv preprint arXiv:1906.00121}, 2019.
 
 \bibitem[Xu et~al.(2020)Xu, Dai, Liu, Gao, Lin, Qi, and Xiong]{xu2020spatial}
-Mingxing Xu, Wenrui Dai, Chunmiao Liu, Xing Gao, Weiyao Lin, Guo-Jun Qi, and
-  Hongkai Xiong.
+Mingxing Xu, Wenrui Dai, Chunmiao Liu, Xing Gao, Weiyao Lin, Guo-Jun Qi, and Hongkai Xiong.
 \newblock Spatial-temporal transformer networks for traffic flow forecasting.
 \newblock \emph{arXiv preprint arXiv:2001.02908}, 2020.
 
-\bibitem[Yun et~al.(2019)Yun, Bhojanapalli, Rawat, Reddi, and
-  Kumar]{yun2019transformers}
-Chulhee Yun, Srinadh Bhojanapalli, Ankit~Singh Rawat, Sashank~J Reddi, and
-  Sanjiv Kumar.
-\newblock Are transformers universal approximators of sequence-to-sequence
-  functions?
+\bibitem[Yun et~al.(2019)Yun, Bhojanapalli, Rawat, Reddi, and Kumar]{yun2019transformers}
+Chulhee Yun, Srinadh Bhojanapalli, Ankit~Singh Rawat, Sashank~J Reddi, and Sanjiv Kumar.
+\newblock Are transformers universal approximators of sequence-to-sequence functions?
 \newblock \emph{arXiv preprint arXiv:1912.10077}, 2019.
 
-\bibitem[Zaheer et~al.(2017)Zaheer, Kottur, Ravanbakhsh, Poczos, Salakhutdinov,
-  and Smola]{zaheer2017deep}
-Manzil Zaheer, Satwik Kottur, Siamak Ravanbakhsh, Barnabas Poczos, Ruslan
-  Salakhutdinov, and Alexander Smola.
+\bibitem[Zaheer et~al.(2017)Zaheer, Kottur, Ravanbakhsh, Poczos, Salakhutdinov, and Smola]{zaheer2017deep}
+Manzil Zaheer, Satwik Kottur, Siamak Ravanbakhsh, Barnabas Poczos, Ruslan Salakhutdinov, and Alexander Smola.
 \newblock Deep sets.
-\newblock In \emph{Advances in Neural Information Processing Systems},
-  volume~30, 2017.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~30, 2017.
 
-\bibitem[Zhao et~al.(2024)Zhao, Chen, Gong, Zhou, Yao, and
-  Zhang]{zhao2024recfno}
-Xiaoyu Zhao, Xiaoqian Chen, Zhiqiang Gong, Weien Zhou, Wen Yao, and Yunyang
-  Zhang.
-\newblock Recfno: A resolution-invariant flow and heat field reconstruction
-  method from sparse observations via fourier neural operator.
-\newblock \emph{International Journal of Thermal Sciences}, 195:\penalty0
-  108619, 2024.
+\bibitem[Zhao et~al.(2024)Zhao, Chen, Gong, Zhou, Yao, and Zhang]{zhao2024recfno}
+Xiaoyu Zhao, Xiaoqian Chen, Zhiqiang Gong, Weien Zhou, Wen Yao, and Yunyang Zhang.
+\newblock Recfno: A resolution-invariant flow and heat field reconstruction method from sparse observations via fourier neural operator.
+\newblock \emph{International Journal of Thermal Sciences}, 195:\penalty0 108619, 2024.
 
 \end{thebibliography}
